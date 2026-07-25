@@ -6,9 +6,9 @@ import { usePathname } from "next/navigation";
 const items = [
   { href: "/dashboard", label: "หน้าแรก", icon: "home", exact: true },
   { href: "/dashboard/products", label: "สินค้า", icon: "product" },
-  { href: "/dashboard/bookings", label: "จอง", icon: "booking" },
+  { href: "/dashboard/bookings", label: "จองบริการ", icon: "booking" },
   { href: "/dashboard/orders", label: "ออเดอร์", icon: "order" },
-  { href: "/dashboard/analytics", label: "สถิติ", icon: "analytics" },
+  { href: "/dashboard/analytics", label: "Analytics", icon: "analytics" },
   { href: "/dashboard/settings", label: "ตั้งค่า", icon: "settings" },
 ];
 

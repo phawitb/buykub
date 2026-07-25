@@ -8,6 +8,37 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("SettingsForm", () => {
+  it("associates store fields with the same visible labels customers see", () => {
+    render(
+      <SettingsForm
+        userId="user-1"
+        initial={{
+          id: "shop-1",
+          slug: "my-shop",
+          name: "My shop",
+          bio: "About my shop",
+          avatar_url: null,
+          cover_url: null,
+          accent_color: "#f97316",
+          payout_method: "promptpay",
+          promptpay_id: "",
+          bank_details: "",
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("textbox", { name: "ชื่อร้าน" })).toHaveValue(
+      "My shop",
+    );
+    expect(screen.getByRole("textbox", { name: "URL ร้าน" })).toHaveValue(
+      "my-shop",
+    );
+    expect(screen.getByRole("textbox", { name: /แนะนำร้าน/ })).toHaveAttribute(
+      "maxlength",
+      "160",
+    );
+  });
+
   it("rejects an invalid PromptPay ID before saving settings", async () => {
     const user = userEvent.setup();
     const saveSettings = vi.fn().mockResolvedValue(undefined);

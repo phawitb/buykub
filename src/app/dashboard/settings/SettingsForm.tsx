@@ -131,8 +131,14 @@ export function SettingsForm({
 
         <div className="mt-4 space-y-4">
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-ink-soft">ชื่อร้าน</label>
+            <label
+              htmlFor="shop-name"
+              className="mb-1.5 block text-xs font-medium text-ink-soft"
+            >
+              ชื่อร้าน
+            </label>
             <input
+              id="shop-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -142,10 +148,16 @@ export function SettingsForm({
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-ink-soft">URL ร้าน</label>
+            <label
+              htmlFor="shop-slug"
+              className="mb-1.5 block text-xs font-medium text-ink-soft"
+            >
+              URL ร้าน
+            </label>
             <div className="flex items-center rounded-lg border border-line bg-paper px-3.5 focus-within:border-ink">
               <span className="text-sm text-muted">framelink.app/</span>
               <input
+                id="shop-slug"
                 value={slug}
                 onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
                 required
@@ -156,10 +168,17 @@ export function SettingsForm({
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-ink-soft">แนะนำร้าน</label>
+            <label
+              htmlFor="shop-bio"
+              className="mb-1.5 block text-xs font-medium text-ink-soft"
+            >
+              แนะนำร้าน
+            </label>
             <textarea
+              id="shop-bio"
               value={bio}
               onChange={(e) => setBio(e.target.value.slice(0, 160))}
+              maxLength={160}
               rows={3}
               placeholder="บอกลูกค้าเกี่ยวกับร้านของคุณ..."
               className="w-full rounded-lg border border-line bg-paper px-3.5 py-2.5 text-sm text-ink outline-none focus:border-ink"
