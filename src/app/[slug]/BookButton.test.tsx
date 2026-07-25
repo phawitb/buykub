@@ -57,4 +57,29 @@ describe("BookButton", () => {
     expect(screen.getByText("กรุณาเลือกวันและเวลาในอนาคต")).toBeInTheDocument();
     expect(createBooking).not.toHaveBeenCalled();
   });
+
+  it("shows the Google Meet link when calendar sync succeeds", async () => {
+    const user = userEvent.setup();
+    const createBooking = vi.fn().mockResolvedValue({
+      calendarSynced: true,
+      meetUrl: "https://meet.google.com/abc-defg-hij",
+    });
+    render(<BookButton {...props} createBooking={createBooking} />);
+
+    await user.click(screen.getByRole("button", { name: "จองบริการ" }));
+    await user.type(screen.getByLabelText("ชื่อผู้จอง"), "ลูกค้าทดสอบ");
+    await user.type(screen.getByLabelText("อีเมล"), "buyer@example.com");
+    fireEvent.change(screen.getByLabelText("วันและเวลา"), {
+      target: { value: tomorrowAtNoon() },
+    });
+    await user.click(screen.getByRole("button", { name: /ยืนยันการจอง ฿890/ }));
+
+    expect(
+      await screen.findByText("เพิ่มนัดลง Google Calendar แล้ว"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "เปิด Google Meet" })).toHaveAttribute(
+      "href",
+      "https://meet.google.com/abc-defg-hij",
+    );
+  });
 });

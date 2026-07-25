@@ -33,4 +33,28 @@ describe("BookingRow", () => {
     await user.click(screen.getByRole("button", { name: "ยกเลิกการจอง" }));
     expect(updateStatus).toHaveBeenCalledWith("cancelled");
   });
+
+  it("shows Calendar sync and Google Meet details", () => {
+    render(
+      <BookingRow
+        booking={{
+          id: "booking-2",
+          buyer_name: "Calendar buyer",
+          buyer_email: "calendar@example.com",
+          scheduled_at: "2026-07-28T09:00:00.000Z",
+          price_cents: 50000,
+          status: "confirmed",
+          services: { name: "ปรึกษา 1:1" },
+          calendar_sync_status: "synced",
+          google_meet_url: "https://meet.google.com/abc-defg-hij",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("อยู่ใน Google Calendar แล้ว")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "เปิด Google Meet ↗" })).toHaveAttribute(
+      "href",
+      "https://meet.google.com/abc-defg-hij",
+    );
+  });
 });

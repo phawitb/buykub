@@ -17,6 +17,11 @@ export type BookingValue = {
   scheduledAt: string;
 };
 
+export type BookingResult = {
+  calendarSynced: boolean;
+  meetUrl: string | null;
+};
+
 type Props = {
   serviceId: string;
   shopId: string;
@@ -24,7 +29,7 @@ type Props = {
   priceCents: number;
   durationMinutes: number;
   availability?: Availability | null;
-  createBooking?: (value: BookingValue) => Promise<void>;
+  createBooking?: (value: BookingValue) => Promise<BookingResult | void>;
 };
 
 function localInputValue(date: Date) {
@@ -48,6 +53,7 @@ export function BookButton({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "done">("idle");
+  const [bookingResult, setBookingResult] = useState<BookingResult | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -118,7 +124,9 @@ export function BookButton({
 
   async function defaultCreateBooking(value: BookingValue) {
     const supabase = createPublicClient();
+    const bookingId = crypto.randomUUID();
     const { error } = await supabase.from("bookings").insert({
+      id: bookingId,
       shop_id: shopId,
       service_id: serviceId,
       buyer_name: value.buyerName,
@@ -128,6 +136,20 @@ export function BookButton({
       status: "confirmed",
     });
     if (error) throw new Error(error.message);
+
+    const { data, error: syncError } = await supabase.functions.invoke(
+      "sync-booking-calendar",
+      { body: { bookingId } },
+    );
+
+    if (syncError || !data?.calendarSynced) {
+      return { calendarSynced: false, meetUrl: null };
+    }
+
+    return {
+      calendarSynced: true,
+      meetUrl: typeof data.meetUrl === "string" ? data.meetUrl : null,
+    };
   }
 
   async function submit(event: React.FormEvent) {
@@ -138,11 +160,12 @@ export function BookButton({
     setState("loading");
     setSubmitError(null);
     try {
-      await (createBooking ?? defaultCreateBooking)({
+      const result = await (createBooking ?? defaultCreateBooking)({
         buyerName: name,
         buyerEmail: email,
         scheduledAt: new Date(when).toISOString(),
       });
+      setBookingResult(result ?? { calendarSynced: false, meetUrl: null });
       setState("done");
     } catch (error) {
       setSubmitError(
@@ -183,6 +206,23 @@ export function BookButton({
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-2xl text-emerald-700">✓</div>
                 <h2 id={`booking-title-${serviceId}`} className="mt-5 text-xl font-bold text-ink">ยืนยันการจองแล้ว</h2>
                 <p className="mt-2 text-sm leading-6 text-muted">รายการทดลองถูกส่งเข้าหน้าการจองของร้านเรียบร้อย</p>
+                {bookingResult?.calendarSynced && (
+                  <div className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3">
+                    <p className="text-sm font-semibold text-emerald-800">
+                      เพิ่มนัดลง Google Calendar แล้ว
+                    </p>
+                    {bookingResult.meetUrl && (
+                      <a
+                        href={bookingResult.meetUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-block text-sm font-semibold text-emerald-800 underline underline-offset-4"
+                      >
+                        เปิด Google Meet
+                      </a>
+                    )}
+                  </div>
+                )}
                 <button type="button" onClick={close} className="primary-button mt-6">กลับไปหน้าร้าน</button>
               </div>
             ) : (

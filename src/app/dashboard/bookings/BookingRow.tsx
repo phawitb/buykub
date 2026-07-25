@@ -12,6 +12,8 @@ type Booking = {
   price_cents: number;
   status: "confirmed" | "cancelled";
   services: { name: string } | null;
+  calendar_sync_status?: "not_connected" | "pending" | "synced" | "failed";
+  google_meet_url?: string | null;
 };
 
 export function BookingRow({
@@ -80,6 +82,28 @@ export function BookingRow({
           </p>
           <p className="mt-3 text-sm font-medium text-ink">{booking.buyer_name || "ไม่ระบุชื่อ"}</p>
           <p className="truncate text-xs text-muted">{booking.buyer_email || "ไม่ระบุอีเมล"}</p>
+          {booking.calendar_sync_status === "synced" && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-medium text-emerald-700">
+                อยู่ใน Google Calendar แล้ว
+              </span>
+              {booking.google_meet_url && (
+                <a
+                  href={booking.google_meet_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-ink underline underline-offset-4"
+                >
+                  เปิด Google Meet ↗
+                </a>
+              )}
+            </div>
+          )}
+          {booking.calendar_sync_status === "failed" && (
+            <p className="mt-3 text-xs text-amber-700">
+              เพิ่มลง Calendar ไม่สำเร็จ — การจองยังยืนยันตามปกติ
+            </p>
+          )}
         </div>
         <div className="shrink-0 text-right">
           <p className="font-semibold text-ink">฿{(booking.price_cents / 100).toLocaleString("th-TH")}</p>
