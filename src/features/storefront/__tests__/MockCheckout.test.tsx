@@ -11,6 +11,28 @@ const product = {
 };
 
 describe("MockCheckout", () => {
+  it("shows a sticky purchase bar after the primary CTA leaves the viewport", async () => {
+    let notify:
+      | ((entries: Array<{ isIntersecting: boolean }>) => void)
+      | undefined;
+    class ObserverMock {
+      constructor(callback: typeof notify) {
+        notify = callback;
+      }
+      observe() {}
+      disconnect() {}
+    }
+    vi.stubGlobal("IntersectionObserver", ObserverMock);
+    render(<MockCheckout product={product} createOrder={vi.fn()} />);
+
+    notify?.([{ isIntersecting: false }]);
+
+    expect(
+      await screen.findByRole("button", { name: /^ซื้อเลย$/ }),
+    ).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
   it("blocks invalid buyer data and discloses that no charge occurs", async () => {
     const user = userEvent.setup();
     render(<MockCheckout product={product} createOrder={vi.fn()} />);

@@ -115,7 +115,7 @@ export default async function ShopPage({
             </div>
 
             {productCards.length ? (
-              <div className="grid grid-cols-1 gap-x-4 gap-y-7 min-[460px]:grid-cols-2">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-7 sm:gap-x-4">
                 {productCards.map((product) => (
                   <ProductCard
                     key={product.slug}

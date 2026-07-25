@@ -37,6 +37,7 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [showStickyPurchase, setShowStickyPurchase] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -49,6 +50,17 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
     dialogRef.current?.querySelector<HTMLElement>("input")?.focus();
     return () => document.removeEventListener("keydown", closeOnEscape);
   }, [open]);
+
+  useEffect(() => {
+    const trigger = triggerRef.current;
+    if (!trigger || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowStickyPurchase(!entry.isIntersecting),
+      { threshold: 0.1 },
+    );
+    observer.observe(trigger);
+    return () => observer.disconnect();
+  }, []);
 
   function close() {
     setOpen(false);
@@ -153,6 +165,26 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
       >
         ซื้อเลย {formatTHB(product.priceCents)}
       </button>
+
+      {showStickyPurchase && !open && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper/95 px-4 py-3 shadow-[0_-10px_30px_rgba(24,24,27,0.08)] backdrop-blur">
+          <div className="mx-auto flex max-w-2xl items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-medium text-ink">{product.name}</p>
+              <p className="mt-0.5 text-sm font-bold text-ink">
+                {formatTHB(product.priceCents)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={openCheckout}
+              className="shrink-0 rounded-xl bg-accent px-6 py-3 text-sm font-bold text-paper hover:bg-accent-hover"
+            >
+              ซื้อเลย
+            </button>
+          </div>
+        </div>
+      )}
 
       {open && (
         <div
