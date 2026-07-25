@@ -5,12 +5,20 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { CalendarConnection } from "./CalendarConnection";
 import { ShopImageUploader } from "./ShopImageUploader";
+import { BankAccountFields } from "./BankAccountFields";
 import {
   clearSettingsDraft,
   readSettingsDraft,
   writeSettingsDraft,
   type SettingsDraft,
 } from "./settings-draft";
+import {
+  parseBankDetails,
+  serializeBankDetails,
+  validateBankAccount,
+  type BankAccountErrors,
+  type BankDetails,
+} from "./thai-banks";
 
 type Shop = {
   id: string | null;
@@ -55,7 +63,7 @@ export function SettingsForm({
   saveSettings?: (payload: SettingsPayload) => Promise<void>;
 }) {
   const router = useRouter();
-  const [restoredDraft] = useState(() => readSettingsDraft(userId));
+  const initialBankAccount = parseBankDetails(initial.bank_details);
   const serverDraft: SettingsDraft = {
     slug: initial.slug,
     name: initial.name,
@@ -65,30 +73,29 @@ export function SettingsForm({
     accentColor: initial.accent_color,
     payoutMethod: initial.payout_method,
     promptpayId: initial.promptpay_id ?? "",
-    bankDetails: initial.bank_details ?? "",
+    bankCode: initialBankAccount.bankCode,
+    bankAccountNumber: initialBankAccount.accountNumber,
+    bankAccountName: initialBankAccount.accountName,
+    bankLegacy: initialBankAccount.legacy,
   };
   const savedDraft = useRef(serverDraft);
-  const [slug, setSlug] = useState(restoredDraft?.slug ?? serverDraft.slug);
-  const [name, setName] = useState(restoredDraft?.name ?? serverDraft.name);
-  const [bio, setBio] = useState(restoredDraft?.bio ?? serverDraft.bio);
-  const [avatarUrl, setAvatarUrl] = useState(
-    restoredDraft?.avatarUrl ?? serverDraft.avatarUrl,
-  );
-  const [coverUrl, setCoverUrl] = useState(
-    restoredDraft?.coverUrl ?? serverDraft.coverUrl,
-  );
-  const [accentColor, setAccentColor] = useState(
-    restoredDraft?.accentColor ?? serverDraft.accentColor,
-  );
-  const [payoutMethod, setPayoutMethod] = useState(
-    restoredDraft?.payoutMethod ?? serverDraft.payoutMethod,
-  );
-  const [promptpayId, setPromptpayId] = useState(
-    restoredDraft?.promptpayId ?? serverDraft.promptpayId,
-  );
-  const [bankDetails, setBankDetails] = useState(
-    restoredDraft?.bankDetails ?? serverDraft.bankDetails,
-  );
+  const draftHydrated = useRef(false);
+  const skipNextDraftPersistence = useRef(false);
+  const [slug, setSlug] = useState(serverDraft.slug);
+  const [name, setName] = useState(serverDraft.name);
+  const [bio, setBio] = useState(serverDraft.bio);
+  const [avatarUrl, setAvatarUrl] = useState(serverDraft.avatarUrl);
+  const [coverUrl, setCoverUrl] = useState(serverDraft.coverUrl);
+  const [accentColor, setAccentColor] = useState(serverDraft.accentColor);
+  const [payoutMethod, setPayoutMethod] = useState(serverDraft.payoutMethod);
+  const [promptpayId, setPromptpayId] = useState(serverDraft.promptpayId);
+  const [bankAccount, setBankAccount] = useState<BankDetails>({
+    bankCode: serverDraft.bankCode,
+    accountNumber: serverDraft.bankAccountNumber,
+    accountName: serverDraft.bankAccountName,
+    legacy: serverDraft.bankLegacy,
+  });
+  const [bankErrors, setBankErrors] = useState<BankAccountErrors>({});
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [coverUploading, setCoverUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -96,6 +103,37 @@ export function SettingsForm({
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
+    const restoredDraft = readSettingsDraft(userId);
+    if (restoredDraft) {
+      skipNextDraftPersistence.current = true;
+      const restoreTimer = window.setTimeout(() => {
+        draftHydrated.current = true;
+        setSlug(restoredDraft.slug);
+        setName(restoredDraft.name);
+        setBio(restoredDraft.bio);
+        setAvatarUrl(restoredDraft.avatarUrl);
+        setCoverUrl(restoredDraft.coverUrl);
+        setAccentColor(restoredDraft.accentColor);
+        setPayoutMethod(restoredDraft.payoutMethod);
+        setPromptpayId(restoredDraft.promptpayId);
+        setBankAccount({
+          bankCode: restoredDraft.bankCode,
+          accountNumber: restoredDraft.bankAccountNumber,
+          accountName: restoredDraft.bankAccountName,
+          legacy: restoredDraft.bankLegacy,
+        });
+      }, 0);
+      return () => window.clearTimeout(restoreTimer);
+    }
+    draftHydrated.current = true;
+  }, [userId]);
+
+  useEffect(() => {
+    if (!draftHydrated.current) return;
+    if (skipNextDraftPersistence.current) {
+      skipNextDraftPersistence.current = false;
+      return;
+    }
     const currentDraft: SettingsDraft = {
       slug,
       name,
@@ -105,7 +143,10 @@ export function SettingsForm({
       accentColor,
       payoutMethod,
       promptpayId,
-      bankDetails,
+      bankCode: bankAccount.bankCode,
+      bankAccountNumber: bankAccount.accountNumber,
+      bankAccountName: bankAccount.accountName,
+      bankLegacy: bankAccount.legacy,
     };
     if (JSON.stringify(currentDraft) === JSON.stringify(savedDraft.current)) {
       clearSettingsDraft(userId);
@@ -115,7 +156,7 @@ export function SettingsForm({
   }, [
     accentColor,
     avatarUrl,
-    bankDetails,
+    bankAccount,
     bio,
     coverUrl,
     name,
@@ -138,9 +179,12 @@ export function SettingsForm({
       setError("กรอกเบอร์โทร 10 หลัก หรือเลขบัตรประชาชน 13 หลัก");
       return;
     }
-    if (payoutMethod === "bank" && !bankDetails.trim()) {
-      setError("กรุณากรอกธนาคาร เลขบัญชี และชื่อบัญชี");
-      return;
+    if (payoutMethod === "bank") {
+      const nextBankErrors = validateBankAccount(bankAccount);
+      setBankErrors(nextBankErrors);
+      if (Object.keys(nextBankErrors).length > 0) return;
+    } else {
+      setBankErrors({});
     }
 
     const payload: SettingsPayload = {
@@ -156,7 +200,7 @@ export function SettingsForm({
       promptpay_id:
         payoutMethod === "promptpay" ? normalizedPromptPay : null,
       bank_details:
-        payoutMethod === "bank" ? bankDetails.trim() : null,
+        payoutMethod === "bank" ? serializeBankDetails(bankAccount) : null,
     };
 
     setSaving(true);
@@ -188,8 +232,10 @@ export function SettingsForm({
       payoutMethod,
       promptpayId:
         payoutMethod === "promptpay" ? normalizedPromptPay : promptpayId,
-      bankDetails:
-        payoutMethod === "bank" ? bankDetails.trim() : bankDetails,
+      bankCode: bankAccount.bankCode,
+      bankAccountNumber: bankAccount.accountNumber,
+      bankAccountName: bankAccount.accountName,
+      bankLegacy: bankAccount.legacy,
     };
     clearSettingsDraft(userId);
     setSaved(true);
@@ -404,17 +450,16 @@ export function SettingsForm({
               />
             </div>
           ) : (
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-ink-soft">
-                เลขบัญชีธนาคาร
-              </label>
-              <input
-                value={bankDetails}
-                onChange={(e) => setBankDetails(e.target.value)}
-                placeholder="ธนาคาร · เลขบัญชี · ชื่อบัญชี"
-                className="w-full rounded-lg border border-line bg-paper px-3.5 py-2.5 text-sm text-ink outline-none focus:border-ink"
-              />
-            </div>
+            <BankAccountFields
+              value={bankAccount}
+              onChange={(nextValue) => {
+                setBankAccount(nextValue);
+                if (Object.keys(bankErrors).length > 0) {
+                  setBankErrors(validateBankAccount(nextValue));
+                }
+              }}
+              errors={bankErrors}
+            />
           )}
         </div>
 

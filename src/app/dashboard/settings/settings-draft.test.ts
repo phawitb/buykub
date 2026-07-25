@@ -15,7 +15,10 @@ const draft: SettingsDraft = {
   accentColor: "#7c3aed",
   payoutMethod: "bank",
   promptpayId: "",
-  bankDetails: "Example Bank\n1234567890\nOwner",
+  bankCode: "kbank",
+  bankAccountNumber: "1234567890",
+  bankAccountName: "Owner",
+  bankLegacy: "",
 };
 
 describe("settings draft storage", () => {

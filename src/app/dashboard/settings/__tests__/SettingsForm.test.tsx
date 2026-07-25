@@ -150,10 +150,10 @@ describe("SettingsForm", () => {
     );
     await user.click(screen.getByRole("button", { name: "Violet" }));
     await user.click(screen.getByRole("radio", { name: /โอนเข้าบัญชีธนาคาร/ }));
-    await user.type(
-      screen.getByPlaceholderText("ธนาคาร · เลขบัญชี · ชื่อบัญชี"),
-      "Example Bank 1234567890 Owner",
-    );
+    await user.click(screen.getByRole("button", { name: "เลือกธนาคาร" }));
+    await user.click(screen.getByRole("button", { name: /ธนาคารกสิกรไทย/ }));
+    await user.type(screen.getByRole("textbox", { name: "เลขบัญชี" }), "1234567890");
+    await user.type(screen.getByRole("textbox", { name: "ชื่อบัญชี" }), "Owner");
 
     await waitFor(() =>
       expect(readSettingsDraft("user-1")?.name).toBe("Draft shop"),
@@ -161,8 +161,10 @@ describe("SettingsForm", () => {
     firstRender.unmount();
     render(<SettingsForm userId="user-1" initial={initial} />);
 
-    expect(screen.getByRole("textbox", { name: "ชื่อร้าน" })).toHaveValue(
-      "Draft shop",
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "ชื่อร้าน" })).toHaveValue(
+        "Draft shop",
+      ),
     );
     expect(screen.getByRole("textbox", { name: /แนะนำร้าน/ })).toHaveValue(
       "Unsaved description",
@@ -174,9 +176,57 @@ describe("SettingsForm", () => {
     expect(
       screen.getByRole("radio", { name: /โอนเข้าบัญชีธนาคาร/ }),
     ).toBeChecked();
-    expect(
-      screen.getByPlaceholderText("ธนาคาร · เลขบัญชี · ชื่อบัญชี"),
-    ).toHaveValue("Example Bank 1234567890 Owner");
+    expect(screen.getByText("ธนาคารกสิกรไทย")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "เลขบัญชี" })).toHaveValue(
+      "1234567890",
+    );
+    expect(screen.getByRole("textbox", { name: "ชื่อบัญชี" })).toHaveValue(
+      "Owner",
+    );
+  });
+
+  it("serializes the selected bank and validates structured account fields", async () => {
+    const user = userEvent.setup();
+    const saveSettings = vi.fn().mockResolvedValue(undefined);
+    render(
+      <SettingsForm
+        userId="user-1"
+        saveSettings={saveSettings}
+        initial={{
+          id: "shop-1",
+          slug: "my-shop",
+          name: "My shop",
+          bio: "",
+          avatar_url: null,
+          cover_url: null,
+          accent_color: "#f97316",
+          payout_method: "bank",
+          promptpay_id: "",
+          bank_details: "",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "บันทึก" }));
+    expect(screen.getByText("กรุณาเลือกธนาคาร")).toBeInTheDocument();
+    expect(screen.getByText("กรอกเลขบัญชี 6–16 หลัก")).toBeInTheDocument();
+    expect(screen.getByText("กรุณากรอกชื่อบัญชี")).toBeInTheDocument();
+    expect(saveSettings).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "เลือกธนาคาร" }));
+    await user.click(screen.getByRole("button", { name: /ธนาคารไทยพาณิชย์/ }));
+    await user.type(screen.getByRole("textbox", { name: "เลขบัญชี" }), "1234567890");
+    await user.type(screen.getByRole("textbox", { name: "ชื่อบัญชี" }), "สมชาย");
+    await user.click(screen.getByRole("button", { name: "บันทึก" }));
+
+    await waitFor(() => expect(saveSettings).toHaveBeenCalledOnce());
+    const payload = saveSettings.mock.calls[0][0];
+    expect(JSON.parse(payload.bank_details)).toEqual({
+      version: 1,
+      bankCode: "scb",
+      accountNumber: "1234567890",
+      accountName: "สมชาย",
+    });
   });
 
   it("clears the draft after settings save succeeds", async () => {
