@@ -9,7 +9,7 @@ type Product = {
   name: string;
   description: string | null;
   price_cents: number;
-  kind: string;
+  category: string;
   published: boolean;
 };
 
@@ -41,8 +41,8 @@ export function ProductRow({ product }: { product: Product }) {
       <div>
         <p className="font-medium text-ink">
           {product.name}{" "}
-          <span className="ml-1 text-xs font-normal text-muted">
-            {product.kind === "booking" ? "· บริการจอง" : "· ดิจิทัล"}
+          <span className="ml-1 text-xs font-normal uppercase tracking-wide text-muted">
+            {product.category}
           </span>
         </p>
         {product.description && (

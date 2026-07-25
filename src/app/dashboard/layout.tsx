@@ -4,11 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "./SignOutButton";
 
 const navItems = [
-  { href: "/dashboard", label: "ภาพรวม" },
-  { href: "/dashboard/shop", label: "ตั้งค่าร้าน" },
+  { href: "/dashboard", label: "หน้าแรก" },
   { href: "/dashboard/products", label: "สินค้า" },
-  { href: "/dashboard/orders", label: "ออเดอร์ & เงิน" },
-  { href: "/dashboard/settings", label: "การตั้งค่า" },
+  { href: "/dashboard/bookings", label: "จองบริการ" },
+  { href: "/dashboard/orders", label: "ออเดอร์" },
+  { href: "/dashboard/analytics", label: "Analytics" },
+  { href: "/dashboard/settings", label: "ตั้งค่า" },
 ];
 
 export default async function DashboardLayout({
@@ -42,7 +43,17 @@ export default async function DashboardLayout({
           ))}
         </nav>
 
-        <div className="mt-auto flex items-center gap-3 border-t border-line pt-4">
+        <Link
+          href="/dashboard/settings"
+          className="mb-4 flex items-center justify-between rounded-lg border border-line bg-paper px-3 py-2 text-xs"
+        >
+          <span className="font-medium text-ink-soft">แพลนปัจจุบัน</span>
+          <span className="rounded-full bg-paper-dim px-2 py-0.5 font-semibold text-ink">
+            Free
+          </span>
+        </Link>
+
+        <div className="flex items-center gap-3 border-t border-line pt-4">
           {user.user_metadata?.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img

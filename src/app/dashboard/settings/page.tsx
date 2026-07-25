@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { SettingsForm } from "./SettingsForm";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -6,16 +7,48 @@ export default async function SettingsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const { data: shop } = await supabase
+    .from("shops")
+    .select(
+      "id, slug, name, bio, avatar_url, cover_url, accent_color, payout_method, promptpay_id, bank_details",
+    )
+    .eq("owner_id", user!.id)
+    .maybeSingle();
+
   return (
     <div className="max-w-xl">
-      <h1 className="text-xl font-bold text-ink">การตั้งค่า</h1>
+      <h1 className="text-xl font-bold text-ink">ตั้งค่า</h1>
+      <p className="mt-1 text-sm text-muted">จัดการข้อมูลร้านค้าของคุณ</p>
 
-      <div className="mt-8 rounded-2xl border border-line bg-paper-dim p-6">
-        <p className="text-xs font-medium text-ink-soft">อีเมล</p>
-        <p className="mt-1 text-sm text-ink">{user?.email}</p>
+      <div className="mt-6 flex items-center justify-between rounded-2xl border border-line bg-paper p-5">
+        <div>
+          <p className="text-xs text-muted">การสมัครสมาชิก</p>
+          <p className="mt-1 text-lg font-bold text-ink">Free</p>
+          <p className="mt-0.5 text-xs text-muted">ค่าธรรมเนียม 8% · สินค้าสูงสุด 5 ชิ้น</p>
+        </div>
+        <span className="rounded-full border border-line px-4 py-2 text-xs font-semibold text-ink-soft">
+          อัปเกรดเป็น Pro
+        </span>
+      </div>
 
-        <p className="mt-5 text-xs font-medium text-ink-soft">เข้าสู่ระบบด้วย</p>
-        <p className="mt-1 text-sm text-ink">Google</p>
+      <div className="mt-8">
+        <SettingsForm
+          userId={user!.id}
+          initial={
+            shop ?? {
+              id: null,
+              slug: "",
+              name: "",
+              bio: "",
+              avatar_url: null,
+              cover_url: null,
+              accent_color: "#0a0a0a",
+              payout_method: "promptpay",
+              promptpay_id: "",
+              bank_details: "",
+            }
+          }
+        />
       </div>
     </div>
   );

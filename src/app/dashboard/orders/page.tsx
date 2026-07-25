@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { OrderTabs } from "./OrderTabs";
 
 export default async function OrdersPage() {
   const supabase = await createClient();
@@ -20,47 +21,53 @@ export default async function OrdersPage() {
         .order("created_at", { ascending: false })
     : { data: [] };
 
-  const total = (orders ?? []).reduce((sum, o) => sum + o.price_cents, 0);
+  const list = (orders ?? []) as unknown as {
+    id: string;
+    price_cents: number;
+    status: string;
+    created_at: string;
+    products: { name: string } | null;
+  }[];
+
+  const totalSales = list
+    .filter((o) => o.status === "paid")
+    .reduce((sum, o) => sum + o.price_cents, 0);
+
+  const guaranteeCutoff = new Date(new Date().getTime() - 7 * 86400000).toISOString();
+  const pendingPayout = list
+    .filter((o) => o.status === "paid" && o.created_at >= guaranteeCutoff)
+    .reduce((sum, o) => sum + o.price_cents, 0);
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-xl font-bold text-ink">ออเดอร์ & เงิน</h1>
-      <p className="mt-1 text-sm text-muted">
-        รายการนี้เป็นข้อมูลทดลอง (Demo) — ยังไม่ได้เชื่อมระบบชำระเงินจริง
-      </p>
+      <h1 className="text-xl font-bold text-ink">ออเดอร์</h1>
+      <p className="mt-1 text-sm text-muted">ดูประวัติการสั่งซื้อและรายได้</p>
 
-      <div className="mt-8 rounded-2xl border border-line bg-ink px-6 py-5 text-paper">
-        <p className="text-xs text-paper/60">ยอดขายรวม (Demo)</p>
-        <p className="mt-1 text-2xl font-bold">
-          ฿{(total / 100).toLocaleString("th-TH")}
-        </p>
-        <p className="mt-2 text-xs text-paper/50">
-          รอบโอนจริงจะขึ้นที่นี่เมื่อเชื่อมต่อระบบชำระเงิน
-        </p>
+      <div className="mt-6 grid grid-cols-3 gap-4">
+        <div className="rounded-2xl border border-line bg-paper-dim p-5">
+          <p className="text-xs text-muted">ยอดขายทั้งหมด</p>
+          <p className="mt-1 text-lg font-bold text-ink">
+            ฿{(totalSales / 100).toLocaleString("th-TH")}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-line bg-paper-dim p-5">
+          <p className="text-xs text-muted">ยอดรอจ่าย (ประมาณ)</p>
+          <p className="mt-1 text-lg font-bold text-ink">
+            ฿{(pendingPayout / 100).toLocaleString("th-TH")}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-line bg-paper-dim p-5">
+          <p className="text-xs text-muted">จำนวนออเดอร์</p>
+          <p className="mt-1 text-lg font-bold text-ink">{list.length}</p>
+        </div>
       </div>
 
-      <div className="mt-8 space-y-2">
-        {(orders ?? []).map((o) => (
-          <div
-            key={o.id}
-            className="flex items-center justify-between rounded-xl border border-line bg-paper p-4 text-sm"
-          >
-            <div>
-              <p className="font-medium text-ink">
-                {(o.products as unknown as { name: string } | null)?.name ?? "สินค้า"}
-              </p>
-              <p className="text-xs text-muted">
-                {new Date(o.created_at).toLocaleDateString("th-TH")}
-              </p>
-            </div>
-            <span className="font-semibold text-ink">
-              +฿{(o.price_cents / 100).toLocaleString("th-TH")}
-            </span>
-          </div>
-        ))}
-        {(!orders || orders.length === 0) && (
-          <p className="text-sm text-muted">ยังไม่มีออเดอร์เข้ามา</p>
-        )}
+      <p className="mt-6 text-xs text-muted">
+        ข้อมูลนี้เป็นข้อมูลทดลอง (Demo) — ยังไม่ได้เชื่อมระบบชำระเงินจริง
+      </p>
+
+      <div className="mt-4">
+        <OrderTabs orders={list} />
       </div>
     </div>
   );
