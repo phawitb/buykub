@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { ProductCard } from "@/features/storefront/ProductCard";
+import { formatTHB } from "@/features/products/format";
 import { createClient } from "@/lib/supabase/server";
-import { BuyButton } from "./BuyButton";
 import { BookButton } from "./BookButton";
 import { ShareButton } from "./ShareButton";
 
@@ -19,14 +20,14 @@ export default async function ShopPage({
     .eq("published", true)
     .maybeSingle();
 
-  if (!shop) {
-    return <NotFoundCard slug={slug} />;
-  }
+  if (!shop) return <NotFoundCard slug={slug} />;
 
   const [{ data: products }, { data: services }] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, description, price_cents, compare_price_cents")
+      .select(
+        "id, slug, name, category, price_cents, compare_price_cents, images, images_v2, created_at",
+      )
       .eq("shop_id", shop.id)
       .eq("published", true)
       .order("created_at", { ascending: true }),
@@ -40,128 +41,165 @@ export default async function ShopPage({
 
   await supabase.from("shop_views").insert({ shop_id: shop.id });
 
-  const hasListings = (products?.length ?? 0) > 0 || (services?.length ?? 0) > 0;
+  const productCards = (products ?? []).map((product) => {
+    const imagesV2 = Array.isArray(product.images_v2)
+      ? (product.images_v2 as Array<{ publicUrl?: string }>)
+      : [];
+    return {
+      name: product.name,
+      slug: product.slug || `product-${product.id.slice(0, 8)}`,
+      category: product.category,
+      priceCents: product.price_cents,
+      comparePriceCents: product.compare_price_cents,
+      thumbnailUrl: imagesV2[0]?.publicUrl ?? product.images?.[0] ?? null,
+    };
+  });
 
   return (
-    <div className="min-h-screen">
-      <div
-        className="relative h-40 w-full sm:h-56"
-        style={{ backgroundColor: shop.cover_url ? undefined : "var(--color-paper-dim)" }}
-      >
-        {shop.cover_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={shop.cover_url} alt="" className="h-full w-full object-cover" />
-        )}
-        <div className="absolute right-4 top-4">
-          <ShareButton />
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-lg px-6">
-        <div className="-mt-10 flex h-20 w-20 items-center justify-center rounded-full border-4 border-paper bg-ink text-2xl font-bold text-paper">
-          {shop.avatar_url ? (
+    <main className="min-h-screen bg-[#faf9f7] py-0 sm:py-10">
+      <div className="mx-auto min-h-screen max-w-2xl bg-paper sm:min-h-0 sm:overflow-hidden sm:rounded-[28px] sm:shadow-[0_20px_70px_rgba(24,24,27,0.08)]">
+        <div
+          className="relative aspect-[16/5] w-full bg-paper-dim"
+          style={{
+            backgroundColor: shop.cover_url
+              ? undefined
+              : shop.accent_color || "var(--color-paper-dim)",
+          }}
+        >
+          {shop.cover_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={shop.avatar_url}
-              alt=""
-              className="h-full w-full rounded-full object-cover"
+              src={shop.cover_url}
+              alt={`${shop.name} cover`}
+              className="h-full w-full object-cover"
             />
           ) : (
-            shop.name.slice(0, 1)
+            <div className="h-full w-full bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,.24),transparent_35%)]" />
           )}
         </div>
 
-        <h1 className="mt-4 text-2xl font-bold text-ink">{shop.name}</h1>
-        {shop.bio && <p className="mt-2 max-w-sm text-sm text-ink-soft">{shop.bio}</p>}
-
-        <div className="mt-8 space-y-4 pb-16">
-          {(services ?? []).map((s) => (
-            <div
-              key={s.id}
-              className="flex items-center justify-between gap-4 rounded-2xl border border-line bg-paper p-5"
-            >
-              <div>
-                <p className="text-xs font-medium text-muted">
-                  บริการจอง · {s.duration_minutes} นาที
-                </p>
-                <p className="mt-0.5 font-semibold text-ink">{s.name}</p>
-                {s.description && (
-                  <p className="mt-1 text-sm text-ink-soft">{s.description}</p>
-                )}
-                <p className="mt-2 text-sm font-bold text-ink">
-                  ฿{(s.price_cents / 100).toLocaleString("th-TH")}
-                </p>
-              </div>
-              <BookButton serviceId={s.id} shopId={shop.id} priceCents={s.price_cents} />
+        <div className="px-5 pb-14 sm:px-6">
+          <div className="-mt-9 flex items-start justify-between">
+            <div className="relative flex h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-full border-4 border-paper bg-ink text-2xl font-bold text-paper shadow-sm">
+              {shop.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={shop.avatar_url}
+                  alt={shop.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                shop.name.slice(0, 1).toUpperCase()
+              )}
             </div>
-          ))}
-
-          {(products ?? []).map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center justify-between gap-4 rounded-2xl border border-line bg-paper p-5"
-            >
-              <div>
-                <p className="font-semibold text-ink">{p.name}</p>
-                {p.description && (
-                  <p className="mt-1 text-sm text-ink-soft">{p.description}</p>
-                )}
-                <p className="mt-2 flex items-center gap-2 text-sm">
-                  <span className="font-bold text-ink">
-                    ฿{(p.price_cents / 100).toLocaleString("th-TH")}
-                  </span>
-                  {p.compare_price_cents && (
-                    <span className="text-muted line-through">
-                      ฿{(p.compare_price_cents / 100).toLocaleString("th-TH")}
-                    </span>
-                  )}
-                </p>
-              </div>
-              <BuyButton productId={p.id} shopId={shop.id} priceCents={p.price_cents} />
+            <div className="mt-5">
+              <ShareButton />
             </div>
-          ))}
+          </div>
 
-          {!hasListings && (
-            <div className="flex flex-col items-center py-12 text-center">
-              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-paper-dim text-2xl text-muted">
-                ⌂
-              </div>
-              <p className="text-sm font-medium text-ink">ร้านนี้ยังไม่มีสินค้า</p>
-              <p className="mt-1 text-xs text-muted">กลับมาเช็คใหม่เร็วๆ นี้</p>
-            </div>
+          <h1 className="mt-3 text-2xl font-bold text-ink">{shop.name}</h1>
+          {shop.bio && (
+            <p className="mt-1.5 max-w-lg text-sm leading-6 text-muted">
+              {shop.bio}
+            </p>
           )}
-        </div>
 
-        <p className="pb-14 text-center text-xs text-muted">
-          สร้างด้วย <span className="font-semibold text-ink-soft">Framelink</span> —{" "}
-          <Link href="/login" className="underline">
-            เปิดร้านฟรี
-          </Link>
-        </p>
+          <section className="mt-8 border-t border-line pt-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xs font-semibold tracking-[0.2em] text-muted">
+                สินค้าดิจิทัล
+              </h2>
+              <span className="text-xs tabular-nums text-muted">
+                {String(productCards.length).padStart(2, "0")}
+              </span>
+            </div>
+
+            {productCards.length ? (
+              <div className="grid grid-cols-1 gap-x-4 gap-y-7 min-[460px]:grid-cols-2">
+                {productCards.map((product) => (
+                  <ProductCard
+                    key={product.slug}
+                    shopSlug={shop.slug}
+                    product={product}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-line py-12 text-center">
+                <p className="text-sm font-semibold text-ink">
+                  ร้านนี้ยังไม่มีสินค้า
+                </p>
+                <p className="mt-1 text-xs text-muted">กลับมาเช็กใหม่เร็ว ๆ นี้</p>
+              </div>
+            )}
+          </section>
+
+          {(services?.length ?? 0) > 0 && (
+            <section className="mt-10 border-t border-line pt-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xs font-semibold tracking-[0.2em] text-muted">
+                  บริการจอง
+                </h2>
+                <span className="text-xs tabular-nums text-muted">
+                  {String(services!.length).padStart(2, "0")}
+                </span>
+              </div>
+              <div className="space-y-3">
+                {services!.map((service) => (
+                  <article
+                    key={service.id}
+                    className="flex items-center justify-between gap-4 rounded-2xl border border-line p-4"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-[11px] text-muted">
+                        {service.duration_minutes} นาที
+                      </p>
+                      <h3 className="mt-1 font-semibold text-ink">
+                        {service.name}
+                      </h3>
+                      <p className="mt-2 text-sm font-bold text-ink">
+                        {formatTHB(service.price_cents)}
+                      </p>
+                    </div>
+                    <BookButton
+                      serviceId={service.id}
+                      shopId={shop.id}
+                      priceCents={service.price_cents}
+                    />
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <p className="mt-12 text-center text-xs text-muted">
+            สร้างด้วย <span className="font-semibold text-ink">Framelink</span>{" "}
+            —{" "}
+            <Link href="/login" className="underline underline-offset-2">
+              เปิดร้านฟรี
+            </Link>
+          </p>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }
 
 function NotFoundCard({ slug }: { slug: string }) {
   return (
-    <div className="flex min-h-screen items-center justify-center px-6">
-      <div className="w-full max-w-sm rounded-2xl border border-line bg-paper p-10 text-center">
-        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-paper-dim text-2xl text-muted">
-          ⌂
+    <main className="flex min-h-screen items-center justify-center bg-[#faf9f7] px-5">
+      <div className="w-full max-w-sm rounded-3xl border border-line bg-paper p-10 text-center shadow-sm">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-paper-dim text-2xl text-muted">
+          ◇
         </div>
-        <h1 className="text-xl font-bold text-ink">ไม่พบร้านนี้</h1>
-        <p className="mt-2 text-sm text-ink-soft">
-          ร้าน &ldquo;{slug}&rdquo; อาจยังไม่ได้เปิด หรือเปลี่ยนชื่อไปแล้ว
+        <h1 className="mt-5 text-xl font-bold text-ink">ไม่พบร้านนี้</h1>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          ร้าน “{slug}” อาจยังไม่ได้เปิดหรือเปลี่ยนชื่อไปแล้ว
         </p>
-        <Link
-          href="/"
-          className="mt-6 inline-block rounded-full bg-accent px-6 py-3 text-sm font-semibold text-paper hover:bg-accent-hover"
-        >
+        <Link href="/" className="primary-button mt-6 inline-block">
           กลับหน้าแรก
         </Link>
-        <p className="mt-6 text-xs text-muted">FRAMELINK</p>
       </div>
-    </div>
+    </main>
   );
 }
