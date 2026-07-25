@@ -55,6 +55,10 @@ a {
   outline-offset: 3px;
 }
 
+[data-composite-input]:focus-visible {
+  outline: none;
+}
+
 ::selection {
   background: var(--accent-soft);
   color: var(--ink);

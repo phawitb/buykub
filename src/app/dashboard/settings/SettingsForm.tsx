@@ -275,15 +275,16 @@ export function SettingsForm({
             >
               URL ร้าน
             </label>
-            <div className="flex items-center rounded-lg border border-line bg-paper px-3.5 focus-within:border-ink">
+            <div className="flex items-center rounded-lg border border-line bg-paper px-3.5 transition focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20">
               <span className="text-sm text-muted">framelink.app/</span>
               <input
                 id="shop-slug"
+                data-composite-input
                 value={slug}
                 onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
                 required
                 placeholder="your-store"
-                className="flex-1 bg-transparent py-2.5 text-sm text-ink outline-none"
+                className="flex-1 bg-transparent py-2.5 text-sm text-ink outline-none focus-visible:outline-none"
               />
             </div>
           </div>

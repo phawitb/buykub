@@ -42,6 +42,35 @@ describe("SettingsForm", () => {
     );
   });
 
+  it("draws one focus ring around the complete shop URL field", () => {
+    render(
+      <SettingsForm
+        userId="user-1"
+        initial={{
+          id: "shop-1",
+          slug: "my-shop",
+          name: "My shop",
+          bio: "",
+          avatar_url: null,
+          cover_url: null,
+          accent_color: "#f97316",
+          payout_method: "promptpay",
+          promptpay_id: "",
+          bank_details: "",
+        }}
+      />,
+    );
+
+    const slugInput = screen.getByRole("textbox", { name: "URL ร้าน" });
+    expect(slugInput).toHaveClass("focus-visible:outline-none");
+    expect(slugInput).toHaveAttribute("data-composite-input");
+    expect(slugInput.parentElement).toHaveClass(
+      "focus-within:ring-2",
+      "focus-within:ring-accent/20",
+    );
+    expect(slugInput.previousElementSibling).toHaveTextContent("framelink.app/");
+  });
+
   it("rejects an invalid PromptPay ID before saving settings", async () => {
     const user = userEvent.setup();
     const saveSettings = vi.fn().mockResolvedValue(undefined);
