@@ -200,9 +200,77 @@ describe("ProductFileUploader", () => {
 
     finishUpload?.({ path: "user-123/file.zip", publicUrl: null });
   });
+
+  it("replaces progress with a complete file card after upload", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <ProductFileUploader
+        userId="user-123"
+        value={null}
+        onChange={onChange}
+        uploadAsset={vi.fn(async () => ({
+          path: "user-123/guide.pdf",
+          publicUrl: null,
+        }))}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText("เลือกไฟล์สินค้า"),
+      new File(["guide"], "guide.pdf", { type: "application/pdf" }),
+    );
+
+    expect(await screen.findByText("guide.pdf")).toBeInTheDocument();
+    expect(screen.getByText("อัปโหลดสำเร็จ")).toBeInTheDocument();
+    expect(screen.getByLabelText("เปลี่ยนไฟล์สินค้า")).toBeInTheDocument();
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileName: "guide.pdf",
+        path: "user-123/guide.pdf",
+      }),
+    );
+  });
 });
 
 describe("ProductImageUploader", () => {
+  it("shows byte progress independently for each product image", async () => {
+    const user = userEvent.setup();
+    let finishUpload: ((result: UploadResult) => void) | undefined;
+    const uploadAsset = vi.fn((request: UploadRequest) => {
+      request.onProgress(65, 650, 1000);
+      return new Promise<UploadResult>((resolve) => {
+        finishUpload = resolve;
+      });
+    });
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:cover.webp");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+
+    render(
+      <ProductImageUploader
+        userId="user-123"
+        value={[]}
+        onChange={vi.fn()}
+        uploadAsset={uploadAsset}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText("เลือกรูปสินค้า"),
+      new File(["cover"], "cover.webp", { type: "image/webp" }),
+    );
+
+    expect(
+      await screen.findByRole("progressbar", {
+        name: "กำลังอัปโหลด cover.webp",
+      }),
+    ).toHaveAttribute("aria-valuenow", "65");
+    finishUpload?.({
+      path: "user-123/cover.webp",
+      publicUrl: "https://example.com/cover.webp",
+    });
+  });
+
   it("preserves every successful image when multiple uploads finish concurrently", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
