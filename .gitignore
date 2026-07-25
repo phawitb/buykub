@@ -42,3 +42,6 @@ next-env.d.ts
 
 # isolated development worktrees
 /.worktrees/
+
+# local Supabase CLI link metadata
+/supabase/.temp/

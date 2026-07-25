@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { SettingsForm } from "./SettingsForm";
 
@@ -26,10 +27,16 @@ export default async function SettingsPage() {
           <p className="mt-1 text-lg font-bold text-ink">Free</p>
           <p className="mt-0.5 text-xs text-muted">ค่าธรรมเนียม 8% · สินค้าสูงสุด 5 ชิ้น</p>
         </div>
-        <span className="rounded-full border border-line px-4 py-2 text-xs font-semibold text-ink-soft">
+        <Link
+          href="/dashboard/settings/upgrade"
+          className="rounded-full border border-line px-4 py-2 text-xs font-semibold text-ink-soft transition hover:border-ink hover:text-ink"
+        >
           อัปเกรดเป็น Pro
-        </span>
+        </Link>
       </div>
+      <p className="mt-2 text-[11px] leading-5 text-muted">
+        ระบบชำระเงินและค่าสมาชิกเป็น mockup — ยังไม่มีการเรียกเก็บเงินจริง
+      </p>
 
       <div className="mt-8">
         <SettingsForm

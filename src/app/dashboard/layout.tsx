@@ -26,13 +26,13 @@ export default async function DashboardLayout({
         <DashboardNavigation />
 
         <Link
-          href="/dashboard/settings"
-          className="mb-4 flex items-center justify-between rounded-lg border border-line bg-paper px-3 py-2 text-xs"
+          href="/dashboard/settings/upgrade"
+          className="mb-4 rounded-2xl border border-line bg-paper p-4 text-xs transition hover:border-ink"
         >
-          <span className="font-medium text-ink-soft">แพลนปัจจุบัน</span>
-          <span className="rounded-full bg-paper-dim px-2 py-0.5 font-semibold text-ink">
-            Free
-          </span>
+          <p className="font-semibold text-ink">อัปเกรดเป็น Pro</p>
+          <p className="mt-1 leading-5 text-muted">
+            ค่าธรรมเนียมลดเหลือ 2% + ปิด watermark
+          </p>
         </Link>
 
         <div className="flex items-center gap-3 border-t border-line pt-4">

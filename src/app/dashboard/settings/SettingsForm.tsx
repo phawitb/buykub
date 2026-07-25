@@ -18,6 +18,17 @@ type Shop = {
   bank_details: string | null;
 };
 
+const ACCENT_PRESETS = [
+  { name: "Tangerine", value: "#f97316" },
+  { name: "Violet", value: "#7c3aed" },
+  { name: "Rose", value: "#e11d48" },
+  { name: "Blue", value: "#2563eb" },
+  { name: "Emerald", value: "#059669" },
+  { name: "Amber", value: "#d97706" },
+  { name: "Pink", value: "#db2777" },
+  { name: "Cyan", value: "#0891b2" },
+];
+
 export function SettingsForm({ initial, userId }: { initial: Shop; userId: string }) {
   const router = useRouter();
   const [slug, setSlug] = useState(initial.slug);
@@ -177,13 +188,54 @@ export function SettingsForm({ initial, userId }: { initial: Shop; userId: strin
 
         <div className="mt-4">
           <label className="mb-1.5 block text-xs font-medium text-ink-soft">สี accent</label>
+          <div className="flex flex-wrap gap-2">
+            {ACCENT_PRESETS.map((preset) => (
+              <button
+                key={preset.name}
+                type="button"
+                aria-label={preset.name}
+                aria-pressed={accentColor === preset.value}
+                onClick={() => setAccentColor(preset.value)}
+                className={`h-9 w-9 rounded-full border-2 p-1 transition ${
+                  accentColor === preset.value
+                    ? "border-ink"
+                    : "border-transparent hover:border-line"
+                }`}
+              >
+                <span
+                  className="block h-full w-full rounded-full"
+                  style={{ backgroundColor: preset.value }}
+                />
+              </button>
+            ))}
+          </div>
           <input
             type="color"
+            aria-label="ค่าสี accent"
             value={accentColor}
             onChange={(e) => setAccentColor(e.target.value)}
-            className="h-10 w-16 cursor-pointer rounded-lg border border-line bg-paper"
+            className="sr-only"
           />
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-line bg-paper-dim p-6">
+        <h2 className="text-sm font-semibold text-ink">Google Calendar</h2>
+        <p className="mt-2 text-xs leading-6 text-muted">
+          เชื่อมต่อเพื่อสร้าง Google Meet อัตโนมัติและเพิ่มนัดลง Calendar
+          ให้ทั้งคุณและลูกค้า
+        </p>
+        <button
+          type="button"
+          onClick={() =>
+            setError(
+              "Google Calendar ยังไม่ได้เชื่อม OAuth ใน environment นี้ — ส่วนนี้เป็นตัวอย่าง UI",
+            )
+          }
+          className="secondary-button mt-4"
+        >
+          เชื่อมต่อ Google Calendar
+        </button>
       </section>
 
       <section className="rounded-2xl border border-line bg-paper-dim p-6">

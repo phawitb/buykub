@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { BookingTabs } from "./BookingTabs";
 import { ServiceRow } from "./ServiceRow";
 
 const FREE_PLAN_LIMIT = 5;
@@ -19,7 +20,7 @@ export default async function BookingsPage() {
   if (!shop) {
     return (
       <div className="max-w-xl">
-        <h1 className="text-xl font-bold text-ink">จองบริการ</h1>
+        <h1 className="text-xl font-bold text-ink">บริการจอง</h1>
         <p className="mt-3 text-sm text-ink-soft">
           ตั้งชื่อร้านก่อนเปิดบริการจอง —{" "}
           <Link href="/dashboard/settings" className="font-semibold text-ink underline">
@@ -47,10 +48,10 @@ export default async function BookingsPage() {
   const count = services?.length ?? 0;
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-3xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-ink">จองบริการ</h1>
+          <h1 className="text-xl font-bold text-ink">บริการจอง</h1>
           <p className="mt-1 text-sm text-muted">
             จัดการบริการจองและดูการจองที่เข้ามา ({count}/{FREE_PLAN_LIMIT} บริการ)
           </p>
@@ -63,51 +64,63 @@ export default async function BookingsPage() {
         </Link>
       </div>
 
-      <div className="mt-8 space-y-3">
-        {(services ?? []).map((s) => (
-          <ServiceRow key={s.id} service={s} />
-        ))}
+      <BookingTabs
+        services={
+          <div className="space-y-3">
+            {(services ?? []).map((service) => (
+              <ServiceRow key={service.id} service={service} />
+            ))}
 
-        {count === 0 && (
-          <div className="rounded-2xl border border-dashed border-line p-10 text-center">
-            <p className="text-sm font-medium text-ink">ยังไม่มีบริการจอง</p>
-            <p className="mt-1 text-xs text-muted">สร้างบริการจองเพื่อรับนัดหมายจากลูกค้า</p>
-            <Link
-              href="/dashboard/bookings/new"
-              className="mt-4 inline-block rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-paper hover:bg-accent-hover"
-            >
-              สร้างบริการจองแรก
-            </Link>
-          </div>
-        )}
-      </div>
-
-      <div className="mt-10">
-        <p className="text-sm font-semibold text-ink">การจองที่เข้ามา</p>
-        <div className="mt-3 space-y-2">
-          {(bookings ?? []).map((b) => (
-            <div
-              key={b.id}
-              className="flex items-center justify-between rounded-xl border border-line bg-paper p-4 text-sm"
-            >
-              <div>
-                <p className="font-medium text-ink">
-                  {(b.services as unknown as { name: string } | null)?.name ?? "บริการ"}
+            {count === 0 && (
+              <div className="rounded-2xl border border-dashed border-line p-10 text-center">
+                <h3 className="text-sm font-semibold text-ink">
+                  ยังไม่มีบริการจอง
+                </h3>
+                <p className="mt-1 text-xs text-muted">
+                  สร้างบริการจองเพื่อรับนัดหมายจากลูกค้า
                 </p>
-                <p className="text-xs text-muted">
-                  {new Date(b.scheduled_at).toLocaleString("th-TH")}
+                <Link
+                  href="/dashboard/bookings/new"
+                  className="primary-button mt-4 inline-block"
+                >
+                  สร้างบริการจองแรก
+                </Link>
+              </div>
+            )}
+          </div>
+        }
+        incoming={
+          <div className="space-y-2">
+            {(bookings ?? []).map((booking) => (
+              <div
+                key={booking.id}
+                className="flex items-center justify-between rounded-xl border border-line bg-paper p-4 text-sm"
+              >
+                <div>
+                  <p className="font-medium text-ink">
+                    {(
+                      booking.services as unknown as { name: string } | null
+                    )?.name ?? "บริการ"}
+                  </p>
+                  <p className="text-xs text-muted">
+                    {new Date(booking.scheduled_at).toLocaleString("th-TH")}
+                  </p>
+                </div>
+                <span className="font-semibold text-ink">
+                  ฿{(booking.price_cents / 100).toLocaleString("th-TH")}
+                </span>
+              </div>
+            ))}
+            {(!bookings || bookings.length === 0) && (
+              <div className="rounded-2xl border border-dashed border-line p-10 text-center">
+                <p className="text-sm font-semibold text-ink">
+                  ยังไม่มีการจองเข้ามา
                 </p>
               </div>
-              <span className="font-semibold text-ink">
-                ฿{(b.price_cents / 100).toLocaleString("th-TH")}
-              </span>
-            </div>
-          ))}
-          {(!bookings || bookings.length === 0) && (
-            <p className="text-sm text-muted">ยังไม่มีการจองเข้ามา</p>
-          )}
-        </div>
-      </div>
+            )}
+          </div>
+        }
+      />
     </div>
   );
 }
