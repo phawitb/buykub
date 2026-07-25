@@ -46,6 +46,7 @@ export type ProductEditorProps = {
   existingSlugs: string[];
   initialValue: ProductEditorValue;
   productId?: string;
+  saveProduct?: (payload: Record<string, unknown>) => Promise<void>;
   deleteAsset?: (destination: UploadDestination, path: string) => Promise<void>;
 };
 
@@ -60,6 +61,7 @@ export function ProductEditor({
   existingSlugs,
   initialValue,
   productId,
+  saveProduct,
   deleteAsset = deleteShopAsset,
 }: ProductEditorProps) {
   const router = useRouter();
@@ -69,6 +71,7 @@ export function ProductEditor({
   const [imagesUploading, setImagesUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const persistedValue = useRef(initialValue);
   const draftStorageKey = `framelink-product-draft-assets:${userId}`;
@@ -175,7 +178,7 @@ export function ProductEditor({
 
     setSaving(true);
     setSaveError(null);
-    const supabase = createClient();
+    setSavedMessage(null);
     const sanitizedHtml = DOMPurify.sanitize(value.descriptionHtml, {
       ADD_TAGS: ["iframe"],
       ADD_ATTR: ["allow", "allowfullscreen", "frameborder", "src"],
@@ -213,11 +216,22 @@ export function ProductEditor({
         slugifyProductName(value.name),
         existingSlugs,
       );
-      const { error } = await supabase
-        .from("products")
-        .insert({ ...payload, slug });
-      if (error) {
-        setSaveError(`สร้างสินค้าไม่สำเร็จ: ${error.message}`);
+      try {
+        if (saveProduct) {
+          await saveProduct({ ...payload, slug });
+        } else {
+          const supabase = createClient();
+          const { error } = await supabase
+            .from("products")
+            .insert({ ...payload, slug });
+          if (error) throw error;
+        }
+      } catch (error) {
+        setSaveError(
+          `สร้างสินค้าไม่สำเร็จ: ${
+            error instanceof Error ? error.message : "กรุณาลองอีกครั้ง"
+          }`,
+        );
         setSaving(false);
         return;
       }
@@ -228,13 +242,24 @@ export function ProductEditor({
       return;
     }
 
-    const { error } = await supabase
-      .from("products")
-      .update(payload)
-      .eq("id", productId!)
-      .eq("shop_id", shopId);
-    if (error) {
-      setSaveError(`บันทึกสินค้าไม่สำเร็จ: ${error.message}`);
+    try {
+      if (saveProduct) {
+        await saveProduct(payload);
+      } else {
+        const supabase = createClient();
+        const { error } = await supabase
+          .from("products")
+          .update(payload)
+          .eq("id", productId!)
+          .eq("shop_id", shopId);
+        if (error) throw error;
+      }
+    } catch (error) {
+      setSaveError(
+        `บันทึกสินค้าไม่สำเร็จ: ${
+          error instanceof Error ? error.message : "กรุณาลองอีกครั้ง"
+        }`,
+      );
       setSaving(false);
       return;
     }
@@ -247,6 +272,7 @@ export function ProductEditor({
     window.localStorage.removeItem(draftStorageKey);
     setDirty(false);
     setSaving(false);
+    setSavedMessage("บันทึกสินค้าเรียบร้อยแล้ว");
     router.refresh();
   }
 
@@ -384,6 +410,14 @@ export function ProductEditor({
       {saveError && (
         <p className="text-sm text-red-600" role="alert">
           {saveError}
+        </p>
+      )}
+      {savedMessage && (
+        <p
+          className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700"
+          role="status"
+        >
+          {savedMessage}
         </p>
       )}
 

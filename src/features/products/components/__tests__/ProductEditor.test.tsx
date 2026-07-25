@@ -128,6 +128,42 @@ describe("ProductEditor", () => {
     expect(screen.getByDisplayValue("Draft product")).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
   });
+
+  it("confirms a successful edit without navigating away", async () => {
+    const user = userEvent.setup();
+    const saveProduct = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ProductEditor
+        mode="edit"
+        shopId="shop-123"
+        userId="user-123"
+        productId="product-123"
+        existingSlugs={["saved-product"]}
+        initialValue={{
+          ...emptyValue,
+          name: "Saved product",
+          price: "199",
+          productFile: {
+            path: "user-123/product.zip",
+            fileName: "product.zip",
+            size: 100,
+            mimeType: "application/zip",
+          },
+        }}
+        saveProduct={saveProduct}
+      />,
+    );
+
+    await user.clear(screen.getByLabelText("ชื่อสินค้า *"));
+    await user.type(screen.getByLabelText("ชื่อสินค้า *"), "Updated product");
+    await user.click(
+      screen.getByRole("button", { name: "บันทึกการเปลี่ยนแปลง" }),
+    );
+
+    expect(await screen.findByText("บันทึกสินค้าเรียบร้อยแล้ว")).toBeInTheDocument();
+    expect(saveProduct).toHaveBeenCalledOnce();
+    expect(push).not.toHaveBeenCalled();
+  });
 });
 
 describe("ProductFileUploader", () => {
