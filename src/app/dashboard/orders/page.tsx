@@ -43,20 +43,20 @@ export default async function OrdersPage() {
       <h1 className="text-xl font-bold text-ink">ออเดอร์</h1>
       <p className="mt-1 text-sm text-muted">ดูประวัติการสั่งซื้อและรายได้</p>
 
-      <div className="mt-6 grid grid-cols-3 gap-4">
-        <div className="rounded-2xl border border-line bg-paper-dim p-5">
+      <div className="mt-6 grid gap-3 sm:grid-cols-3 sm:gap-4">
+        <div className="rounded-2xl border border-line bg-paper p-5">
           <p className="text-xs text-muted">ยอดขายทั้งหมด</p>
           <p className="mt-1 text-lg font-bold text-ink">
             ฿{(totalSales / 100).toLocaleString("th-TH")}
           </p>
         </div>
-        <div className="rounded-2xl border border-line bg-paper-dim p-5">
+        <div className="rounded-2xl border border-line bg-paper p-5">
           <p className="text-xs text-muted">ยอดรอจ่าย (ประมาณ)</p>
-          <p className="mt-1 text-lg font-bold text-ink">
+          <p className="mt-1 text-lg font-bold text-emerald-600">
             ฿{(pendingPayout / 100).toLocaleString("th-TH")}
           </p>
         </div>
-        <div className="rounded-2xl border border-line bg-paper-dim p-5">
+        <div className="rounded-2xl border border-line bg-paper p-5">
           <p className="text-xs text-muted">จำนวนออเดอร์</p>
           <p className="mt-1 text-lg font-bold text-ink">{list.length}</p>
         </div>

@@ -50,8 +50,8 @@ export default async function BookingsPage() {
 
   return (
     <div className="max-w-3xl">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-ink">บริการจอง</h1>
           <p className="mt-1 text-sm text-muted">
             จัดการบริการจองและดูการจองที่เข้ามา ({count}/{FREE_PLAN_LIMIT} บริการ)
@@ -59,8 +59,9 @@ export default async function BookingsPage() {
         </div>
         <Link
           href="/dashboard/bookings/new"
-          className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-paper hover:bg-accent-hover"
+          className="shrink-0 whitespace-nowrap rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-paper hover:bg-accent-hover sm:rounded-full sm:px-5"
         >
+          <span aria-hidden className="mr-1.5">＋</span>
           สร้างบริการจอง
         </Link>
       </div>
@@ -73,7 +74,10 @@ export default async function BookingsPage() {
             ))}
 
             {count === 0 && (
-              <div className="rounded-2xl border border-dashed border-line p-10 text-center">
+              <div className="flex min-h-80 flex-col items-center justify-center rounded-2xl border border-dashed border-line p-8 text-center">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-xl text-accent" aria-hidden>
+                  □
+                </div>
                 <h3 className="text-sm font-semibold text-ink">
                   ยังไม่มีบริการจอง
                 </h3>
@@ -82,7 +86,7 @@ export default async function BookingsPage() {
                 </p>
                 <Link
                   href="/dashboard/bookings/new"
-                  className="primary-button mt-4 inline-block"
+                  className="primary-button mt-6 inline-block"
                 >
                   สร้างบริการจองแรก
                 </Link>
@@ -103,7 +107,10 @@ export default async function BookingsPage() {
               />
             ))}
             {(!bookings || bookings.length === 0) && (
-              <div className="rounded-2xl border border-dashed border-line p-10 text-center">
+              <div className="flex min-h-80 flex-col items-center justify-center rounded-2xl border border-dashed border-line p-8 text-center">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-xl text-accent" aria-hidden>
+                  □
+                </div>
                 <p className="text-sm font-semibold text-ink">
                   ยังไม่มีการจองเข้ามา
                 </p>

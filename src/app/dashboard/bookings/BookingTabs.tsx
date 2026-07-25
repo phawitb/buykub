@@ -12,17 +12,17 @@ export function BookingTabs({
   const [tab, setTab] = useState<"services" | "incoming">("services");
 
   return (
-    <div className="mt-7">
-      <div className="flex border-b border-line" role="tablist">
+    <div className="mt-6">
+      <div className="grid grid-cols-2 rounded-xl bg-paper-dim p-1" role="tablist">
         <button
           type="button"
           role="tab"
           aria-selected={tab === "services"}
           onClick={() => setTab("services")}
-          className={`border-b-2 px-5 py-3 text-sm font-semibold transition ${
+          className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
             tab === "services"
-              ? "border-ink text-ink"
-              : "border-transparent text-muted hover:text-ink"
+              ? "bg-paper text-ink shadow-sm"
+              : "text-muted hover:text-ink"
           }`}
         >
           บริการ
@@ -32,16 +32,16 @@ export function BookingTabs({
           role="tab"
           aria-selected={tab === "incoming"}
           onClick={() => setTab("incoming")}
-          className={`border-b-2 px-5 py-3 text-sm font-semibold transition ${
+          className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
             tab === "incoming"
-              ? "border-ink text-ink"
-              : "border-transparent text-muted hover:text-ink"
+              ? "bg-paper text-ink shadow-sm"
+              : "text-muted hover:text-ink"
           }`}
         >
           การจองที่เข้ามา
         </button>
       </div>
-      <div className="pt-6">{tab === "services" ? services : incoming}</div>
+      <div className="pt-5">{tab === "services" ? services : incoming}</div>
     </div>
   );
 }

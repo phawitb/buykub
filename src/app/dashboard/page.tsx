@@ -68,6 +68,7 @@ export default async function DashboardOverview() {
 
   const monthTotalCents = (monthOrders ?? []).reduce((sum, o) => sum + o.price_cents, 0);
   const orderCount = monthOrders?.length ?? 0;
+  const netIncomeCents = Math.round(monthTotalCents * 0.92);
 
   const readyCents = (monthOrders ?? [])
     .filter((o) => o.created_at < guaranteeCutoff)
@@ -93,34 +94,30 @@ export default async function DashboardOverview() {
 
   return (
     <div className="max-w-4xl">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">
+      <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+          <h1 className="text-xl font-bold text-ink sm:text-2xl">
             สวัสดี, {user?.user_metadata?.full_name ?? shop.name}
           </h1>
           <p className="mt-1 text-sm text-muted">
-            ภาพรวมร้านของคุณวันนี้ ·{" "}
-            {now.toLocaleDateString("th-TH", {
-              weekday: "long",
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })}
+            ภาพรวมร้านของคุณวันนี้
           </p>
-          <div className="mt-3 flex items-center gap-2">
-            <span className="rounded-full border border-line bg-paper-dim px-3 py-1 text-xs text-ink-soft">
-              framelink.app/{shop.slug}
-            </span>
-            <CopyLinkButton text={`framelink.app/${shop.slug}`} />
           </div>
-        </div>
         <a
           href={`/${shop.slug}`}
           target="_blank"
-          className="rounded-full border border-line px-4 py-2 text-sm font-medium text-ink hover:bg-paper-dim"
+          className="shrink-0 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-paper hover:bg-accent-hover"
         >
           ดูหน้าร้าน ↗
         </a>
+        </div>
+        <div className="mt-3 flex w-fit max-w-full items-center overflow-hidden rounded-full border border-line bg-paper">
+          <span className="truncate py-1.5 pl-3 pr-2 text-xs text-ink-soft">
+            framelink.app/{shop.slug}
+          </span>
+          <CopyLinkButton text={`framelink.app/${shop.slug}`} />
+        </div>
       </div>
 
       <div className="mt-8 rounded-2xl border border-line bg-paper-dim p-6">
@@ -131,27 +128,20 @@ export default async function DashboardOverview() {
           ฿{(monthTotalCents / 100).toLocaleString("th-TH")}
         </p>
 
-        <div className="mt-6 grid grid-cols-2 gap-6 border-t border-line pt-5 sm:grid-cols-2">
-          <div>
-            <p className="text-xs text-muted">ออเดอร์เดือนนี้</p>
-            <p className="mt-1 text-lg font-bold text-ink">{orderCount}</p>
-            <p className="mt-0.5 text-[11px] text-muted">
-              เฉลี่ย ฿
-              {(
-                (orderCount ? monthTotalCents / orderCount : 0) / 100
-              ).toLocaleString("th-TH")}{" "}
-              / ออเดอร์
+        <div className="mt-6 grid grid-cols-3 divide-x divide-line border-t border-line pt-5">
+          <div className="pr-3">
+            <p className="text-xs text-muted">รายได้สุทธิ</p>
+            <p className="mt-1 text-lg font-bold text-emerald-600">
+              ฿{(netIncomeCents / 100).toLocaleString("th-TH")}
             </p>
           </div>
-          <div>
-            <p className="text-xs text-muted">สินค้าที่เปิดขาย</p>
+          <div className="px-3">
+            <p className="text-xs text-muted">ออเดอร์</p>
+            <p className="mt-1 text-lg font-bold text-ink">{orderCount}</p>
+          </div>
+          <div className="pl-3">
+            <p className="text-xs text-muted">สินค้า</p>
             <p className="mt-1 text-lg font-bold text-ink">{productCount ?? 0}</p>
-            <Link
-              href="/dashboard/products/new"
-              className="mt-1 inline-block text-[11px] font-semibold text-accent"
-            >
-              + สร้างสินค้าใหม่
-            </Link>
           </div>
         </div>
       </div>

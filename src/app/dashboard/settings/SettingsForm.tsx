@@ -100,7 +100,7 @@ export function SettingsForm({ initial, userId }: { initial: Shop; userId: strin
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      <section className="rounded-2xl border border-line bg-paper-dim p-6">
+      <section className="border-b border-line pb-8">
         <h2 className="text-sm font-semibold text-ink">ข้อมูลร้าน</h2>
 
         <div className="mt-4 space-y-4">
@@ -143,7 +143,7 @@ export function SettingsForm({ initial, userId }: { initial: Shop; userId: strin
         </div>
       </section>
 
-      <section className="rounded-2xl border border-line bg-paper-dim p-6">
+      <section className="border-b border-line pb-8">
         <h2 className="text-sm font-semibold text-ink">รูปร้าน</h2>
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -219,7 +219,7 @@ export function SettingsForm({ initial, userId }: { initial: Shop; userId: strin
         </div>
       </section>
 
-      <section className="rounded-2xl border border-line bg-paper-dim p-6">
+      <section className="border-b border-line pb-8">
         <h2 className="text-sm font-semibold text-ink">Google Calendar</h2>
         <p className="mt-2 text-xs leading-6 text-muted">
           เชื่อมต่อเพื่อสร้าง Google Meet อัตโนมัติและเพิ่มนัดลง Calendar
@@ -238,7 +238,7 @@ export function SettingsForm({ initial, userId }: { initial: Shop; userId: strin
         </button>
       </section>
 
-      <section className="rounded-2xl border border-line bg-paper-dim p-6">
+      <section className="border-b border-line pb-8">
         <h2 className="text-sm font-semibold text-ink">ข้อมูลรับเงิน</h2>
 
         <div className="mt-4 flex items-center gap-4">

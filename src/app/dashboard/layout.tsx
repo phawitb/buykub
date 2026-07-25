@@ -24,7 +24,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen">
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-line bg-paper-dim px-5 py-6 sm:flex">
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col overflow-y-auto border-r border-line bg-paper-dim px-5 py-6 sm:flex">
         <Link href="/" className="mb-10 text-lg font-bold tracking-tight text-ink">
           FRAME<span className="text-muted">LINK</span>
         </Link>

@@ -73,10 +73,10 @@ export default async function ProductsPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="flex items-end justify-between gap-4">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-ink sm:text-3xl">สินค้า</h1>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 text-xs text-muted sm:text-sm">
             จัดการสินค้าดิจิทัลของคุณ ({count}/{FREE_PLAN_LIMIT} สินค้า)
           </p>
         </div>
@@ -84,7 +84,7 @@ export default async function ProductsPage() {
           href="/dashboard/products/new"
           className="primary-button shrink-0"
         >
-          + สร้างสินค้า
+          ＋ เพิ่มสินค้า
         </Link>
       </div>
 
@@ -98,12 +98,15 @@ export default async function ProductsPage() {
         ))}
 
         {count === 0 && (
-          <div className="rounded-2xl border border-dashed border-line p-10 text-center">
-            <p className="text-sm font-medium text-ink">ยังไม่มีสินค้า</p>
+          <div className="flex min-h-80 flex-col items-center justify-center rounded-2xl border border-dashed border-line p-8 text-center">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-xl text-accent" aria-hidden>
+              ◇
+            </div>
+            <p className="text-sm font-semibold text-ink">ยังไม่มีสินค้า</p>
             <p className="mt-1 text-xs text-muted">เริ่มสร้างสินค้าดิจิทัลชิ้นแรกของคุณ</p>
             <Link
               href="/dashboard/products/new"
-              className="mt-4 inline-block rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-paper hover:bg-accent-hover"
+              className="mt-6 inline-block rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-paper hover:bg-accent-hover"
             >
               สร้างสินค้าใหม่
             </Link>

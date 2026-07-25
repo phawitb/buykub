@@ -26,7 +26,7 @@ export function OrderTabs({ orders }: { orders: Order[] }) {
           <button
             key={t.key}
             onClick={() => setTab(t.key as typeof tab)}
-            className={`rounded-full border px-4 py-1.5 text-xs font-medium ${
+            className={`rounded-lg border px-4 py-2 text-xs font-medium ${
               tab === t.key
                 ? "border-accent bg-accent text-paper"
                 : "border-line text-ink-soft hover:text-ink"
@@ -56,7 +56,11 @@ export function OrderTabs({ orders }: { orders: Order[] }) {
           </div>
         ))}
 
-        {filtered.length === 0 && <p className="text-sm text-muted">ยังไม่มีออเดอร์</p>}
+        {filtered.length === 0 && (
+          <div className="flex min-h-44 items-center justify-center rounded-2xl border border-dashed border-line text-sm text-muted">
+            ยังไม่มีออเดอร์
+          </div>
+        )}
       </div>
     </div>
   );
