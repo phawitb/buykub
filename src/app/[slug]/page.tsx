@@ -33,7 +33,7 @@ export default async function ShopPage({
       .order("created_at", { ascending: true }),
     supabase
       .from("services")
-      .select("id, name, description, price_cents, duration_minutes")
+      .select("id, name, description, price_cents, duration_minutes, availability")
       .eq("shop_id", shop.id)
       .eq("published", true)
       .order("created_at", { ascending: true }),
@@ -164,7 +164,15 @@ export default async function ShopPage({
                     <BookButton
                       serviceId={service.id}
                       shopId={shop.id}
+                      serviceName={service.name}
                       priceCents={service.price_cents}
+                      durationMinutes={service.duration_minutes}
+                      availability={service.availability as {
+                        days?: number[];
+                        start?: string;
+                        end?: string;
+                        advance_days?: number;
+                      }}
                     />
                   </article>
                 ))}

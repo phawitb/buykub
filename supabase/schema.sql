@@ -258,6 +258,14 @@ create policy "owners can read their bookings" on bookings
     exists (select 1 from shops where shops.id = bookings.shop_id and shops.owner_id = auth.uid())
   );
 
+drop policy if exists "owners can update their bookings" on bookings;
+create policy "owners can update their bookings" on bookings
+  for update using (
+    exists (select 1 from shops where shops.id = bookings.shop_id and shops.owner_id = auth.uid())
+  ) with check (
+    exists (select 1 from shops where shops.id = bookings.shop_id and shops.owner_id = auth.uid())
+  );
+
 drop policy if exists "anyone can log a shop view" on shop_views;
 create policy "anyone can log a shop view" on shop_views
   for insert with check (true);

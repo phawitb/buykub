@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { BookingTabs } from "./BookingTabs";
+import { BookingRow } from "./BookingRow";
 import { ServiceRow } from "./ServiceRow";
 
 const FREE_PLAN_LIMIT = 5;
@@ -39,7 +40,7 @@ export default async function BookingsPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("bookings")
-      .select("id, scheduled_at, price_cents, services(name)")
+      .select("id, buyer_name, buyer_email, scheduled_at, price_cents, status, services(name)")
       .eq("shop_id", shop.id)
       .order("scheduled_at", { ascending: true })
       .limit(5),
@@ -92,24 +93,14 @@ export default async function BookingsPage() {
         incoming={
           <div className="space-y-2">
             {(bookings ?? []).map((booking) => (
-              <div
+              <BookingRow
                 key={booking.id}
-                className="flex items-center justify-between rounded-xl border border-line bg-paper p-4 text-sm"
-              >
-                <div>
-                  <p className="font-medium text-ink">
-                    {(
-                      booking.services as unknown as { name: string } | null
-                    )?.name ?? "บริการ"}
-                  </p>
-                  <p className="text-xs text-muted">
-                    {new Date(booking.scheduled_at).toLocaleString("th-TH")}
-                  </p>
-                </div>
-                <span className="font-semibold text-ink">
-                  ฿{(booking.price_cents / 100).toLocaleString("th-TH")}
-                </span>
-              </div>
+                booking={{
+                  ...booking,
+                  status: booking.status as "confirmed" | "cancelled",
+                  services: booking.services as unknown as { name: string } | null,
+                }}
+              />
             ))}
             {(!bookings || bookings.length === 0) && (
               <div className="rounded-2xl border border-dashed border-line p-10 text-center">
