@@ -21,6 +21,16 @@ export function bangkokDateKey(date: Date) {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+export function formatBangkokDateTime(
+  date: Date,
+  options: Intl.DateTimeFormatOptions = {},
+) {
+  return date.toLocaleString("th-TH", {
+    timeZone: BANGKOK_TIME_ZONE,
+    ...options,
+  });
+}
+
 export function recentBangkokDays(count: number, now = new Date()) {
   const { year, month, day } = calendarParts(now);
   const today = new Date(Date.UTC(year, month - 1, day));

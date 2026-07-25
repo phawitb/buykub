@@ -4,6 +4,39 @@ import { describe, expect, it, vi } from "vitest";
 import { ShopImageUploader } from "./ShopImageUploader";
 
 describe("ShopImageUploader", () => {
+  it("shows the full PIXZA image guidance for profile and cover images", () => {
+    const { rerender } = render(
+      <ShopImageUploader
+        kind="avatar"
+        userId="user-1"
+        value={null}
+        onUploaded={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(/JPG, PNG, WebP · สูงสุด 2 MB/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/ใช้รูปใบหน้าหรือโลโก้ พื้นหลังเรียบ/),
+    ).toBeInTheDocument();
+
+    rerender(
+      <ShopImageUploader
+        kind="cover"
+        userId="user-1"
+        value={null}
+        onUploaded={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        /หลีกเลี่ยงข้อความสำคัญที่ขอบซ้าย — รูปโปรไฟล์จะทับ/,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("shows byte progress while uploading a shop image", async () => {
     const upload = vi.fn(({ onProgress }) => {
       onProgress(42, 420, 1000);

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { formatTHB } from "@/features/products/format";
+import { formatBangkokDateTime } from "@/lib/bangkok-date";
 import { createClient } from "@/lib/supabase/server";
 import { OrderActions } from "./OrderActions";
 
@@ -74,7 +75,7 @@ export default async function OrderDetailPage({
             {order.payment_method === "card" ? "บัตรเครดิต" : "PromptPay"}
           </p>
           <p className="mt-1 text-xs text-muted">
-            {new Date(order.created_at).toLocaleString("th-TH")}
+            {formatBangkokDateTime(new Date(order.created_at))}
           </p>
           {order.mock && <p className="mt-2 text-xs font-medium text-amber-700">รายการทดลอง · ไม่มีการตัดเงินจริง</p>}
         </section>

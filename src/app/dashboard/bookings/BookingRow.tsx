@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { formatBangkokDateTime } from "@/lib/bangkok-date";
 
 type Booking = {
   id: string;
@@ -75,7 +76,7 @@ export function BookingRow({
             </span>
           </div>
           <p className="mt-1 text-xs text-muted">
-            {new Date(booking.scheduled_at).toLocaleString("th-TH", {
+            {formatBangkokDateTime(new Date(booking.scheduled_at), {
               dateStyle: "medium",
               timeStyle: "short",
             })}

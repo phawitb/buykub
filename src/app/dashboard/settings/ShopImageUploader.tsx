@@ -14,24 +14,39 @@ const CONFIG = {
   avatar: {
     label: "รูปโปรไฟล์",
     inputLabel: "เลือกรูปโปรไฟล์",
-    hint: "แนะนำ 400 × 400 px · 1:1 สี่เหลี่ยมจัตุรัส · สูงสุด 2 MB",
+    hint:
+      "แนะนำ 400 × 400 px · 1:1 สี่เหลี่ยมจัตุรัส · JPG, PNG, WebP · สูงสุด 2 MB",
+    tips: ["ใช้รูปใบหน้าหรือโลโก้ พื้นหลังเรียบ"],
     maxBytes: 2 * 1024 * 1024,
   },
   cover: {
     label: "รูปปก",
     inputLabel: "เลือกรูปปก",
-    hint: "แนะนำ 1600 × 500 px · 3:1 แนวนอน · สูงสุด 5 MB",
+    hint:
+      "แนะนำ 1600 × 500 px · 3:1 แนวนอน · JPG, PNG, WebP · สูงสุด 5 MB",
+    tips: [
+      "ใช้รูปแนวนอนเท่านั้น",
+      "หลีกเลี่ยงข้อความสำคัญที่ขอบซ้าย — รูปโปรไฟล์จะทับ",
+    ],
     maxBytes: 5 * 1024 * 1024,
   },
   service: {
     label: "รูปบริการ",
     inputLabel: "รูปบริการ",
-    hint: "แนะนำ 1200 × 480 px · 2.5:1 แนวนอน · สูงสุด 5 MB",
+    hint:
+      "แนะนำ 1200 × 480 px · 2.5:1 แนวนอน · JPG, PNG, WebP · สูงสุด 5 MB",
+    tips: [],
     maxBytes: 5 * 1024 * 1024,
   },
 } satisfies Record<
   Kind,
-  { label: string; inputLabel: string; hint: string; maxBytes: number }
+  {
+    label: string;
+    inputLabel: string;
+    hint: string;
+    tips: string[];
+    maxBytes: number;
+  }
 >;
 
 const ACCEPTED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -259,6 +274,13 @@ export function ShopImageUploader({
           </p>
         )}
       </div>
+      {config.tips.length > 0 && (
+        <ul className="mt-2 space-y-1 text-[11px] leading-5 text-muted">
+          {config.tips.map((tip) => (
+            <li key={tip}>ⓘ {tip}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

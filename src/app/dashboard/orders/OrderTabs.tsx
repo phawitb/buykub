@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { formatBangkokDateTime } from "@/lib/bangkok-date";
 
 type Order = {
   id: string;
@@ -52,7 +53,7 @@ export function OrderTabs({ orders }: { orders: Order[] }) {
             <div>
               <p className="font-medium text-ink">{o.products?.name ?? "สินค้า"}</p>
               <p className="text-xs text-muted">
-                {new Date(o.created_at).toLocaleString("th-TH")} ·{" "}
+                {formatBangkokDateTime(new Date(o.created_at))} ·{" "}
                 {o.status === "paid" ? "ชำระแล้ว" : "คืนเงิน"}
               </p>
             </div>
