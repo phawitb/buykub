@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ProductAsset } from "@/features/products/asset-cleanup";
 import { formatTHB } from "@/features/products/format";
 import { ProductActions } from "./ProductActions";
 
@@ -13,6 +14,7 @@ export type ProductListItem = {
   category: string;
   published: boolean;
   thumbnailUrl: string | null;
+  assets: ProductAsset[];
 };
 
 export function ProductRow({
@@ -93,6 +95,7 @@ export function ProductRow({
             shopId={product.shop_id}
             productName={product.name}
             published={product.published}
+            assets={product.assets}
           />
         </div>
       </div>

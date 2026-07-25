@@ -33,7 +33,7 @@ export default async function ProductsPage() {
   const { data: products } = await supabase
     .from("products")
     .select(
-      "id, shop_id, name, slug, description, price_cents, compare_price_cents, category, published, images, images_v2",
+      "id, shop_id, name, slug, description, price_cents, compare_price_cents, category, published, images, images_v2, file_path",
     )
     .eq("shop_id", shop.id)
     .order("created_at", { ascending: false });
@@ -41,7 +41,7 @@ export default async function ProductsPage() {
   const count = products?.length ?? 0;
   const listItems = (products ?? []).map((product) => {
     const imagesV2 = Array.isArray(product.images_v2)
-      ? (product.images_v2 as Array<{ publicUrl?: string }>)
+      ? (product.images_v2 as Array<{ path?: string; publicUrl?: string }>)
       : [];
     return {
       id: product.id,
@@ -54,6 +54,20 @@ export default async function ProductsPage() {
       category: product.category,
       published: product.published,
       thumbnailUrl: imagesV2[0]?.publicUrl ?? product.images?.[0] ?? null,
+      assets: [
+        ...(product.file_path
+          ? [{ destination: "product-file" as const, path: product.file_path }]
+          : []),
+        ...imagesV2
+          .filter(
+            (image): image is { path: string; publicUrl?: string } =>
+              Boolean(image.path),
+          )
+          .map((image) => ({
+            destination: "product-image" as const,
+            path: image.path,
+          })),
+      ],
     };
   });
 

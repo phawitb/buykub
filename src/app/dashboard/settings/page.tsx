@@ -2,7 +2,12 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { SettingsForm } from "./SettingsForm";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ slug?: string }>;
+}) {
+  const { slug: desiredSlug } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -44,7 +49,7 @@ export default async function SettingsPage() {
           initial={
             shop ?? {
               id: null,
-              slug: "",
+              slug: desiredSlug ?? "",
               name: "",
               bio: "",
               avatar_url: null,

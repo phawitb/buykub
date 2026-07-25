@@ -2,13 +2,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import type { ProductAsset } from "@/features/products/asset-cleanup";
 import { createClient } from "@/lib/supabase/client";
+import { deleteShopAsset, type UploadDestination } from "@/lib/supabase/upload";
 
 type Props = {
   productId: string;
   shopId: string;
   productName: string;
   published: boolean;
+  assets: ProductAsset[];
+  deleteProduct?: () => Promise<void>;
+  deleteAsset?: (destination: UploadDestination, path: string) => Promise<void>;
 };
 
 export function ProductActions({
@@ -16,6 +21,9 @@ export function ProductActions({
   shopId,
   productName,
   published,
+  assets,
+  deleteProduct,
+  deleteAsset = deleteShopAsset,
 }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState<"publish" | "delete" | null>(null);
@@ -43,17 +51,30 @@ export function ProductActions({
   async function remove() {
     setBusy("delete");
     setError(null);
-    const supabase = createClient();
-    const { error: deleteError } = await supabase
-      .from("products")
-      .delete()
-      .eq("id", productId)
-      .eq("shop_id", shopId);
-    if (deleteError) {
-      setError(`ลบสินค้าไม่สำเร็จ: ${deleteError.message}`);
+    try {
+      if (deleteProduct) {
+        await deleteProduct();
+      } else {
+        const supabase = createClient();
+        const { error: deleteError } = await supabase
+          .from("products")
+          .delete()
+          .eq("id", productId)
+          .eq("shop_id", shopId);
+        if (deleteError) throw deleteError;
+      }
+    } catch (deleteError) {
+      setError(
+        `ลบสินค้าไม่สำเร็จ: ${
+          deleteError instanceof Error ? deleteError.message : "กรุณาลองอีกครั้ง"
+        }`,
+      );
       setBusy(null);
       return;
     }
+    await Promise.allSettled(
+      assets.map((asset) => deleteAsset(asset.destination, asset.path)),
+    );
     setConfirmingDelete(false);
     setBusy(null);
     router.refresh();

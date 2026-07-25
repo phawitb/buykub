@@ -19,6 +19,7 @@ const product = {
   category: "E-BOOK",
   published: true,
   thumbnailUrl: "https://example.com/cover.webp",
+  assets: [],
 };
 
 describe("ProductRow", () => {

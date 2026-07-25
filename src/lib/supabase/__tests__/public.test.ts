@@ -42,4 +42,26 @@ describe("createPublicClient", () => {
     expect(second).toBe(first);
     expect(createSupabaseClient).toHaveBeenCalledOnce();
   });
+
+  it("does not reuse a request client in the server runtime", async () => {
+    vi.stubGlobal("window", undefined);
+    const { createPublicClient } = await import("@/lib/supabase/public");
+
+    const first = createPublicClient();
+    const second = createPublicClient();
+
+    expect(second).not.toBe(first);
+    expect(createSupabaseClient).toHaveBeenCalledTimes(2);
+    expect(createSupabaseClient).toHaveBeenLastCalledWith(
+      "https://project.supabase.co",
+      "anon-key",
+      {
+        auth: {
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+          persistSession: false,
+        },
+      },
+    );
+  });
 });

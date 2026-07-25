@@ -2,8 +2,8 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 let publicClient: SupabaseClient | undefined;
 
-export function createPublicClient() {
-  publicClient ??= createClient(
+function buildPublicClient(browserRuntime: boolean) {
+  return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -11,9 +11,14 @@ export function createPublicClient() {
         autoRefreshToken: false,
         detectSessionInUrl: false,
         persistSession: false,
-        storageKey: "framelink-public-anon",
+        ...(browserRuntime ? { storageKey: "framelink-public-anon" } : {}),
       },
     },
   );
+}
+
+export function createPublicClient() {
+  if (typeof window === "undefined") return buildPublicClient(false);
+  publicClient ??= buildPublicClient(true);
   return publicClient;
 }
