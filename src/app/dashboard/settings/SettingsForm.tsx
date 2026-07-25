@@ -199,22 +199,66 @@ export function SettingsForm({
       <section className="border-b border-line pb-8">
         <h2 className="text-sm font-semibold text-ink">ข้อมูลรับเงิน</h2>
 
-        <div className="mt-4 flex items-center gap-4">
-          <label className="flex items-center gap-2 text-sm text-ink-soft">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label
+            className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition ${
+              payoutMethod === "promptpay"
+                ? "border-accent bg-accent-soft"
+                : "border-line bg-paper hover:border-ink"
+            }`}
+          >
             <input
               type="radio"
+              name="payout-method"
+              aria-label="PromptPay เบอร์/บัตรประชาชน"
               checked={payoutMethod === "promptpay"}
               onChange={() => setPayoutMethod("promptpay")}
+              className="sr-only"
             />
-            PromptPay
+            <span
+              aria-hidden
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-paper text-sm font-bold text-accent"
+            >
+              ฿
+            </span>
+            <span>
+              <span className="block text-sm font-semibold text-ink">
+                PromptPay
+              </span>
+              <span className="mt-0.5 block text-xs text-muted">
+                เบอร์/บัตรประชาชน
+              </span>
+            </span>
           </label>
-          <label className="flex items-center gap-2 text-sm text-ink-soft">
+          <label
+            className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition ${
+              payoutMethod === "bank"
+                ? "border-accent bg-accent-soft"
+                : "border-line bg-paper hover:border-ink"
+            }`}
+          >
             <input
               type="radio"
+              name="payout-method"
+              aria-label="โอนเข้าบัญชีธนาคาร ทุกธนาคารไทย"
               checked={payoutMethod === "bank"}
               onChange={() => setPayoutMethod("bank")}
+              className="sr-only"
             />
-            โอนเข้าบัญชีธนาคาร
+            <span
+              aria-hidden
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-paper text-sm text-accent"
+            >
+              ▤
+            </span>
+            <span>
+              <span className="block text-sm font-semibold text-ink">
+                โอนเข้าบัญชีธนาคาร
+              </span>
+              <span className="mt-0.5 block text-xs text-muted">
+                ทุกธนาคารไทย
+              </span>
+            </span>
           </label>
         </div>
 

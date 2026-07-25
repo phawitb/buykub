@@ -32,4 +32,28 @@ describe("SettingsForm", () => {
 
     expect(screen.getByLabelText("ค่าสี accent")).toHaveValue("#7c3aed");
   });
+
+  it("presents payout methods as PIXZA-style choice cards", () => {
+    render(
+      <SettingsForm
+        userId="user-1"
+        initial={{
+          id: "shop-1",
+          slug: "my-shop",
+          name: "My shop",
+          bio: "",
+          avatar_url: null,
+          cover_url: null,
+          accent_color: "#f97316",
+          payout_method: "promptpay",
+          promptpay_id: "",
+          bank_details: "",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("เบอร์/บัตรประชาชน")).toBeInTheDocument();
+    expect(screen.getByText("ทุกธนาคารไทย")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /PromptPay/ })).toBeChecked();
+  });
 });

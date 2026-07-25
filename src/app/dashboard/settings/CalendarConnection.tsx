@@ -78,8 +78,8 @@ export function CalendarConnection({
         <div>
           <h2 className="text-sm font-semibold text-ink">Google Calendar</h2>
           <p className="mt-2 text-xs leading-6 text-muted">
-            เชื่อมต่อเพื่อเพิ่มการจองลง Calendar และเตรียมสร้าง Google Meet
-            ให้ทั้งคุณและลูกค้า
+            เชื่อมต่อเพื่อเพิ่มการจองลง Calendar และสร้าง Google Meet
+            อัตโนมัติให้ทั้งคุณและลูกค้า
           </p>
           {connected && (
             <p className="mt-2 text-xs font-medium text-emerald-700">
@@ -94,6 +94,16 @@ export function CalendarConnection({
           }`}
         />
       </div>
+      {!connected && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-6 text-amber-950">
+          <p className="font-semibold">ก่อนเชื่อมต่อ Google Calendar</p>
+          <p className="mt-1">
+            ระหว่างช่วงทดสอบ Google อาจแสดงหน้าเตือนว่าแอปยังไม่ได้รับการยืนยัน
+            ให้เลือก <strong>Advanced</strong> แล้วดำเนินการต่อมายัง Framelink
+            จากนั้นกดอนุญาตสิทธิ์ Calendar
+          </p>
+        </div>
+      )}
       <button
         type="button"
         disabled={busy}
