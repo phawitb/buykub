@@ -2,8 +2,8 @@ import Link from "next/link";
 
 const stats = [
   { value: "50+", label: "ร้านที่เปิดใช้งานแล้ว" },
-  { value: "฿300K+", label: "ยอดขายรวมผ่านระบบ" },
-  { value: "ทุกสัปดาห์", label: "รอบโอนเงิน ตรงเวลาทุกครั้ง" },
+  { value: "฿330K+", label: "ยอดขายรวมผ่านระบบ" },
+  { value: "ทุกวันจันทร์", label: "รอบจ่ายเงิน ไม่เคยพลาด" },
 ];
 
 export function Hero({ ctaHref = "/login" }: { ctaHref?: string }) {
