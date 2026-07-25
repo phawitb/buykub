@@ -19,6 +19,11 @@ type Shop = {
   bank_details: string | null;
 };
 
+type SettingsPayload = Omit<Shop, "id"> & {
+  id?: string;
+  owner_id: string;
+};
+
 const ACCENT_PRESETS = [
   { name: "Tangerine", value: "#f97316" },
   { name: "Violet", value: "#7c3aed" },
@@ -35,11 +40,13 @@ export function SettingsForm({
   userId,
   calendarConnected = false,
   connectedEmail = null,
+  saveSettings,
 }: {
   initial: Shop;
   userId: string;
   calendarConnected?: boolean;
   connectedEmail?: string | null;
+  saveSettings?: (payload: SettingsPayload) => Promise<void>;
 }) {
   const router = useRouter();
   const [slug, setSlug] = useState(initial.slug);
@@ -59,33 +66,57 @@ export function SettingsForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
     setError(null);
     setSaved(false);
 
-    const supabase = createClient();
-    const { error: dbError } = await supabase.from("shops").upsert(
-      {
-        id: initial.id ?? undefined,
-        owner_id: userId,
-        slug,
-        name,
-        bio,
-        avatar_url: avatarUrl,
-        cover_url: coverUrl,
-        accent_color: accentColor,
-        payout_method: payoutMethod,
-        promptpay_id: promptpayId || null,
-        bank_details: bankDetails || null,
-      },
-      { onConflict: "id" },
-    );
-
-    setSaving(false);
-    if (dbError) {
-      setError(dbError.message.includes("duplicate") ? "ลิงก์นี้ถูกใช้แล้ว" : dbError.message);
+    const normalizedPromptPay = promptpayId.replace(/\D/g, "");
+    if (
+      payoutMethod === "promptpay" &&
+      !/^(?:\d{10}|\d{13})$/.test(normalizedPromptPay)
+    ) {
+      setError("กรอกเบอร์โทร 10 หลัก หรือเลขบัตรประชาชน 13 หลัก");
       return;
     }
+    if (payoutMethod === "bank" && !bankDetails.trim()) {
+      setError("กรุณากรอกธนาคาร เลขบัญชี และชื่อบัญชี");
+      return;
+    }
+
+    const payload: SettingsPayload = {
+      id: initial.id ?? undefined,
+      owner_id: userId,
+      slug,
+      name,
+      bio,
+      avatar_url: avatarUrl,
+      cover_url: coverUrl,
+      accent_color: accentColor,
+      payout_method: payoutMethod,
+      promptpay_id:
+        payoutMethod === "promptpay" ? normalizedPromptPay : null,
+      bank_details:
+        payoutMethod === "bank" ? bankDetails.trim() : null,
+    };
+
+    setSaving(true);
+    try {
+      if (saveSettings) {
+        await saveSettings(payload);
+      } else {
+        const supabase = createClient();
+        const { error: dbError } = await supabase
+          .from("shops")
+          .upsert(payload, { onConflict: "id" });
+        if (dbError) throw dbError;
+      }
+    } catch (saveError) {
+      const message =
+        saveError instanceof Error ? saveError.message : "กรุณาลองอีกครั้ง";
+      setError(message.includes("duplicate") ? "ลิงก์นี้ถูกใช้แล้ว" : message);
+      setSaving(false);
+      return;
+    }
+    setSaving(false);
     setSaved(true);
     setTimeout(() => {
       setSaved(false);
@@ -270,8 +301,11 @@ export function SettingsForm({
               </label>
               <input
                 value={promptpayId}
-                onChange={(e) => setPromptpayId(e.target.value)}
-                placeholder="08xxxxxxxx"
+                onChange={(e) =>
+                  setPromptpayId(e.target.value.replace(/\D/g, "").slice(0, 13))
+                }
+                inputMode="numeric"
+                placeholder="เบอร์โทร 10 หลัก หรือเลขบัตร 13 หลัก"
                 className="w-full rounded-lg border border-line bg-paper px-3.5 py-2.5 text-sm text-ink outline-none focus:border-ink"
               />
             </div>
@@ -296,7 +330,11 @@ export function SettingsForm({
         </p>
       </section>
 
-      {error && <p className="text-xs text-ink-soft">{error}</p>}
+      {error && (
+        <p role="alert" className="text-xs text-red-600">
+          {error}
+        </p>
+      )}
 
       <div className="flex items-center gap-3">
         <button
