@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { MockCheckout } from "@/features/storefront/MockCheckout";
@@ -51,5 +51,23 @@ describe("MockCheckout", () => {
       buyerEmail: "ada@example.com",
       paymentMethod: "card",
     });
+  });
+
+  it("keeps keyboard focus inside the dialog and restores it on Escape", async () => {
+    const user = userEvent.setup();
+    render(<MockCheckout product={product} createOrder={vi.fn()} />);
+    const trigger = screen.getByRole("button", { name: "ซื้อเลย ฿389" });
+
+    await user.click(trigger);
+    const closeButton = screen.getByRole("button", { name: "ปิดหน้าชำระเงิน" });
+    closeButton.focus();
+    fireEvent.keyDown(closeButton, { key: "Tab", shiftKey: true });
+    expect(
+      screen.getByRole("button", { name: "ยืนยันคำสั่งซื้อทดลอง" }),
+    ).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
   });
 });

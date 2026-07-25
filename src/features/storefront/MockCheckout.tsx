@@ -50,6 +50,28 @@ export function MockCheckout({ product, createOrder }: Props) {
     triggerRef.current?.focus();
   }
 
+  function trapFocus(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Tab" || !dialogRef.current) return;
+    const focusable = Array.from(
+      dialogRef.current.querySelectorAll<HTMLElement>(
+        "button, input, a[href], [tabindex]",
+      ),
+    ).filter(
+      (element) =>
+        !element.hasAttribute("disabled") &&
+        element.getAttribute("tabindex") !== "-1",
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
+    }
+  }
+
   async function defaultCreateOrder(value: MockCheckoutValue) {
     const supabase = createClient();
     const { error } = await supabase.from("orders").insert({
@@ -121,6 +143,7 @@ export function MockCheckout({ product, createOrder }: Props) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="checkout-title"
+            onKeyDown={trapFocus}
             className="max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-paper p-6 shadow-2xl sm:max-w-md sm:rounded-3xl"
           >
             {done ? (
