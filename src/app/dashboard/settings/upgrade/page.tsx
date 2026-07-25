@@ -10,9 +10,6 @@ export default function UpgradePage() {
       <div className="mt-7">
         <UpgradePlans />
       </div>
-      <p className="mt-5 text-xs text-muted">
-        ระบบชำระเงินของสมาชิกเป็น mockup และยังไม่มีการเรียกเก็บเงินจริง
-      </p>
     </div>
   );
 }

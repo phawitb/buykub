@@ -43,10 +43,17 @@ describe("MockCheckout", () => {
     expect(
       screen.getByText("ทดลองเท่านั้น — ไม่มีการตัดเงินจริง"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "ชำระเงิน" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("ชื่อผู้ซื้อ")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("radio").map((radio) => radio.getAttribute("value"))).toEqual([
+      "card",
+      "promptpay",
+    ]);
 
-    await user.type(screen.getByLabelText("ชื่อผู้ซื้อ"), "Ada");
     await user.type(screen.getByLabelText("อีเมล"), "not-an-email");
-    await user.click(screen.getByRole("button", { name: "ยืนยันคำสั่งซื้อทดลอง" }));
+    await user.click(screen.getByRole("button", { name: "ชำระเงิน (ทดลอง)" }));
 
     expect(screen.getByText("กรุณากรอกอีเมลให้ถูกต้อง")).toBeInTheDocument();
   });
@@ -57,19 +64,15 @@ describe("MockCheckout", () => {
     render(<MockCheckout product={product} createOrder={createOrder} />);
 
     await user.click(screen.getByRole("button", { name: "ซื้อเลย ฿389" }));
-    const nameInput = screen.getByLabelText("ชื่อผู้ซื้อ");
     const emailInput = screen.getByLabelText("อีเมล");
-    await user.type(nameInput, "Ada");
-    expect(nameInput).toHaveValue("Ada");
     await user.type(emailInput, "ADA@EXAMPLE.COM");
     expect(emailInput).toHaveValue("ADA@EXAMPLE.COM");
-    await user.click(screen.getByLabelText("บัตรเครดิต"));
-    await user.click(screen.getByRole("button", { name: "ยืนยันคำสั่งซื้อทดลอง" }));
+    await user.click(screen.getByRole("button", { name: "ชำระเงิน (ทดลอง)" }));
 
     expect(await screen.findByText("สร้างคำสั่งซื้อทดลองแล้ว")).toBeInTheDocument();
     expect(createOrder).toHaveBeenCalledTimes(1);
     expect(createOrder).toHaveBeenCalledWith({
-      buyerName: "Ada",
+      buyerName: "",
       buyerEmail: "ada@example.com",
       paymentMethod: "card",
     });
@@ -87,10 +90,9 @@ describe("MockCheckout", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "ซื้อเลย ฿389" }));
-    await user.type(screen.getByLabelText("ชื่อผู้ซื้อ"), "Ada");
     await user.type(screen.getByLabelText("อีเมล"), "ada@example.com");
     await user.click(
-      screen.getByRole("button", { name: "ยืนยันคำสั่งซื้อทดลอง" }),
+      screen.getByRole("button", { name: "ชำระเงิน (ทดลอง)" }),
     );
 
     expect(trackEvent.mock.calls.map(([event]) => event)).toEqual([
@@ -110,7 +112,7 @@ describe("MockCheckout", () => {
     closeButton.focus();
     fireEvent.keyDown(closeButton, { key: "Tab", shiftKey: true });
     expect(
-      screen.getByRole("button", { name: "ยืนยันคำสั่งซื้อทดลอง" }),
+      screen.getByRole("button", { name: "ชำระเงิน (ทดลอง)" }),
     ).toHaveFocus();
 
     await user.keyboard("{Escape}");

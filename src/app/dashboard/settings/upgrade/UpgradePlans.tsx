@@ -152,6 +152,12 @@ export function UpgradePlans() {
         </table>
       </div>
 
+      <p className="mt-5 text-xs leading-5 text-muted">
+        ระบบชำระเงินของสมาชิกเป็น mockup และยังไม่มีการเรียกเก็บเงินจริง ·
+        ค่าธรรมเนียมช่องทางชำระเงินในตัวอย่าง: PromptPay ~1.5% · Card
+        ~3.65%+฿11
+      </p>
+
       {checkoutPlan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-5">
           <div

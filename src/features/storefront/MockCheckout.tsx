@@ -29,11 +29,10 @@ type Props = {
 
 export function MockCheckout({ product, createOrder, trackEvent }: Props) {
   const [open, setOpen] = useState(false);
-  const [buyerName, setBuyerName] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [paymentMethod, setPaymentMethod] =
-    useState<MockCheckoutValue["paymentMethod"]>("promptpay");
-  const [errors, setErrors] = useState<{ name?: string; email?: string }>({});
+    useState<MockCheckoutValue["paymentMethod"]>("card");
+  const [errors, setErrors] = useState<{ email?: string }>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -124,10 +123,8 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (submitting) return;
-    const name = buyerName.trim();
     const email = buyerEmail.trim().toLowerCase();
     const nextErrors: typeof errors = {};
-    if (!name) nextErrors.name = "กรุณากรอกชื่อผู้ซื้อ";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       nextErrors.email = "กรุณากรอกอีเมลให้ถูกต้อง";
     }
@@ -138,7 +135,7 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
     setSubmitError(null);
     try {
       await (createOrder ?? defaultCreateOrder)({
-        buyerName: name,
+        buyerName: "",
         buyerEmail: email,
         paymentMethod,
       });
@@ -224,7 +221,7 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
                       CHECKOUT MOCKUP
                     </p>
                     <h2 id="checkout-title" className="mt-1 text-xl font-bold text-ink">
-                      ข้อมูลผู้ซื้อ
+                      ชำระเงิน
                     </h2>
                   </div>
                   <button
@@ -256,16 +253,6 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
                   className="mt-5 space-y-4"
                 >
                   <label className="field-label">
-                    ชื่อผู้ซื้อ
-                    <input
-                      value={buyerName}
-                      onChange={(event) => setBuyerName(event.target.value)}
-                      className="field-input mt-2"
-                      autoComplete="name"
-                    />
-                    {errors.name && <span className="field-error">{errors.name}</span>}
-                  </label>
-                  <label className="field-label">
                     อีเมล
                     <input
                       value={buyerEmail}
@@ -284,23 +271,6 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <label
                         className={`checkout-option ${
-                          paymentMethod === "promptpay"
-                            ? "checkout-option-active"
-                            : ""
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="payment-method"
-                          value="promptpay"
-                          checked={paymentMethod === "promptpay"}
-                          onChange={() => setPaymentMethod("promptpay")}
-                          className="sr-only"
-                        />
-                        PromptPay
-                      </label>
-                      <label
-                        className={`checkout-option ${
                           paymentMethod === "card"
                             ? "checkout-option-active"
                             : ""
@@ -317,6 +287,23 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
                         />
                         บัตรเครดิต
                       </label>
+                      <label
+                        className={`checkout-option ${
+                          paymentMethod === "promptpay"
+                            ? "checkout-option-active"
+                            : ""
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="payment-method"
+                          value="promptpay"
+                          checked={paymentMethod === "promptpay"}
+                          onChange={() => setPaymentMethod("promptpay")}
+                          className="sr-only"
+                        />
+                        PromptPay
+                      </label>
                     </div>
                   </fieldset>
 
@@ -332,8 +319,8 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
                     className="primary-button w-full"
                   >
                     {submitting
-                      ? "กำลังสร้างคำสั่งซื้อ..."
-                      : "ยืนยันคำสั่งซื้อทดลอง"}
+                      ? "กำลังประมวลผล..."
+                      : "ชำระเงิน (ทดลอง)"}
                   </button>
                 </form>
               </>

@@ -9,6 +9,9 @@ describe("UpgradePlans", () => {
     render(<UpgradePlans />);
 
     expect(screen.getByText("฿399")).toBeInTheDocument();
+    expect(
+      screen.getByText(/PromptPay ~1.5% · Card ~3.65%\+฿11/),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /รายปี/ }));
     expect(screen.getByText("฿3,990")).toBeInTheDocument();
 
