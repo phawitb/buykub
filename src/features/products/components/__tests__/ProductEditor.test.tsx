@@ -7,12 +7,14 @@ import { ProductFileUploader } from "@/features/products/components/ProductFileU
 import { ProductImageUploader } from "@/features/products/components/ProductImageUploader";
 import type { UploadRequest, UploadResult } from "@/lib/supabase/upload";
 
+const push = vi.fn();
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     back: vi.fn(),
     forward: vi.fn(),
     prefetch: vi.fn(),
-    push: vi.fn(),
+    push,
     refresh: vi.fn(),
     replace: vi.fn(),
   }),
@@ -55,6 +57,27 @@ describe("ProductEditor", () => {
       screen.getByRole("heading", { name: "คำถามที่พบบ่อย (FAQ)" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "สร้างสินค้า" })).toBeDisabled();
+  });
+
+  it("keeps an edited product form open when the user cancels leaving", async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(
+      <ProductEditor
+        mode="create"
+        shopId="shop-123"
+        userId="user-123"
+        existingSlugs={[]}
+        initialValue={emptyValue}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("ชื่อสินค้า *"), "Draft product");
+    await user.click(screen.getByRole("button", { name: "ยกเลิก" }));
+
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(screen.getByDisplayValue("Draft product")).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
   });
 });
 

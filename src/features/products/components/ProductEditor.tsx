@@ -1,8 +1,9 @@
 "use client";
 
 import DOMPurify from "isomorphic-dompurify";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { findRemovedProductAssets } from "@/features/products/asset-cleanup";
 import { ProductFileUploader } from "@/features/products/components/ProductFileUploader";
 import { ProductImageUploader } from "@/features/products/components/ProductImageUploader";
 import { RichTextEditor } from "@/features/products/components/RichTextEditor";
@@ -20,6 +21,7 @@ import {
 } from "@/features/products/slug";
 import { validateProductEditor } from "@/features/products/validation";
 import { createClient } from "@/lib/supabase/client";
+import { deleteShopAsset } from "@/lib/supabase/upload";
 
 const CATEGORIES = [
   "PROMPT PACK",
@@ -62,6 +64,7 @@ export function ProductEditor({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const persistedValue = useRef(initialValue);
 
   const currentErrors = useMemo(() => validateProductEditor(value), [value]);
   const canSave =
@@ -82,6 +85,16 @@ export function ProductEditor({
   function update(patch: Partial<ProductEditorValue>) {
     setValue((current) => ({ ...current, ...patch }));
     setDirty(true);
+  }
+
+  function leaveEditor() {
+    if (
+      (dirty || fileUploading || imagesUploading) &&
+      !window.confirm("มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?")
+    ) {
+      return;
+    }
+    router.push("/dashboard/products");
   }
 
   async function submit(event: React.FormEvent) {
@@ -154,6 +167,12 @@ export function ProductEditor({
       setSaving(false);
       return;
     }
+    await Promise.allSettled(
+      findRemovedProductAssets(persistedValue.current, value).map((asset) =>
+        deleteShopAsset(asset.destination, asset.path),
+      ),
+    );
+    persistedValue.current = value;
     setDirty(false);
     setSaving(false);
     router.refresh();
@@ -165,7 +184,7 @@ export function ProductEditor({
         <p className="text-sm text-muted">
           <button
             type="button"
-            onClick={() => router.push("/dashboard/products")}
+            onClick={leaveEditor}
             className="hover:text-ink"
           >
             สินค้า
@@ -299,7 +318,7 @@ export function ProductEditor({
       <div className="sticky bottom-0 -mx-5 flex justify-end gap-3 border-t border-line bg-paper/95 px-5 py-5 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0">
         <button
           type="button"
-          onClick={() => router.push("/dashboard/products")}
+          onClick={leaveEditor}
           className="secondary-button"
         >
           ยกเลิก
