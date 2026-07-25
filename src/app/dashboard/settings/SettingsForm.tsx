@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { uploadShopAsset } from "@/lib/supabase/upload";
 import { CalendarConnection } from "./CalendarConnection";
+import { ShopImageUploader } from "./ShopImageUploader";
 
 type Shop = {
   id: string | null;
@@ -51,27 +51,11 @@ export function SettingsForm({
   const [payoutMethod, setPayoutMethod] = useState(initial.payout_method);
   const [promptpayId, setPromptpayId] = useState(initial.promptpay_id ?? "");
   const [bankDetails, setBankDetails] = useState(initial.bank_details ?? "");
-  const [uploading, setUploading] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>, target: "avatar" | "cover") {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setError(null);
-    try {
-      const url = await uploadShopAsset(userId, file);
-      if (target === "avatar") setAvatarUrl(url);
-      else setCoverUrl(url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "อัปโหลดรูปไม่สำเร็จ");
-    } finally {
-      setUploading(false);
-      e.target.value = "";
-    }
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -158,43 +142,20 @@ export function SettingsForm({
         <h2 className="text-sm font-semibold text-ink">รูปร้าน</h2>
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-ink-soft">รูปโปรไฟล์</label>
-            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-paper py-6 text-center text-xs text-muted hover:border-ink">
-              {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt="" className="h-14 w-14 rounded-full object-cover" />
-              ) : (
-                "คลิกเพื่อเลือกรูป"
-              )}
-              <span>แนะนำ 400×400px · สูงสุด 2MB</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleUpload(e, "avatar")}
-                className="hidden"
-              />
-            </label>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-ink-soft">รูปปก</label>
-            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-paper py-6 text-center text-xs text-muted hover:border-ink">
-              {coverUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={coverUrl} alt="" className="h-14 w-full rounded-lg object-cover" />
-              ) : (
-                "คลิกเพื่อเลือกรูปปก"
-              )}
-              <span>แนะนำ 1600×500px · สูงสุด 5MB</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleUpload(e, "cover")}
-                className="hidden"
-              />
-            </label>
-          </div>
+          <ShopImageUploader
+            kind="avatar"
+            userId={userId}
+            value={avatarUrl}
+            onUploaded={setAvatarUrl}
+            onBusyChange={setAvatarUploading}
+          />
+          <ShopImageUploader
+            kind="cover"
+            userId={userId}
+            value={coverUrl}
+            onUploaded={setCoverUrl}
+            onBusyChange={setCoverUploading}
+          />
         </div>
 
         <div className="mt-4">
@@ -296,7 +257,7 @@ export function SettingsForm({
       <div className="flex items-center gap-3">
         <button
           type="submit"
-          disabled={saving || uploading}
+          disabled={saving || avatarUploading || coverUploading}
           className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-paper transition hover:bg-accent-hover disabled:opacity-60"
         >
           {saving ? "กำลังบันทึก..." : "บันทึก"}
