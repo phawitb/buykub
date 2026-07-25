@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { bangkokDateKey, recentBangkokDays } from "@/lib/bangkok-date";
+import { ConversionFunnel } from "./ConversionFunnel";
 import { RangeTabs } from "./RangeTabs";
 
 export default async function AnalyticsPage({
@@ -29,7 +31,8 @@ export default async function AnalyticsPage({
     );
   }
 
-  const since = new Date(new Date().getTime() - days * 86400000).toISOString();
+  const chartCalendarDays = recentBangkokDays(days);
+  const since = `${chartCalendarDays[0].key}T00:00:00+07:00`;
 
   const [{ data: events }, { data: orders }] = await Promise.all([
     supabase
@@ -56,26 +59,23 @@ export default async function AnalyticsPage({
   const purchases = orders?.length ?? trackedPurchases;
   const sales = (orders ?? []).reduce((sum, o) => sum + o.price_cents, 0);
   const conversion = views > 0 ? (purchases / views) * 100 : 0;
-  const chartDays = Array.from({ length: days }, (_, index) => {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() - (days - 1 - index));
-    const key = date.toISOString().slice(0, 10);
+  const chartDays = chartCalendarDays.map((day) => {
     return {
-      key,
-      label: date.toLocaleDateString("th-TH", {
+      key: day.key,
+      label: day.date.toLocaleDateString("th-TH", {
         day: "numeric",
         month: "short",
+        timeZone: "UTC",
       }),
       views: eventList.filter(
         (event) =>
           event.event_type === "view_product" &&
-          event.created_at.slice(0, 10) === key,
+          bangkokDateKey(new Date(event.created_at)) === day.key,
       ).length,
       purchases: eventList.filter(
         (event) =>
           event.event_type === "purchase" &&
-          event.created_at.slice(0, 10) === key,
+          bangkokDateKey(new Date(event.created_at)) === day.key,
       ).length,
     };
   });
@@ -127,17 +127,14 @@ export default async function AnalyticsPage({
         <p className="text-sm font-semibold text-ink">Conversion Funnel</p>
         <p className="mt-1 text-xs text-muted">จาก view สู่ซื้อ · {conversion.toFixed(2)}%</p>
 
-        <div className="mt-5 space-y-4">
-          <FunnelStep n="01" label="ดูสินค้า" value={views} of={views} />
-          <FunnelStep n="02" label="กดซื้อ" value={buyClicks} of={views} />
-          <FunnelStep
-            n="03"
-            label="เปิดชำระเงิน"
-            value={checkoutOpens}
-            of={views}
-          />
-          <FunnelStep n="04" label="ซื้อสำเร็จ" value={purchases} of={views} />
-        </div>
+        <ConversionFunnel
+          steps={[
+            { label: "ดูสินค้า", value: views },
+            { label: "กดซื้อ", value: buyClicks },
+            { label: "เปิดชำระเงิน", value: checkoutOpens },
+            { label: "ซื้อสำเร็จ", value: purchases },
+          ]}
+        />
 
         {views === 0 && (
           <p className="mt-6 text-center text-sm text-muted">
@@ -195,22 +192,6 @@ export default async function AnalyticsPage({
         Event dedup 30 นาทีต่อผู้เข้าชมและประเภท event · ระบบชำระเงินยังเป็น
         mockup ตามที่กำหนด
       </p>
-    </div>
-  );
-}
-
-function FunnelStep({ n, label, value, of }: { n: string; label: string; value: number; of: number }) {
-  const pct = of > 0 ? (value / of) * 100 : 0;
-  return (
-    <div>
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-muted">{n}</span>
-        <span className="font-medium text-ink">{label}</span>
-        <span className="font-bold text-ink">{value}</span>
-      </div>
-      <div className="mt-1.5 h-2 w-full rounded-full bg-paper-dim">
-        <div className="h-2 rounded-full bg-accent" style={{ width: `${pct}%` }} />
-      </div>
     </div>
   );
 }

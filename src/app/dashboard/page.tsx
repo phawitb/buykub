@@ -1,17 +1,16 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import {
+  bangkokDateKey,
+  nextBangkokMonday,
+  recentBangkokDays,
+  startOfBangkokMonth,
+} from "@/lib/bangkok-date";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { OverviewCards } from "./OverviewCards";
+import { SalesChart } from "./SalesChart";
 
 const WEEKDAYS_TH = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัส", "ศุกร์", "เสาร์"];
-
-function nextMonday(from: Date) {
-  const d = new Date(from);
-  const day = d.getDay();
-  const add = day === 1 ? 7 : ((8 - day) % 7 || 7);
-  d.setDate(d.getDate() + add);
-  return d;
-}
 
 export default async function DashboardOverview() {
   const supabase = await createClient();
@@ -43,13 +42,17 @@ export default async function DashboardOverview() {
   }
 
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const weekAgo = new Date(now.getTime() - 6 * 86400000);
-  weekAgo.setHours(0, 0, 0, 0);
+  const monthStart = startOfBangkokMonth(now);
+  const recentDays = recentBangkokDays(7, now);
+  const weekAgo = `${recentDays[0].key}T00:00:00+07:00`;
   const guaranteeCutoff = new Date(now.getTime() - 7 * 86400000).toISOString();
 
-  const [{ count: productCount }, { data: monthOrders }, { data: recentOrders }] =
-    await Promise.all([
+  const [
+    { count: productCount },
+    { data: monthOrders },
+    { data: weekOrders },
+    { data: recentOrders },
+  ] = await Promise.all([
       supabase
         .from("products")
         .select("id", { count: "exact", head: true })
@@ -59,6 +62,11 @@ export default async function DashboardOverview() {
         .select("price_cents, created_at")
         .eq("shop_id", shop.id)
         .gte("created_at", monthStart),
+      supabase
+        .from("orders")
+        .select("price_cents, created_at")
+        .eq("shop_id", shop.id)
+        .gte("created_at", weekAgo),
       supabase
         .from("orders")
         .select("id, price_cents, created_at, products(name)")
@@ -76,22 +84,16 @@ export default async function DashboardOverview() {
     .reduce((sum, o) => sum + o.price_cents, 0);
   const pendingCents = monthTotalCents - readyCents;
 
-  const dayTotals = Array.from({ length: 7 }, (_, i) => {
-    const dayStart = new Date(weekAgo);
-    dayStart.setDate(weekAgo.getDate() + i);
-    const dayEnd = new Date(dayStart.getTime() + 86400000);
-    const total = (monthOrders ?? [])
-      .filter((o) => {
-        const t = new Date(o.created_at);
-        return t >= dayStart && t < dayEnd;
-      })
+  const dayTotals = recentDays.map((day) => {
+    const total = (weekOrders ?? [])
+      .filter((order) => bangkokDateKey(new Date(order.created_at)) === day.key)
       .reduce((sum, o) => sum + o.price_cents, 0);
     return {
-      label: dayStart.toLocaleDateString("th-TH", { weekday: "short" }),
+      key: day.key,
+      label: day.label,
       total,
     };
   });
-  const maxDay = Math.max(1, ...dayTotals.map((d) => d.total));
 
   return (
     <div className="max-w-4xl">
@@ -110,6 +112,7 @@ export default async function DashboardOverview() {
                 day: "numeric",
                 month: "short",
                 year: "numeric",
+                timeZone: "Asia/Bangkok",
               })}
             </span>
           </p>
@@ -134,6 +137,7 @@ export default async function DashboardOverview() {
         monthLabel={now.toLocaleDateString("th-TH", {
           month: "short",
           year: "numeric",
+          timeZone: "Asia/Bangkok",
         })}
         grossCents={monthTotalCents}
         netCents={netIncomeCents}
@@ -145,7 +149,12 @@ export default async function DashboardOverview() {
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-ink">รายได้รอโอน</p>
           <span className="text-xs text-muted">
-            รอบถัดไป {WEEKDAYS_TH[1]} {nextMonday(now).toLocaleDateString("th-TH")}
+            รอบถัดไป {WEEKDAYS_TH[1]}{" "}
+            {nextBangkokMonday(now).toLocaleDateString("th-TH", {
+              day: "numeric",
+              month: "short",
+              timeZone: "UTC",
+            })}
           </span>
         </div>
 
@@ -170,19 +179,7 @@ export default async function DashboardOverview() {
 
       <div className="mt-6 rounded-2xl border border-line bg-paper p-6">
         <p className="text-sm font-semibold text-ink">ยอดขาย 7 วันล่าสุด</p>
-        <div className="mt-5 flex items-end justify-between gap-2">
-          {dayTotals.map((d) => (
-            <div key={d.label} className="flex flex-1 flex-col items-center gap-2">
-              <div className="flex h-24 w-full items-end">
-                <div
-                  className="w-full rounded-t bg-accent"
-                  style={{ height: `${Math.max(4, (d.total / maxDay) * 100)}%` }}
-                />
-              </div>
-              <span className="text-[10px] text-muted">{d.label}</span>
-            </div>
-          ))}
-        </div>
+        <SalesChart days={dayTotals} />
       </div>
 
       <div className="mt-6">
