@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ProductCard } from "@/features/storefront/ProductCard";
+import { ProductGrid } from "@/features/storefront/ProductGrid";
 import { formatTHB } from "@/features/products/format";
 import { createPublicClient } from "@/lib/supabase/public";
 import { BookButton } from "./BookButton";
@@ -115,15 +116,16 @@ export default async function ShopPage({
             </div>
 
             {productCards.length ? (
-              <div className="grid grid-cols-2 gap-x-3 gap-y-7 sm:gap-x-4">
+              <ProductGrid>
                 {productCards.map((product) => (
-                  <ProductCard
-                    key={product.slug}
-                    shopSlug={shop.slug}
-                    product={product}
-                  />
+                  <div key={product.slug} role="listitem">
+                    <ProductCard
+                      shopSlug={shop.slug}
+                      product={product}
+                    />
+                  </div>
                 ))}
-              </div>
+              </ProductGrid>
             ) : (
               <div className="rounded-2xl border border-dashed border-line py-12 text-center">
                 <p className="text-sm font-semibold text-ink">
