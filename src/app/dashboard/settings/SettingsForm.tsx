@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { CalendarConnection } from "./CalendarConnection";
 import { ShopImageUploader } from "./ShopImageUploader";
+import {
+  clearSettingsDraft,
+  readSettingsDraft,
+  writeSettingsDraft,
+  type SettingsDraft,
+} from "./settings-draft";
 
 type Shop = {
   id: string | null;
@@ -49,20 +55,75 @@ export function SettingsForm({
   saveSettings?: (payload: SettingsPayload) => Promise<void>;
 }) {
   const router = useRouter();
-  const [slug, setSlug] = useState(initial.slug);
-  const [name, setName] = useState(initial.name);
-  const [bio, setBio] = useState(initial.bio ?? "");
-  const [avatarUrl, setAvatarUrl] = useState(initial.avatar_url);
-  const [coverUrl, setCoverUrl] = useState(initial.cover_url);
-  const [accentColor, setAccentColor] = useState(initial.accent_color);
-  const [payoutMethod, setPayoutMethod] = useState(initial.payout_method);
-  const [promptpayId, setPromptpayId] = useState(initial.promptpay_id ?? "");
-  const [bankDetails, setBankDetails] = useState(initial.bank_details ?? "");
+  const [restoredDraft] = useState(() => readSettingsDraft(userId));
+  const serverDraft: SettingsDraft = {
+    slug: initial.slug,
+    name: initial.name,
+    bio: initial.bio ?? "",
+    avatarUrl: initial.avatar_url,
+    coverUrl: initial.cover_url,
+    accentColor: initial.accent_color,
+    payoutMethod: initial.payout_method,
+    promptpayId: initial.promptpay_id ?? "",
+    bankDetails: initial.bank_details ?? "",
+  };
+  const savedDraft = useRef(serverDraft);
+  const [slug, setSlug] = useState(restoredDraft?.slug ?? serverDraft.slug);
+  const [name, setName] = useState(restoredDraft?.name ?? serverDraft.name);
+  const [bio, setBio] = useState(restoredDraft?.bio ?? serverDraft.bio);
+  const [avatarUrl, setAvatarUrl] = useState(
+    restoredDraft?.avatarUrl ?? serverDraft.avatarUrl,
+  );
+  const [coverUrl, setCoverUrl] = useState(
+    restoredDraft?.coverUrl ?? serverDraft.coverUrl,
+  );
+  const [accentColor, setAccentColor] = useState(
+    restoredDraft?.accentColor ?? serverDraft.accentColor,
+  );
+  const [payoutMethod, setPayoutMethod] = useState(
+    restoredDraft?.payoutMethod ?? serverDraft.payoutMethod,
+  );
+  const [promptpayId, setPromptpayId] = useState(
+    restoredDraft?.promptpayId ?? serverDraft.promptpayId,
+  );
+  const [bankDetails, setBankDetails] = useState(
+    restoredDraft?.bankDetails ?? serverDraft.bankDetails,
+  );
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [coverUploading, setCoverUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    const currentDraft: SettingsDraft = {
+      slug,
+      name,
+      bio,
+      avatarUrl,
+      coverUrl,
+      accentColor,
+      payoutMethod,
+      promptpayId,
+      bankDetails,
+    };
+    if (JSON.stringify(currentDraft) === JSON.stringify(savedDraft.current)) {
+      clearSettingsDraft(userId);
+      return;
+    }
+    writeSettingsDraft(userId, currentDraft);
+  }, [
+    accentColor,
+    avatarUrl,
+    bankDetails,
+    bio,
+    coverUrl,
+    name,
+    payoutMethod,
+    promptpayId,
+    slug,
+    userId,
+  ]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -117,6 +178,20 @@ export function SettingsForm({
       return;
     }
     setSaving(false);
+    savedDraft.current = {
+      slug,
+      name,
+      bio,
+      avatarUrl,
+      coverUrl,
+      accentColor,
+      payoutMethod,
+      promptpayId:
+        payoutMethod === "promptpay" ? normalizedPromptPay : promptpayId,
+      bankDetails:
+        payoutMethod === "bank" ? bankDetails.trim() : bankDetails,
+    };
+    clearSettingsDraft(userId);
     setSaved(true);
     setTimeout(() => {
       setSaved(false);
