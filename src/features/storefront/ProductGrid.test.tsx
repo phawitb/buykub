@@ -13,5 +13,6 @@ describe("ProductGrid", () => {
     const grid = screen.getByRole("list", { name: "สินค้าดิจิทัล" });
     expect(grid).toHaveClass("grid-cols-1");
     expect(grid).toHaveClass("sm:grid-cols-2");
+    expect(grid).toHaveClass("sm:gap-x-[14px]");
   });
 });

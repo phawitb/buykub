@@ -14,7 +14,7 @@ export function ShareButton() {
   return (
     <button
       onClick={handleShare}
-      className="rounded-full border border-line bg-paper/90 px-4 py-1.5 text-xs font-medium text-ink-soft backdrop-blur hover:text-ink"
+      className="inline-flex items-center rounded-full border border-line bg-paper px-3.5 py-1.5 font-mono text-[11px] font-medium text-ink-soft shadow-[0_2px_8px_rgba(24,24,27,0.08)] transition hover:border-ink hover:text-ink"
     >
       {copied ? "คัดลอกแล้ว ✓" : "แชร์ร้าน"}
     </button>

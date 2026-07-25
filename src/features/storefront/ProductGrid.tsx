@@ -5,7 +5,7 @@ export function ProductGrid({ children }: { children: ReactNode }) {
     <div
       role="list"
       aria-label="สินค้าดิจิทัล"
-      className="grid grid-cols-1 gap-x-3 gap-y-7 sm:grid-cols-2 sm:gap-x-4"
+      className="grid grid-cols-1 gap-x-3 gap-y-7 sm:grid-cols-2 sm:gap-x-[14px]"
     >
       {children}
     </div>

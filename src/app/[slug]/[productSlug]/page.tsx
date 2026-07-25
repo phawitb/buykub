@@ -6,6 +6,7 @@ import { discountPercent, formatTHB } from "@/features/products/format";
 import type { ProductFAQ, ProductImage } from "@/features/products/model";
 import { ProductViewTracker } from "@/features/analytics/ProductViewTracker";
 import { ProductGallery } from "@/features/storefront/ProductGallery";
+import { ProductDetailShell } from "@/features/storefront/ProductDetailShell";
 import { createPublicClient } from "@/lib/supabase/public";
 import { ProductPurchase } from "./ProductPurchase";
 
@@ -101,19 +102,18 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
   );
 
   return (
-    <main className="min-h-screen bg-[#faf9f7] py-0 sm:py-10">
+    <ProductDetailShell>
       <ProductViewTracker productId={product.id} shopId={shop.id} />
-      <article className="relative mx-auto max-w-2xl overflow-hidden bg-paper sm:rounded-[28px] sm:shadow-[0_20px_70px_rgba(24,24,27,0.08)]">
-        <Link
+      <Link
           href={`/${shop.slug}`}
           className="absolute left-4 top-4 z-10 rounded-full bg-paper/90 px-4 py-2 text-xs font-semibold text-ink shadow-sm backdrop-blur transition hover:bg-paper"
         >
           ‹ {shop.name}
-        </Link>
+      </Link>
 
-        <ProductGallery images={images} productName={product.name} />
+      <ProductGallery images={images} productName={product.name} />
 
-        <div className="px-5 pb-14 pt-6 sm:px-6">
+      <div className="px-[22px] pb-14 pt-6">
           <span className="inline-flex rounded-full bg-ink px-3 py-1.5 text-[10px] font-semibold text-paper">
             {product.category}
           </span>
@@ -224,8 +224,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
               ดูสินค้าทั้งหมด →
             </Link>
           </footer>
-        </div>
-      </article>
-    </main>
+      </div>
+    </ProductDetailShell>
   );
 }

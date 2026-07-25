@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ProductCard } from "@/features/storefront/ProductCard";
 import { ProductGrid } from "@/features/storefront/ProductGrid";
+import { ShopShell } from "@/features/storefront/ShopShell";
 import { formatTHB } from "@/features/products/format";
 import { createPublicClient } from "@/lib/supabase/public";
 import { BookButton } from "./BookButton";
@@ -57,8 +58,7 @@ export default async function ShopPage({
   });
 
   return (
-    <main className="min-h-screen bg-[#faf9f7] py-0 sm:py-10">
-      <div className="mx-auto min-h-screen max-w-2xl bg-paper sm:min-h-0 sm:overflow-hidden sm:rounded-[28px] sm:shadow-[0_20px_70px_rgba(24,24,27,0.08)]">
+    <ShopShell>
         <div
           className="relative aspect-[16/5] w-full bg-paper-dim"
           style={{
@@ -79,9 +79,9 @@ export default async function ShopPage({
           )}
         </div>
 
-        <div className="px-5 pb-14 sm:px-6">
-          <div className="-mt-9 flex items-start justify-between">
-            <div className="relative flex h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-full border-4 border-paper bg-ink text-2xl font-bold text-paper shadow-sm">
+        <div className="px-[22px] pb-14">
+          <div className="-mt-10 flex h-20 items-end justify-between">
+            <div className="relative flex size-20 items-center justify-center overflow-hidden rounded-full bg-ink text-2xl font-bold text-paper">
               {shop.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -93,7 +93,7 @@ export default async function ShopPage({
                 shop.name.slice(0, 1).toUpperCase()
               )}
             </div>
-            <div className="mt-5">
+            <div className="mb-[-8px]">
               <ShareButton />
             </div>
           </div>
@@ -190,8 +190,7 @@ export default async function ShopPage({
             </Link>
           </p>
         </div>
-      </div>
-    </main>
+    </ShopShell>
   );
 }
 
