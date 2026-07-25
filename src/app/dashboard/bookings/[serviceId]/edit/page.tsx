@@ -29,13 +29,13 @@ export default async function EditServicePage({
   if (!service) notFound();
 
   return (
-    <div className="max-w-2xl">
+    <div className="mx-auto max-w-2xl pt-3">
       <p className="text-xs text-muted">
         <Link href="/dashboard/bookings" className="hover:text-ink">จองบริการ</Link>
         {" / แก้ไขบริการ"}
       </p>
-      <h1 className="mt-1 text-xl font-bold text-ink">แก้ไขบริการจอง</h1>
-      <div className="mt-8">
+      <h1 className="mt-7 text-2xl font-bold text-ink">แก้ไขบริการจอง</h1>
+      <div className="mt-6">
         <ServiceNewForm
           shopId={shop.id}
           userId={user.id}

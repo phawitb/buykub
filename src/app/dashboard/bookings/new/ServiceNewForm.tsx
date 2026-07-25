@@ -8,6 +8,7 @@ import {
   type UploadRequest,
   type UploadResult,
 } from "@/lib/supabase/upload";
+import { ShopImageUploader } from "@/app/dashboard/settings/ShopImageUploader";
 
 export type ServiceFormValues = {
   name: string;
@@ -83,38 +84,11 @@ export function ServiceNewForm({
   const [buffer, setBuffer] = useState(availability?.buffer_minutes ?? 15);
   const [advanceDays, setAdvanceDays] = useState(availability?.advance_days ?? 30);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   function toggleDay(d: number) {
     setDays((ds) => (ds.includes(d) ? ds.filter((x) => x !== d) : [...ds, d]));
-  }
-
-  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setUploadProgress(0);
-    setUploadError(null);
-    try {
-      const result = await uploadAsset({
-        userId,
-        file,
-        destination: "product-image",
-        signal: new AbortController().signal,
-        onProgress: (percent) => setUploadProgress(percent),
-      });
-      setImageUrl(result.publicUrl);
-      setImagePath(result.path);
-      setUploadProgress(100);
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "อัปโหลดรูปไม่สำเร็จ");
-    } finally {
-      setUploading(false);
-      e.target.value = "";
-    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -149,8 +123,8 @@ export function ServiceNewForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      <section className="rounded-2xl border border-line bg-paper-dim p-6">
-        <h2 className="text-sm font-semibold text-ink">ข้อมูลบริการ</h2>
+      <section className="border-b border-line pb-10">
+        <h2 className="text-xl font-bold text-ink">ข้อมูลบริการ</h2>
 
         <div className="mt-4 space-y-4">
           <div>
@@ -164,36 +138,41 @@ export function ServiceNewForm({
             />
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-ink-soft">ราคา (บาท) *</label>
-            <input
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              required
-              type="number"
-              min="0"
-              placeholder="499"
-              className="w-full rounded-lg border border-line bg-paper px-3.5 py-2.5 text-sm text-ink outline-none focus:border-ink"
-            />
-          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-ink-soft">ราคา (บาท) *</label>
+              <div className="flex items-center rounded-lg border border-line bg-paper px-3.5 focus-within:border-ink">
+                <span className="text-sm text-muted">฿</span>
+                <input
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  required
+                  type="number"
+                  min="0"
+                  placeholder="499"
+                  className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-sm text-ink outline-none"
+                />
+              </div>
+            </div>
 
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-ink-soft">ระยะเวลา *</label>
-            <div className="flex flex-wrap gap-2">
-              {DURATIONS.map((d) => (
-                <button
-                  key={d.value}
-                  type="button"
-                  onClick={() => setDuration(d.value)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
-                    duration === d.value
-                      ? "border-accent bg-accent text-paper"
-                      : "border-line text-ink-soft hover:text-ink"
-                  }`}
-                >
-                  {d.label}
-                </button>
-              ))}
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-ink-soft">ระยะเวลา *</label>
+              <div className="flex flex-wrap gap-2">
+                {DURATIONS.map((d) => (
+                  <button
+                    key={d.value}
+                    type="button"
+                    onClick={() => setDuration(d.value)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+                      duration === d.value
+                        ? "border-accent bg-accent text-paper"
+                        : "border-line text-ink-soft hover:text-ink"
+                    }`}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -208,44 +187,21 @@ export function ServiceNewForm({
             />
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-ink-soft">รูปบริการ</label>
-            <label className="relative flex min-h-36 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border border-dashed border-line bg-paper text-center text-xs text-muted hover:border-accent">
-              {imageUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />
-              )}
-              <span className="relative font-medium">
-                {imageUrl ? "อัปโหลดแล้ว ✓ (คลิกเพื่อเปลี่ยน)" : "ลากไฟล์มาวางที่นี่ หรือ คลิกเพื่อเลือก"}
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                aria-label="รูปบริการ"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-            </label>
-            {uploading && (
-              <div
-                className="mt-2"
-                role="progressbar"
-                aria-label="กำลังอัปโหลดรูปบริการ"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={uploadProgress}
-              >
-                <div className="flex justify-between text-xs text-muted">
-                  <span>กำลังอัปโหลดรูปบริการ</span>
-                  <span>{uploadProgress}%</span>
-                </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line">
-                  <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${uploadProgress}%` }} />
-                </div>
-              </div>
-            )}
-            {uploadError && <p className="mt-2 text-xs text-red-600">{uploadError}</p>}
-          </div>
+          <ShopImageUploader
+            kind="service"
+            userId={userId}
+            value={imageUrl}
+            upload={uploadAsset}
+            onBusyChange={setUploading}
+            onUploaded={(url, path) => {
+              setImageUrl(url);
+              setImagePath(path);
+            }}
+          />
+          <ul className="-mt-2 space-y-1 text-xs text-muted">
+            <li>ⓘ ใช้รูปแนวนอน แสดงบรรยากาศการให้บริการ</li>
+            <li>ⓘ ไม่จำเป็น — เว้นไว้ก็ได้ถ้ายังไม่พร้อม</li>
+          </ul>
 
           <div>
             <label className="mb-1.5 block text-xs font-medium text-ink-soft">
@@ -262,8 +218,8 @@ export function ServiceNewForm({
         </div>
       </section>
 
-      <section className="rounded-2xl border border-line bg-paper-dim p-6">
-        <h2 className="text-sm font-semibold text-ink">ตั้งค่าเวลาว่าง</h2>
+      <section className="border-b border-line pb-10">
+        <h2 className="text-xl font-bold text-ink">ตั้งค่าเวลาว่าง</h2>
 
         <div className="mt-4 space-y-4">
           <div>
@@ -323,7 +279,7 @@ export function ServiceNewForm({
                 เวลาพักระหว่างรอบ
               </label>
               <div className="flex flex-wrap gap-2">
-                {[{ label: "ไม่พัก", value: 0 }, { label: "15 นาที", value: 15 }, { label: "30 นาที", value: 30 }, { label: "45 นาที", value: 45 }].map((option) => (
+                {[{ label: "ไม่พัก", value: 0 }, { label: "15 นาที", value: 15 }, { label: "30 นาที", value: 30 }].map((option) => (
                   <button key={option.value} type="button" onClick={() => setBuffer(option.value)}
                     className={`rounded-full border px-3 py-1.5 text-xs font-medium ${buffer === option.value ? "border-ink bg-ink text-paper" : "border-line text-ink-soft hover:text-ink"}`}>
                     {option.label}
@@ -333,34 +289,37 @@ export function ServiceNewForm({
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-ink-soft">
-                จองล่วงหน้าได้ (วัน)
+                จองล่วงหน้าได้
               </label>
-              <input
-                value={advanceDays}
-                onChange={(e) => setAdvanceDays(Number(e.target.value))}
-                type="number"
-                min="1"
-                className="w-full rounded-lg border border-line bg-paper px-3.5 py-2.5 text-sm text-ink outline-none focus:border-ink"
-              />
+              <div className="flex items-center rounded-lg border border-line bg-paper px-3.5 focus-within:border-ink">
+                <input
+                  value={advanceDays}
+                  onChange={(e) => setAdvanceDays(Number(e.target.value))}
+                  type="number"
+                  min="1"
+                  className="min-w-0 flex-1 bg-transparent py-2.5 text-sm text-ink outline-none"
+                />
+                <span className="text-sm text-muted">วัน</span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={saving || uploading}
-          className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-paper transition hover:bg-accent-hover disabled:opacity-60"
-        >
-          {saving ? "กำลังบันทึก..." : serviceId ? "บันทึกการแก้ไข" : "สร้างบริการจอง"}
-        </button>
+      <div className="flex items-center justify-end gap-3">
         <button
           type="button"
           onClick={() => router.push("/dashboard/bookings")}
-          className="text-sm text-muted hover:text-ink"
+          className="secondary-button"
         >
           ยกเลิก
+        </button>
+        <button
+          type="submit"
+          disabled={saving || uploading}
+          className="primary-button"
+        >
+          {saving ? "กำลังบันทึก..." : serviceId ? "บันทึกการแก้ไข" : "สร้างบริการจอง"}
         </button>
       </div>
       {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}

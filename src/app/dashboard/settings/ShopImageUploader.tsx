@@ -7,7 +7,7 @@ import {
   type UploadResult,
 } from "@/lib/supabase/upload";
 
-type Kind = "avatar" | "cover";
+type Kind = "avatar" | "cover" | "service";
 type Upload = (request: UploadRequest) => Promise<UploadResult>;
 
 const CONFIG = {
@@ -21,6 +21,12 @@ const CONFIG = {
     label: "รูปปก",
     inputLabel: "เลือกรูปปก",
     hint: "แนะนำ 1600 × 500 px · 3:1 แนวนอน · สูงสุด 5 MB",
+    maxBytes: 5 * 1024 * 1024,
+  },
+  service: {
+    label: "รูปบริการ",
+    inputLabel: "รูปบริการ",
+    hint: "แนะนำ 1200 × 480 px · 2.5:1 แนวนอน · สูงสุด 5 MB",
     maxBytes: 5 * 1024 * 1024,
   },
 } satisfies Record<
@@ -41,7 +47,7 @@ export function ShopImageUploader({
   kind: Kind;
   userId: string;
   value: string | null;
-  onUploaded: (url: string) => void;
+  onUploaded: (url: string, path: string) => void;
   onBusyChange?: (busy: boolean) => void;
   upload?: Upload;
 }) {
@@ -103,7 +109,7 @@ export function ShopImageUploader({
       if (!result.publicUrl) throw new Error("ไม่พบ URL ของรูปที่อัปโหลด");
       setProgress(100);
       setStatus("success");
-      onUploaded(result.publicUrl);
+      onUploaded(result.publicUrl, result.path);
     } catch (uploadError) {
       if (
         uploadError instanceof DOMException &&
@@ -205,7 +211,11 @@ export function ShopImageUploader({
             </div>
             <div
               role="progressbar"
-              aria-label={`ความคืบหน้าการอัปโหลด${config.label}`}
+              aria-label={
+                kind === "service"
+                  ? "กำลังอัปโหลดรูปบริการ"
+                  : `ความคืบหน้าการอัปโหลด${config.label}`
+              }
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={progress}
