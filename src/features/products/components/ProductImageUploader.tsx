@@ -38,12 +38,17 @@ export function ProductImageUploader({
   const [tasks, setTasks] = useState<ImageTask[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const controllers = useRef(new Map<string, AbortController>());
+  const savedImagesRef = useRef(value);
 
   const uploading = tasks.some((task) => task.status === "uploading");
 
   useEffect(() => {
     onUploadingChange?.(uploading);
   }, [onUploadingChange, uploading]);
+
+  useEffect(() => {
+    savedImagesRef.current = value;
+  }, [value]);
 
   useEffect(
     () => () => {
@@ -87,14 +92,11 @@ export function ProductImageUploader({
         publicUrl: result.publicUrl!,
         alt: task.file.name.replace(/\.[^.]+$/, ""),
       };
-      setTasks((current) =>
-        current.map((item) =>
-          item.id === task.id
-            ? { ...item, status: "success", percent: 100, result }
-            : item,
-        ),
-      );
-      onChange([...value, productImage]);
+      const nextImages = [...savedImagesRef.current, productImage];
+      savedImagesRef.current = nextImages;
+      onChange(nextImages);
+      URL.revokeObjectURL(task.previewUrl);
+      setTasks((current) => current.filter((item) => item.id !== task.id));
     } catch (uploadError) {
       const canceled =
         uploadError instanceof DOMException &&
@@ -144,7 +146,9 @@ export function ProductImageUploader({
   }
 
   function removeSaved(image: ProductImage) {
-    onChange(value.filter((item) => item.id !== image.id));
+    const nextImages = value.filter((item) => item.id !== image.id);
+    savedImagesRef.current = nextImages;
+    onChange(nextImages);
   }
 
   function moveSaved(index: number, direction: -1 | 1) {
@@ -155,6 +159,7 @@ export function ProductImageUploader({
       reordered[target],
       reordered[index],
     ];
+    savedImagesRef.current = reordered;
     onChange(reordered);
   }
 

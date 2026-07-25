@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ProductEditorValue } from "@/features/products/model";
 import { ProductEditor } from "@/features/products/components/ProductEditor";
 import { ProductFileUploader } from "@/features/products/components/ProductFileUploader";
+import { ProductImageUploader } from "@/features/products/components/ProductImageUploader";
 import type { UploadRequest, UploadResult } from "@/lib/supabase/upload";
 
 vi.mock("next/navigation", () => ({
@@ -90,5 +91,46 @@ describe("ProductFileUploader", () => {
     expect(screen.getByText("42%")).toBeInTheDocument();
 
     finishUpload?.({ path: "user-123/file.zip", publicUrl: null });
+  });
+});
+
+describe("ProductImageUploader", () => {
+  it("preserves every successful image when multiple uploads finish concurrently", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const uploadAsset = vi.fn(async (request: UploadRequest) => ({
+      path: `user-123/${request.file.name}`,
+      publicUrl: `https://example.com/${request.file.name}`,
+    }));
+    vi.spyOn(URL, "createObjectURL").mockImplementation(
+      (file) => `blob:${(file as File).name}`,
+    );
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+
+    render(
+      <ProductImageUploader
+        userId="user-123"
+        value={[]}
+        onChange={onChange}
+        uploadAsset={uploadAsset}
+      />,
+    );
+
+    await user.upload(screen.getByLabelText("เลือกรูปสินค้า"), [
+      new File(["one"], "one.webp", { type: "image/webp" }),
+      new File(["two"], "two.webp", { type: "image/webp" }),
+    ]);
+
+    const latestImages = await vi.waitFor(() => {
+      const calls = onChange.mock.calls;
+      expect(calls.length).toBeGreaterThan(0);
+      const latest = calls[calls.length - 1][0];
+      expect(latest).toHaveLength(2);
+      return latest;
+    });
+    expect(latestImages.map((image: { publicUrl: string }) => image.publicUrl)).toEqual([
+      "https://example.com/one.webp",
+      "https://example.com/two.webp",
+    ]);
   });
 });

@@ -35,6 +35,29 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-thai-sans), Arial, Helvetica, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+a,
+label[for],
+label:has(input[type="file"]) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:not(:disabled),
+a {
+  cursor: pointer;
+}
+
+:where(button, a, input, textarea, [contenteditable="true"]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--ink);
 }
 
 @layer components {
@@ -176,5 +199,16 @@ body {
 
   .product-prose iframe {
     @apply my-6 aspect-video w-full rounded-2xl;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
