@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { CopyLinkButton } from "./CopyLinkButton";
+import { OverviewCards } from "./OverviewCards";
 
 const WEEKDAYS_TH = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัส", "ศุกร์", "เสาร์"];
 
@@ -101,7 +102,16 @@ export default async function DashboardOverview() {
             สวัสดี, {user?.user_metadata?.full_name ?? shop.name}
           </h1>
           <p className="mt-1 text-sm text-muted">
-            ภาพรวมร้านของคุณวันนี้
+            ภาพรวมร้านของคุณวันนี้{" "}
+            <span className="hidden sm:inline">
+              ·{" "}
+              {now.toLocaleDateString("th-TH", {
+                weekday: "long",
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+            </span>
           </p>
           </div>
         <a
@@ -120,31 +130,16 @@ export default async function DashboardOverview() {
         </div>
       </div>
 
-      <div className="mt-8 rounded-2xl border border-line bg-paper-dim p-6">
-        <p className="text-xs text-muted">
-          ยอดขายเดือนนี้ · {now.toLocaleDateString("th-TH", { month: "long", year: "numeric" })}
-        </p>
-        <p className="mt-1 text-3xl font-bold text-ink">
-          ฿{(monthTotalCents / 100).toLocaleString("th-TH")}
-        </p>
-
-        <div className="mt-6 grid grid-cols-3 divide-x divide-line border-t border-line pt-5">
-          <div className="pr-3">
-            <p className="text-xs text-muted">รายได้สุทธิ</p>
-            <p className="mt-1 text-lg font-bold text-emerald-600">
-              ฿{(netIncomeCents / 100).toLocaleString("th-TH")}
-            </p>
-          </div>
-          <div className="px-3">
-            <p className="text-xs text-muted">ออเดอร์</p>
-            <p className="mt-1 text-lg font-bold text-ink">{orderCount}</p>
-          </div>
-          <div className="pl-3">
-            <p className="text-xs text-muted">สินค้า</p>
-            <p className="mt-1 text-lg font-bold text-ink">{productCount ?? 0}</p>
-          </div>
-        </div>
-      </div>
+      <OverviewCards
+        monthLabel={now.toLocaleDateString("th-TH", {
+          month: "short",
+          year: "numeric",
+        })}
+        grossCents={monthTotalCents}
+        netCents={netIncomeCents}
+        orderCount={orderCount}
+        productCount={productCount ?? 0}
+      />
 
       <div className="mt-6 rounded-2xl border border-line bg-paper p-6">
         <div className="flex items-center justify-between">
