@@ -1,12 +1,14 @@
 import Link from "next/link";
+import { EmailLoginForm } from "./EmailLoginForm";
 import { GoogleButton } from "./GoogleButton";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; reason?: string }>;
 }) {
-  const { next, error } = await searchParams;
+  const { next, error, reason } = await searchParams;
+  const destination = next ?? "/dashboard";
 
   return (
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
@@ -36,21 +38,39 @@ export default async function LoginPage({
         <div className="w-full max-w-sm rounded-2xl border border-line bg-paper p-8 shadow-sm">
           <h2 className="text-xl font-bold text-ink">เริ่มต้นใช้ Framelink</h2>
           <p className="mt-1.5 text-sm text-muted">
-            เข้าสู่ระบบด้วยบัญชี Google เพื่อสร้างหรือจัดการร้านของคุณ
+            ใส่อีเมลเพื่อสร้างร้านหรือเข้าสู่ระบบ
           </p>
 
           {error && (
             <p className="mt-4 rounded-lg border border-line bg-paper-dim px-3 py-2 text-xs text-ink-soft">
-              เข้าสู่ระบบไม่สำเร็จ ลองอีกครั้ง
+              {reason === "exchange"
+                ? "ลิงก์เข้าสู่ระบบหมดอายุหรือถูกใช้แล้ว กรุณาเริ่มเข้าสู่ระบบอีกครั้ง"
+                : "เข้าสู่ระบบไม่สำเร็จ กรุณาลองอีกครั้ง"}
             </p>
           )}
 
           <div className="mt-6">
-            <GoogleButton next={next ?? "/dashboard"} />
+            <EmailLoginForm next={destination} />
           </div>
 
-          <p className="mt-6 text-center text-xs text-muted">
-            การเข้าสู่ระบบถือว่ายอมรับข้อกำหนดการใช้งานของเรา
+          <div className="my-5 flex items-center gap-3 text-xs text-muted">
+            <span className="h-px flex-1 bg-line" />
+            <span>หรือ</span>
+            <span className="h-px flex-1 bg-line" />
+          </div>
+
+          <div>
+            <GoogleButton next={destination} />
+          </div>
+
+          <p className="mt-5 text-center text-xs text-muted">
+            ยังไม่มีบัญชี?{" "}
+            <Link
+              href={`/login?next=${encodeURIComponent("/dashboard/settings")}`}
+              className="font-semibold text-ink underline underline-offset-4"
+            >
+              สร้างร้านฟรี
+            </Link>
           </p>
         </div>
       </div>
