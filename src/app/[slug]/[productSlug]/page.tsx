@@ -5,14 +5,14 @@ import { notFound } from "next/navigation";
 import { discountPercent, formatTHB } from "@/features/products/format";
 import type { ProductFAQ, ProductImage } from "@/features/products/model";
 import { ProductGallery } from "@/features/storefront/ProductGallery";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { ProductPurchase } from "./ProductPurchase";
 
 type Params = Promise<{ slug: string; productSlug: string }>;
 
 async function loadProduct(params: Params) {
   const { slug, productSlug } = await params;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data: shop } = await supabase
     .from("shops")
     .select("id, slug, name, avatar_url, published")

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ProductCard } from "@/features/storefront/ProductCard";
 import { formatTHB } from "@/features/products/format";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { BookButton } from "./BookButton";
 import { ShareButton } from "./ShareButton";
 
@@ -11,7 +11,7 @@ export default async function ShopPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const { data: shop } = await supabase
     .from("shops")
