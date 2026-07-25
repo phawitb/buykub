@@ -25,11 +25,13 @@ export default async function Home() {
       }
     : null;
 
+  const ctaHref = user ? "/dashboard" : "/login";
+
   return (
     <div className="flex flex-1 flex-col">
       <Navbar user={navUser} />
       <main className="flex-1">
-        <Hero />
+        <Hero ctaHref={ctaHref} />
         <AudienceMarquee />
         <HowItWorks />
         <Features />
@@ -38,7 +40,7 @@ export default async function Home() {
         <Testimonial />
         <Pricing />
         <FAQ />
-        <ClosingCTA />
+        <ClosingCTA ctaHref={ctaHref} />
       </main>
       <Footer />
     </div>

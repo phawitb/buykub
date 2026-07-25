@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export function ClosingCTA() {
+export function ClosingCTA({ ctaHref = "/login" }: { ctaHref?: string }) {
   return (
     <section className="border-t border-line py-24">
       <div className="mx-auto max-w-3xl px-6 text-center">
@@ -11,7 +11,7 @@ export function ClosingCTA() {
           สมัครฟรี ตั้งร้านในไม่กี่นาที แปะลิงก์ใน bio แล้วเริ่มมีรายได้
         </p>
         <Link
-          href="/login"
+          href={ctaHref}
           className="mt-8 inline-block rounded-full bg-ink px-8 py-3.5 text-sm font-semibold text-paper transition hover:opacity-85"
         >
           เปิดร้านเลย

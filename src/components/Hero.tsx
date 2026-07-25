@@ -6,7 +6,7 @@ const stats = [
   { value: "ทุกสัปดาห์", label: "รอบโอนเงิน ตรงเวลาทุกครั้ง" },
 ];
 
-export function Hero() {
+export function Hero({ ctaHref = "/login" }: { ctaHref?: string }) {
   return (
     <section className="mx-auto grid max-w-6xl grid-cols-1 gap-16 px-6 pb-24 pt-16 lg:grid-cols-2 lg:items-center lg:pt-24">
       <div>
@@ -25,7 +25,7 @@ export function Hero() {
 
         <div className="mt-8 flex flex-wrap items-center gap-4">
           <Link
-            href="/login"
+            href={ctaHref}
             className="rounded-full bg-ink px-7 py-3.5 text-sm font-semibold text-paper transition hover:opacity-85"
           >
             สร้างร้านฟรี →
