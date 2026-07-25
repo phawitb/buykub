@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  trackStorefrontEvent,
+  type StorefrontEventType,
+} from "@/features/analytics/tracking";
 import { formatTHB } from "@/features/products/format";
-import { createClient } from "@/lib/supabase/client";
+import { createPublicClient } from "@/lib/supabase/public";
 
 export type MockCheckoutValue = {
   buyerName: string;
@@ -20,9 +24,10 @@ type Product = {
 type Props = {
   product: Product;
   createOrder?: (value: MockCheckoutValue) => Promise<void>;
+  trackEvent?: (event: StorefrontEventType) => Promise<void>;
 };
 
-export function MockCheckout({ product, createOrder }: Props) {
+export function MockCheckout({ product, createOrder, trackEvent }: Props) {
   const [open, setOpen] = useState(false);
   const [buyerName, setBuyerName] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
@@ -73,7 +78,7 @@ export function MockCheckout({ product, createOrder }: Props) {
   }
 
   async function defaultCreateOrder(value: MockCheckoutValue) {
-    const supabase = createClient();
+    const supabase = createPublicClient();
     const { error } = await supabase.from("orders").insert({
       shop_id: product.shopId,
       product_id: product.id,
@@ -85,6 +90,23 @@ export function MockCheckout({ product, createOrder }: Props) {
       mock: true,
     });
     if (error) throw new Error(error.message);
+  }
+
+  function recordEvent(event: StorefrontEventType) {
+    const operation = trackEvent
+      ? trackEvent(event)
+      : trackStorefrontEvent({
+          event,
+          productId: product.id,
+          shopId: product.shopId,
+        });
+    void operation.catch(() => undefined);
+  }
+
+  function openCheckout() {
+    recordEvent("click_buy");
+    setOpen(true);
+    recordEvent("open_checkout");
   }
 
   async function submit(event: React.FormEvent) {
@@ -108,6 +130,7 @@ export function MockCheckout({ product, createOrder }: Props) {
         buyerEmail: email,
         paymentMethod,
       });
+      recordEvent("purchase");
       setDone(true);
     } catch (error) {
       setSubmitError(
@@ -125,7 +148,7 @@ export function MockCheckout({ product, createOrder }: Props) {
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openCheckout}
         className="w-full rounded-2xl bg-accent px-6 py-4 text-base font-bold text-paper shadow-[0_10px_25px_color-mix(in_srgb,var(--accent)_22%,transparent)] transition hover:bg-accent-hover"
       >
         ซื้อเลย {formatTHB(product.priceCents)}

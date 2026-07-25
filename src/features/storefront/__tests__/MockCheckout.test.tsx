@@ -53,6 +53,31 @@ describe("MockCheckout", () => {
     });
   });
 
+  it("records the buy, checkout, and purchase funnel steps", async () => {
+    const user = userEvent.setup();
+    const trackEvent = vi.fn().mockResolvedValue(undefined);
+    render(
+      <MockCheckout
+        product={product}
+        createOrder={vi.fn().mockResolvedValue(undefined)}
+        trackEvent={trackEvent}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "ซื้อเลย ฿389" }));
+    await user.type(screen.getByLabelText("ชื่อผู้ซื้อ"), "Ada");
+    await user.type(screen.getByLabelText("อีเมล"), "ada@example.com");
+    await user.click(
+      screen.getByRole("button", { name: "ยืนยันคำสั่งซื้อทดลอง" }),
+    );
+
+    expect(trackEvent.mock.calls.map(([event]) => event)).toEqual([
+      "click_buy",
+      "open_checkout",
+      "purchase",
+    ]);
+  });
+
   it("keeps keyboard focus inside the dialog and restores it on Escape", async () => {
     const user = userEvent.setup();
     render(<MockCheckout product={product} createOrder={vi.fn()} />);

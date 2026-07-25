@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { discountPercent, formatTHB } from "@/features/products/format";
 import type { ProductFAQ, ProductImage } from "@/features/products/model";
+import { ProductViewTracker } from "@/features/analytics/ProductViewTracker";
 import { ProductGallery } from "@/features/storefront/ProductGallery";
 import { createPublicClient } from "@/lib/supabase/public";
 import { ProductPurchase } from "./ProductPurchase";
@@ -101,6 +102,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
 
   return (
     <main className="min-h-screen bg-[#faf9f7] py-0 sm:py-10">
+      <ProductViewTracker productId={product.id} shopId={shop.id} />
       <article className="relative mx-auto max-w-2xl overflow-hidden bg-paper sm:rounded-[28px] sm:shadow-[0_20px_70px_rgba(24,24,27,0.08)]">
         <Link
           href={`/${shop.slug}`}
