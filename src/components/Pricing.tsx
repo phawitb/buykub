@@ -86,15 +86,20 @@ export function Pricing() {
                 ))}
               </ul>
 
-              <button
+              <Link
+                href={
+                  p.name === "FREE"
+                    ? "/login?next=%2Fdashboard%2Fsettings"
+                    : "/login?next=%2Fdashboard%2Fsettings%2Fupgrade"
+                }
                 className={`mt-7 w-full rounded-full px-5 py-3 text-sm font-semibold transition ${
                   p.highlight
                     ? "bg-accent text-paper hover:bg-accent-hover"
                     : "bg-ink text-paper hover:opacity-85"
-                }`}
+                } block text-center`}
               >
                 {p.cta}
-              </button>
+              </Link>
             </div>
           ))}
         </div>
@@ -102,3 +107,4 @@ export function Pricing() {
     </section>
   );
 }
+import Link from "next/link";
