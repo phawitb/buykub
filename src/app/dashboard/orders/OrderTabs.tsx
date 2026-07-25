@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 type Order = {
   id: string;
+  buyer_name: string | null;
+  buyer_email: string | null;
+  payment_method: string | null;
+  mock: boolean;
   price_cents: number;
   status: string;
   created_at: string;
@@ -39,9 +44,10 @@ export function OrderTabs({ orders }: { orders: Order[] }) {
 
       <div className="mt-4 space-y-2">
         {filtered.map((o) => (
-          <div
+          <Link
             key={o.id}
-            className="flex items-center justify-between rounded-xl border border-line bg-paper p-4 text-sm"
+            href={`/dashboard/orders/${o.id}`}
+            className="flex items-center justify-between rounded-xl border border-line bg-paper p-4 text-sm transition hover:border-ink/25"
           >
             <div>
               <p className="font-medium text-ink">{o.products?.name ?? "สินค้า"}</p>
@@ -53,7 +59,7 @@ export function OrderTabs({ orders }: { orders: Order[] }) {
             <span className="font-semibold text-ink">
               +฿{(o.price_cents / 100).toLocaleString("th-TH")}
             </span>
-          </div>
+          </Link>
         ))}
 
         {filtered.length === 0 && (

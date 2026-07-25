@@ -16,13 +16,17 @@ export default async function OrdersPage() {
   const { data: orders } = shop
     ? await supabase
         .from("orders")
-        .select("id, price_cents, status, created_at, products(name)")
+        .select("id, buyer_name, buyer_email, payment_method, mock, price_cents, status, created_at, products(name)")
         .eq("shop_id", shop.id)
         .order("created_at", { ascending: false })
     : { data: [] };
 
   const list = (orders ?? []) as unknown as {
     id: string;
+    buyer_name: string | null;
+    buyer_email: string | null;
+    payment_method: string | null;
+    mock: boolean;
     price_cents: number;
     status: string;
     created_at: string;

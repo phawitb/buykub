@@ -251,6 +251,14 @@ create policy "owners can read their orders" on orders
     exists (select 1 from shops where shops.id = orders.shop_id and shops.owner_id = auth.uid())
   );
 
+drop policy if exists "owners can update their orders" on orders;
+create policy "owners can update their orders" on orders
+  for update using (
+    exists (select 1 from shops where shops.id = orders.shop_id and shops.owner_id = auth.uid())
+  ) with check (
+    exists (select 1 from shops where shops.id = orders.shop_id and shops.owner_id = auth.uid())
+  );
+
 drop policy if exists "anyone can create a demo booking" on bookings;
 create policy "anyone can create a demo booking" on bookings
   for insert with check (true);
