@@ -5,6 +5,8 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/dashboard";
+  const safeNext =
+    next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
   const calendar = searchParams.get("calendar") === "1";
 
   if (code) {
@@ -17,6 +19,22 @@ export async function GET(request: Request) {
       } = await supabase.auth.getUser();
 
       if (user) {
+        let providerRefreshToken =
+          data.session?.provider_refresh_token ?? null;
+        if (
+          calendar &&
+          data.session?.provider_token &&
+          !providerRefreshToken
+        ) {
+          const { data: existingProfile } = await supabase
+            .from("profiles")
+            .select("google_provider_refresh_token")
+            .eq("id", user.id)
+            .maybeSingle();
+          providerRefreshToken =
+            existingProfile?.google_provider_refresh_token ?? null;
+        }
+
         await supabase
           .from("profiles")
           .upsert(
@@ -29,7 +47,7 @@ export async function GET(request: Request) {
                 ? {
                     google_provider_token: data.session.provider_token,
                     google_provider_refresh_token:
-                      data.session.provider_refresh_token ?? null,
+                      providerRefreshToken,
                     google_calendar_connected_at: new Date().toISOString(),
                   }
                 : {}),
@@ -38,7 +56,7 @@ export async function GET(request: Request) {
           );
       }
 
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(`${origin}${safeNext}`);
     }
 
     console.error("Supabase OAuth code exchange failed", error);
@@ -47,8 +65,8 @@ export async function GET(request: Request) {
   const loginUrl = new URL("/login", origin);
   loginUrl.searchParams.set("error", "auth");
   loginUrl.searchParams.set("reason", code ? "exchange" : "callback");
-  if (next.startsWith("/") && !next.startsWith("//")) {
-    loginUrl.searchParams.set("next", next);
+  if (safeNext !== "/dashboard" || next === "/dashboard") {
+    loginUrl.searchParams.set("next", safeNext);
   }
   return NextResponse.redirect(loginUrl);
 }

@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createGoogleCalendarEvent } from "./google-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,6 +24,8 @@ Deno.serve(async (request) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID") ?? null;
+  const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET") ?? null;
   if (!supabaseUrl || !serviceRoleKey) {
     return response({ error: "Function configuration is incomplete" }, 500);
   }
@@ -61,7 +64,9 @@ Deno.serve(async (request) => {
   };
   const { data: profile } = await admin
     .from("profiles")
-    .select("google_provider_token, google_calendar_connected_at")
+    .select(
+      "google_provider_token, google_provider_refresh_token, google_calendar_connected_at",
+    )
     .eq("id", shop.owner_id)
     .maybeSingle();
 
@@ -80,37 +85,57 @@ Deno.serve(async (request) => {
 
   const start = new Date(booking.scheduled_at);
   const end = new Date(start.getTime() + service.duration_minutes * 60_000);
-  const eventResponse = await fetch(
-    "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${profile.google_provider_token}`,
-        "Content-Type": "application/json",
+  const eventUrl =
+    "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all";
+  const eventBody = {
+    summary: `${service.name} · ${booking.buyer_name || "ลูกค้า"}`,
+    description: `การจองผ่าน Framelink\nผู้จอง: ${booking.buyer_name || "-"}\nอีเมล: ${booking.buyer_email || "-"}`,
+    start: { dateTime: start.toISOString() },
+    end: { dateTime: end.toISOString() },
+    attendees: booking.buyer_email ? [{ email: booking.buyer_email }] : [],
+    conferenceData: {
+      createRequest: {
+        requestId: booking.id,
+        conferenceSolutionKey: { type: "hangoutsMeet" },
       },
-      body: JSON.stringify({
-        summary: `${service.name} · ${booking.buyer_name || "ลูกค้า"}`,
-        description: `การจองผ่าน Framelink\nผู้จอง: ${booking.buyer_name || "-"}\nอีเมล: ${booking.buyer_email || "-"}`,
-        start: { dateTime: start.toISOString() },
-        end: { dateTime: end.toISOString() },
-        attendees: booking.buyer_email ? [{ email: booking.buyer_email }] : [],
-        conferenceData: {
-          createRequest: {
-            requestId: booking.id,
-            conferenceSolutionKey: { type: "hangoutsMeet" },
-          },
-        },
-      }),
     },
-  );
+  };
+  const { response: eventResponse, accessToken: refreshedAccessToken } =
+    await createGoogleCalendarEvent({
+      eventUrl,
+      eventBody,
+      accessToken: profile.google_provider_token,
+      refreshToken: profile.google_provider_refresh_token,
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
+    });
+
+  if (refreshedAccessToken) {
+    await admin
+      .from("profiles")
+      .update({ google_provider_token: refreshedAccessToken })
+      .eq("id", shop.owner_id);
+  }
 
   if (!eventResponse.ok) {
     const detail = (await eventResponse.text()).slice(0, 500);
+    if (eventResponse.status === 401 && !refreshedAccessToken) {
+      await admin
+        .from("profiles")
+        .update({
+          google_provider_token: null,
+          google_calendar_connected_at: null,
+        })
+        .eq("id", shop.owner_id);
+    }
     await admin
       .from("bookings")
       .update({
         calendar_sync_status: "failed",
-        calendar_sync_error: `Google Calendar ${eventResponse.status}: ${detail}`,
+        calendar_sync_error:
+          eventResponse.status === 401
+            ? "สิทธิ์ Google Calendar หมดอายุ กรุณาเชื่อมต่อใหม่"
+            : `Google Calendar ${eventResponse.status}: ${detail}`,
       })
       .eq("id", bookingId);
     return response({ calendarSynced: false, meetUrl: null });
