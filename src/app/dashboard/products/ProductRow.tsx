@@ -1,74 +1,101 @@
-"use client";
+import Link from "next/link";
+import { formatTHB } from "@/features/products/format";
+import { ProductActions } from "./ProductActions";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-
-type Product = {
+export type ProductListItem = {
   id: string;
+  shop_id: string;
   name: string;
+  slug: string | null;
   description: string | null;
   price_cents: number;
+  compare_price_cents: number | null;
   category: string;
   published: boolean;
+  thumbnailUrl: string | null;
 };
 
-export function ProductRow({ product }: { product: Product }) {
-  const router = useRouter();
-  const [busy, setBusy] = useState(false);
-
-  async function togglePublished() {
-    setBusy(true);
-    const supabase = createClient();
-    await supabase
-      .from("products")
-      .update({ published: !product.published })
-      .eq("id", product.id);
-    setBusy(false);
-    router.refresh();
-  }
-
-  async function remove() {
-    setBusy(true);
-    const supabase = createClient();
-    await supabase.from("products").delete().eq("id", product.id);
-    setBusy(false);
-    router.refresh();
-  }
+export function ProductRow({
+  product,
+  shopSlug,
+}: {
+  product: ProductListItem;
+  shopSlug: string;
+}) {
+  const productSlug = product.slug || `product-${product.id.slice(0, 8)}`;
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-line bg-paper p-4">
-      <div>
-        <p className="font-medium text-ink">
-          {product.name}{" "}
-          <span className="ml-1 text-xs font-normal uppercase tracking-wide text-muted">
-            {product.category}
-          </span>
-        </p>
-        {product.description && (
-          <p className="mt-0.5 text-sm text-ink-soft">{product.description}</p>
-        )}
-        <p className="mt-1 text-sm font-semibold text-ink">
-          ฿{(product.price_cents / 100).toLocaleString("th-TH")}
-        </p>
+    <article className="group rounded-2xl border border-line bg-paper p-3 transition hover:border-ink/20 sm:p-4">
+      <div className="flex items-start gap-4">
+        <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-paper-dim sm:h-24 sm:w-24">
+          {product.thumbnailUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={product.thumbnailUrl}
+              alt={product.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div
+              role="img"
+              aria-label={`ยังไม่มีรูปสำหรับ ${product.name}`}
+              className="flex h-full w-full items-center justify-center text-xl text-muted"
+            >
+              ◇
+            </div>
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-md bg-paper-dim px-2 py-1 text-[10px] font-semibold text-ink-soft">
+              {product.category}
+            </span>
+            <span
+              className={`text-[11px] font-medium ${
+                product.published ? "text-emerald-700" : "text-muted"
+              }`}
+            >
+              {product.published ? "เผยแพร่แล้ว" : "แบบร่าง"}
+            </span>
+          </div>
+          <h2 className="mt-2 line-clamp-2 text-sm font-semibold leading-5 text-ink sm:text-base">
+            {product.name}
+          </h2>
+          <p className="mt-2 flex items-baseline gap-2 text-sm">
+            <span className="font-bold text-ink">{formatTHB(product.price_cents)}</span>
+            {product.compare_price_cents && (
+              <span className="text-xs text-muted line-through">
+                {formatTHB(product.compare_price_cents)}
+              </span>
+            )}
+          </p>
+        </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
-        <button
-          onClick={togglePublished}
-          disabled={busy}
-          className="rounded-full border border-line px-3 py-1.5 text-xs text-ink-soft hover:text-ink disabled:opacity-50"
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+        <Link
+          href={`/dashboard/products/${product.id}/edit`}
+          className="small-button"
         >
-          {product.published ? "เผยแพร่อยู่" : "ซ่อนอยู่"}
-        </button>
-        <button
-          onClick={remove}
-          disabled={busy}
-          className="rounded-full border border-line px-3 py-1.5 text-xs text-ink-soft hover:text-ink disabled:opacity-50"
+          แก้ไข
+        </Link>
+        <Link
+          href={`/${shopSlug}/${productSlug}`}
+          target="_blank"
+          className="small-button"
         >
-          ลบ
-        </button>
+          ดูหน้าขาย
+        </Link>
+        <div className="ml-auto">
+          <ProductActions
+            productId={product.id}
+            shopId={product.shop_id}
+            productName={product.name}
+            published={product.published}
+          />
+        </div>
       </div>
-    </div>
+    </article>
   );
 }

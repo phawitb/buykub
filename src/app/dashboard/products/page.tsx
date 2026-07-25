@@ -32,32 +32,55 @@ export default async function ProductsPage() {
 
   const { data: products } = await supabase
     .from("products")
-    .select("id, name, description, price_cents, category, published")
+    .select(
+      "id, shop_id, name, slug, description, price_cents, compare_price_cents, category, published, images, images_v2",
+    )
     .eq("shop_id", shop.id)
     .order("created_at", { ascending: false });
 
   const count = products?.length ?? 0;
+  const listItems = (products ?? []).map((product) => {
+    const imagesV2 = Array.isArray(product.images_v2)
+      ? (product.images_v2 as Array<{ publicUrl?: string }>)
+      : [];
+    return {
+      id: product.id,
+      shop_id: product.shop_id,
+      name: product.name,
+      slug: product.slug,
+      description: product.description,
+      price_cents: product.price_cents,
+      compare_price_cents: product.compare_price_cents,
+      category: product.category,
+      published: product.published,
+      thumbnailUrl: imagesV2[0]?.publicUrl ?? product.images?.[0] ?? null,
+    };
+  });
 
   return (
-    <div className="max-w-2xl">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-3xl">
+      <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-ink">สินค้า</h1>
+          <h1 className="text-2xl font-bold text-ink sm:text-3xl">สินค้า</h1>
           <p className="mt-1 text-sm text-muted">
             จัดการสินค้าดิจิทัลของคุณ ({count}/{FREE_PLAN_LIMIT} สินค้า)
           </p>
         </div>
         <Link
           href="/dashboard/products/new"
-          className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-paper hover:bg-accent-hover"
+          className="primary-button shrink-0"
         >
-          เพิ่มสินค้า
+          + สร้างสินค้า
         </Link>
       </div>
 
-      <div className="mt-8 space-y-3">
-        {(products ?? []).map((p) => (
-          <ProductRow key={p.id} product={p} />
+      <div className="mt-8 space-y-4">
+        {listItems.map((product) => (
+          <ProductRow
+            key={product.id}
+            product={product}
+            shopSlug={shop.slug}
+          />
         ))}
 
         {count === 0 && (
