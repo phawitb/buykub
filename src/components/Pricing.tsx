@@ -50,7 +50,7 @@ export function Pricing() {
           Pricing
         </p>
         <h2 className="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          เลือกแพลนที่ใช่สำหรับคุณ
+          เลือกแพลนที่ใช่
         </h2>
         <p className="mt-3 max-w-md text-ink-soft">
           เริ่มต้นฟรี อัปเกรดเมื่อพร้อม ไม่มีสัญญาผูกมัด

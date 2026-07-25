@@ -24,5 +24,19 @@ describe("landing page copy", () => {
     expect(screen.getByText("฿330K+")).toBeInTheDocument();
     expect(screen.getAllByText(/ทุกวันจันทร์/).length).toBeGreaterThanOrEqual(4);
     expect(screen.queryByText("ทุกสัปดาห์")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "ทุกอย่างที่คุณต้องการ" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "ครบจบในที่เดียว ไม่ต้องสลับหลายเครื่องมือ ตั้งแต่สร้างร้านจนถึงรับเงิน",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "เลือกแพลนที่ใช่" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "คำถามที่เจอบ่อย" }),
+    ).toBeInTheDocument();
   });
 });

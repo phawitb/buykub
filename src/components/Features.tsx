@@ -114,8 +114,11 @@ export function Features() {
           Features
         </p>
         <h2 className="mt-3 max-w-lg text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          ทุกอย่างที่ต้องใช้ ครบในที่เดียว
+          ทุกอย่างที่คุณต้องการ
         </h2>
+        <p className="mt-3 max-w-xl text-sm leading-6 text-ink-soft">
+          ครบจบในที่เดียว ไม่ต้องสลับหลายเครื่องมือ ตั้งแต่สร้างร้านจนถึงรับเงิน
+        </p>
 
         <div className="mt-14 grid grid-cols-1 gap-5 sm:grid-cols-2">
           {features.map((f, index) => (

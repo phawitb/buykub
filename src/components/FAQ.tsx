@@ -35,8 +35,11 @@ export function FAQ() {
           FAQ
         </p>
         <h2 className="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          คำถามที่พบบ่อย
+          คำถามที่เจอบ่อย
         </h2>
+        <p className="mt-3 text-sm leading-6 text-ink-soft">
+          รวมคำตอบเรื่องการเปิดร้าน การขายสินค้า การรับเงิน และค่าธรรมเนียม
+        </p>
 
         <div className="mt-10 divide-y divide-line border-y border-line">
           {faqs.map((f, i) => {
