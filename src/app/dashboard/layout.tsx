@@ -16,6 +16,12 @@ export default async function DashboardLayout({
 
   if (!user) redirect("/login");
 
+  const { data: shop } = await supabase
+    .from("shops")
+    .select("name, slug, avatar_url")
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
   return (
     <div className="flex min-h-screen">
       <aside className="hidden w-60 shrink-0 flex-col border-r border-line bg-paper-dim px-5 py-6 sm:flex">
@@ -35,23 +41,40 @@ export default async function DashboardLayout({
           </p>
         </Link>
 
-        <div className="flex items-center gap-3 border-t border-line pt-4">
-          {user.user_metadata?.avatar_url ? (
+        <div className="border-t border-line pt-4">
+          <div className="flex items-center gap-3">
+          {shop?.avatar_url ?? user.user_metadata?.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={user.user_metadata.avatar_url}
+              src={shop?.avatar_url ?? user.user_metadata.avatar_url}
               alt=""
-              className="h-8 w-8 rounded-full"
+              className="h-9 w-9 rounded-full object-cover"
             />
           ) : (
-            <div className="h-8 w-8 rounded-full bg-ink" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-ink text-xs font-bold text-paper">
+              {(shop?.name ?? user.email ?? "F").slice(0, 1).toUpperCase()}
+            </div>
           )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-medium text-ink">
-              {user.user_metadata?.full_name ?? user.email}
+              {shop?.name ?? user.user_metadata?.full_name ?? user.email}
             </p>
+            {shop?.slug && (
+              <p className="mt-0.5 truncate text-[10px] text-muted">
+                framelink.app/{shop.slug}
+              </p>
+            )}
           </div>
-          <SignOutButton />
+          <Link
+            href="/dashboard/settings/upgrade"
+            className="rounded-full bg-paper-dim px-2 py-1 text-[10px] font-semibold text-ink"
+          >
+            Free
+          </Link>
+          </div>
+          <div className="mt-3">
+            <SignOutButton />
+          </div>
         </div>
       </aside>
 

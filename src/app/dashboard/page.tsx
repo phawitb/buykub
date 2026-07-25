@@ -74,7 +74,7 @@ export default async function DashboardOverview() {
     .reduce((sum, o) => sum + o.price_cents, 0);
   const pendingCents = monthTotalCents - readyCents;
 
-  const dayTotals = WEEKDAYS_TH.map((label, i) => {
+  const dayTotals = Array.from({ length: 7 }, (_, i) => {
     const dayStart = new Date(weekAgo);
     dayStart.setDate(weekAgo.getDate() + i);
     const dayEnd = new Date(dayStart.getTime() + 86400000);
@@ -84,18 +84,29 @@ export default async function DashboardOverview() {
         return t >= dayStart && t < dayEnd;
       })
       .reduce((sum, o) => sum + o.price_cents, 0);
-    return { label, total };
+    return {
+      label: dayStart.toLocaleDateString("th-TH", { weekday: "short" }),
+      total,
+    };
   });
   const maxDay = Math.max(1, ...dayTotals.map((d) => d.total));
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-4xl">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-ink">
+          <h1 className="text-2xl font-bold text-ink">
             สวัสดี, {user?.user_metadata?.full_name ?? shop.name}
           </h1>
-          <p className="mt-1 text-sm text-muted">ภาพรวมร้านของคุณวันนี้</p>
+          <p className="mt-1 text-sm text-muted">
+            ภาพรวมร้านของคุณวันนี้ ·{" "}
+            {now.toLocaleDateString("th-TH", {
+              weekday: "long",
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
+          </p>
           <div className="mt-3 flex items-center gap-2">
             <span className="rounded-full border border-line bg-paper-dim px-3 py-1 text-xs text-ink-soft">
               framelink.app/{shop.slug}
@@ -124,10 +135,23 @@ export default async function DashboardOverview() {
           <div>
             <p className="text-xs text-muted">ออเดอร์เดือนนี้</p>
             <p className="mt-1 text-lg font-bold text-ink">{orderCount}</p>
+            <p className="mt-0.5 text-[11px] text-muted">
+              เฉลี่ย ฿
+              {(
+                (orderCount ? monthTotalCents / orderCount : 0) / 100
+              ).toLocaleString("th-TH")}{" "}
+              / ออเดอร์
+            </p>
           </div>
           <div>
             <p className="text-xs text-muted">สินค้าที่เปิดขาย</p>
             <p className="mt-1 text-lg font-bold text-ink">{productCount ?? 0}</p>
+            <Link
+              href="/dashboard/products/new"
+              className="mt-1 inline-block text-[11px] font-semibold text-accent"
+            >
+              + สร้างสินค้าใหม่
+            </Link>
           </div>
         </div>
       </div>

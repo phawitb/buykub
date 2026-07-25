@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "@tiptap/extension-link";
 import Youtube from "@tiptap/extension-youtube";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -19,8 +18,7 @@ export function RichTextEditor({
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit,
-      Link.configure({ openOnClick: false }),
+      StarterKit.configure({ link: { openOnClick: false } }),
       Youtube.configure({ controls: true, nocookie: true }),
     ],
     content: value,

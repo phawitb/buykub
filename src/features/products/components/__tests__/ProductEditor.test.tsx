@@ -59,6 +59,24 @@ describe("ProductEditor", () => {
     expect(screen.getByRole("button", { name: "สร้างสินค้า" })).toBeDisabled();
   });
 
+  it("initializes the rich editor without duplicate extensions", () => {
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    render(
+      <ProductEditor
+        mode="create"
+        shopId="shop-123"
+        userId="user-123"
+        existingSlugs={[]}
+        initialValue={emptyValue}
+      />,
+    );
+
+    expect(consoleWarn).not.toHaveBeenCalledWith(
+      expect.stringContaining("Duplicate extension names"),
+    );
+  });
+
   it("keeps an edited product form open when the user cancels leaving", async () => {
     const user = userEvent.setup();
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);

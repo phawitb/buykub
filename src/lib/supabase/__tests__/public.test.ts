@@ -27,8 +27,19 @@ describe("createPublicClient", () => {
           autoRefreshToken: false,
           detectSessionInUrl: false,
           persistSession: false,
+          storageKey: "framelink-public-anon",
         },
       },
     );
+  });
+
+  it("reuses one anonymous auth client in the same runtime", async () => {
+    const { createPublicClient } = await import("@/lib/supabase/public");
+
+    const first = createPublicClient();
+    const second = createPublicClient();
+
+    expect(second).toBe(first);
+    expect(createSupabaseClient).toHaveBeenCalledOnce();
   });
 });

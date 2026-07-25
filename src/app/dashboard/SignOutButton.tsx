@@ -19,7 +19,7 @@ export function SignOutButton() {
       className="rounded-lg border border-line px-2.5 py-1.5 text-xs text-muted hover:text-ink"
       title="ออกจากระบบ"
     >
-      ออก
+      ออกจากระบบ
     </button>
   );
 }

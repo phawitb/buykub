@@ -139,7 +139,10 @@ export function UpgradePlans() {
             ].map((row) => (
               <tr key={row[0]}>
                 {row.map((cell, index) => (
-                  <td key={cell} className={`p-4 ${index === 0 ? "font-medium text-ink" : ""}`}>
+                  <td
+                    key={`${row[0]}-${index}`}
+                    className={`p-4 ${index === 0 ? "font-medium text-ink" : ""}`}
+                  >
                     {cell}
                   </td>
                 ))}
