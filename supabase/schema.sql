@@ -93,6 +93,7 @@ create table if not exists services (
   price_cents integer not null check (price_cents >= 0),
   duration_minutes integer not null default 30,
   image_url text,
+  image_path text,
   meet_link text,
   availability jsonb not null default '{"days": [1,2,3,4,5], "start": "09:00", "end": "18:00", "buffer_minutes": 15, "advance_days": 30}',
   published boolean not null default true,

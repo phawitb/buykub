@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { deleteShopAsset } from "@/lib/supabase/upload";
 
 type Service = {
   id: string;
@@ -11,6 +13,7 @@ type Service = {
   price_cents: number;
   duration_minutes: number;
   published: boolean;
+  image_path: string | null;
 };
 
 export function ServiceRow({ service }: { service: Service }) {
@@ -29,9 +32,15 @@ export function ServiceRow({ service }: { service: Service }) {
   }
 
   async function remove() {
+    if (!window.confirm(`ลบบริการ “${service.name}” ใช่ไหม? การจองที่เกี่ยวข้องจะถูกลบด้วย`)) {
+      return;
+    }
     setBusy(true);
     const supabase = createClient();
-    await supabase.from("services").delete().eq("id", service.id);
+    const { error } = await supabase.from("services").delete().eq("id", service.id);
+    if (!error && service.image_path) {
+      await deleteShopAsset("product-image", service.image_path).catch(() => undefined);
+    }
     setBusy(false);
     router.refresh();
   }
@@ -54,6 +63,12 @@ export function ServiceRow({ service }: { service: Service }) {
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        <Link
+          href={`/dashboard/bookings/${service.id}/edit`}
+          className="rounded-full border border-line px-3 py-1.5 text-xs text-ink-soft hover:text-ink"
+        >
+          แก้ไข
+        </Link>
         <button
           onClick={togglePublished}
           disabled={busy}
