@@ -40,7 +40,15 @@ export async function GET(request: Request) {
 
       return NextResponse.redirect(`${origin}${next}`);
     }
+
+    console.error("Supabase OAuth code exchange failed", error);
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth`);
+  const loginUrl = new URL("/login", origin);
+  loginUrl.searchParams.set("error", "auth");
+  loginUrl.searchParams.set("reason", code ? "exchange" : "callback");
+  if (next.startsWith("/") && !next.startsWith("//")) {
+    loginUrl.searchParams.set("next", next);
+  }
+  return NextResponse.redirect(loginUrl);
 }
