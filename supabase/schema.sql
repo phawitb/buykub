@@ -65,6 +65,24 @@ alter table products add column if not exists highlights text[] not null default
 alter table products add column if not exists faq jsonb not null default '[]';
 alter table products add column if not exists images text[] not null default '{}';
 alter table products add column if not exists file_url text;
+alter table products add column if not exists slug text;
+alter table products add column if not exists description_html text;
+alter table products add column if not exists file_path text;
+alter table products add column if not exists file_name text;
+alter table products add column if not exists file_size bigint;
+alter table products add column if not exists file_mime_type text;
+alter table products add column if not exists images_v2 jsonb not null default '[]';
+alter table products add column if not exists updated_at timestamptz not null default now();
+
+-- Legacy products predate shop-scoped slugs. The UUID suffix is stable and
+-- collision-safe; newly authored products receive human-readable slugs.
+update products
+set slug = 'product-' || left(id::text, 8)
+where slug is null;
+
+create unique index if not exists products_shop_slug_unique
+  on products (shop_id, slug)
+  where slug is not null;
 
 -- Bookable services (separate from digital products, like Pixza's "จองบริการ").
 create table if not exists services (
@@ -96,6 +114,23 @@ create table if not exists orders (
 );
 
 create index if not exists orders_shop_id_idx on orders (shop_id);
+
+alter table orders add column if not exists buyer_name text;
+alter table orders add column if not exists payment_method text;
+alter table orders add column if not exists mock boolean not null default true;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'orders_payment_method_check'
+  ) then
+    alter table orders
+      add constraint orders_payment_method_check
+      check (payment_method in ('promptpay', 'card'));
+  end if;
+end $$;
 
 -- Demo booking requests for services.
 create table if not exists bookings (
@@ -214,12 +249,32 @@ create policy "owners can read their shop views" on shop_views
   );
 
 -- Storage -----------------------------------------------------------------
--- Public buckets for shop/product images and downloadable product files.
--- Demo scope: files are public once uploaded (no real payment gate).
+-- Keep legacy shop-assets public for existing profile/cover/product URLs.
+-- New product images and product files use separate buckets so downloadable
+-- product files are never exposed through a permanent public URL.
 
 insert into storage.buckets (id, name, public)
 values ('shop-assets', 'shop-assets', true)
 on conflict (id) do nothing;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'product-images',
+  'product-images',
+  true,
+  5242880,
+  array['image/jpeg', 'image/png', 'image/webp']
+)
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('product-files', 'product-files', false, 524288000)
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit;
 
 drop policy if exists "shop-assets are publicly readable" on storage.objects;
 create policy "shop-assets are publicly readable" on storage.objects
@@ -241,4 +296,57 @@ drop policy if exists "owners delete their own files" on storage.objects;
 create policy "owners delete their own files" on storage.objects
   for delete using (
     bucket_id = 'shop-assets' and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+drop policy if exists "product images are publicly readable" on storage.objects;
+create policy "product images are publicly readable" on storage.objects
+  for select using (bucket_id = 'product-images');
+
+drop policy if exists "owners upload product images" on storage.objects;
+create policy "owners upload product images" on storage.objects
+  for insert with check (
+    bucket_id = 'product-images'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+drop policy if exists "owners update product images" on storage.objects;
+create policy "owners update product images" on storage.objects
+  for update using (
+    bucket_id = 'product-images'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+drop policy if exists "owners delete product images" on storage.objects;
+create policy "owners delete product images" on storage.objects
+  for delete using (
+    bucket_id = 'product-images'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+drop policy if exists "owners read product files" on storage.objects;
+create policy "owners read product files" on storage.objects
+  for select using (
+    bucket_id = 'product-files'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+drop policy if exists "owners upload product files" on storage.objects;
+create policy "owners upload product files" on storage.objects
+  for insert with check (
+    bucket_id = 'product-files'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+drop policy if exists "owners update product files" on storage.objects;
+create policy "owners update product files" on storage.objects
+  for update using (
+    bucket_id = 'product-files'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+drop policy if exists "owners delete product files" on storage.objects;
+create policy "owners delete product files" on storage.objects
+  for delete using (
+    bucket_id = 'product-files'
+    and auth.uid()::text = (storage.foldername(name))[1]
   );
