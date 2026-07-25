@@ -1,7 +1,20 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ProductEditor } from "@/features/products/components/ProductEditor";
+import type { ProductEditorValue } from "@/features/products/model";
 import { createClient } from "@/lib/supabase/server";
-import { ProductNewForm } from "./ProductNewForm";
+
+const initialValue: ProductEditorValue = {
+  name: "",
+  price: "",
+  comparePrice: "",
+  category: "OTHER",
+  descriptionHtml: "",
+  productFile: null,
+  images: [],
+  highlights: [],
+  faq: [],
+  published: true,
+};
 
 export default async function NewProductPage() {
   const supabase = await createClient();
@@ -17,19 +30,20 @@ export default async function NewProductPage() {
 
   if (!shop) redirect("/dashboard/settings");
 
-  return (
-    <div className="max-w-2xl">
-      <p className="text-xs text-muted">
-        <Link href="/dashboard/products" className="hover:text-ink">
-          สินค้า
-        </Link>{" "}
-        / สร้างสินค้าใหม่
-      </p>
-      <h1 className="mt-1 text-xl font-bold text-ink">สร้างสินค้าใหม่</h1>
+  const { data: products } = await supabase
+    .from("products")
+    .select("slug")
+    .eq("shop_id", shop.id);
 
-      <div className="mt-8">
-        <ProductNewForm shopId={shop.id} userId={user!.id} />
-      </div>
-    </div>
+  return (
+    <ProductEditor
+      mode="create"
+      shopId={shop.id}
+      userId={user!.id}
+      existingSlugs={(products ?? [])
+        .map((product) => product.slug)
+        .filter((slug): slug is string => Boolean(slug))}
+      initialValue={initialValue}
+    />
   );
 }
