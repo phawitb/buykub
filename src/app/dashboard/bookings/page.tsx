@@ -57,7 +57,7 @@ export default async function BookingsPage() {
         </div>
         <Link
           href="/dashboard/bookings/new"
-          className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-paper hover:opacity-85"
+          className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-paper hover:bg-accent-hover"
         >
           สร้างบริการจอง
         </Link>
@@ -74,7 +74,7 @@ export default async function BookingsPage() {
             <p className="mt-1 text-xs text-muted">สร้างบริการจองเพื่อรับนัดหมายจากลูกค้า</p>
             <Link
               href="/dashboard/bookings/new"
-              className="mt-4 inline-block rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-paper"
+              className="mt-4 inline-block rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-paper hover:bg-accent-hover"
             >
               สร้างบริการจองแรก
             </Link>

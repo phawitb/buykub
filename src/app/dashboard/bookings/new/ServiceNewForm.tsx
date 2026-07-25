@@ -46,6 +46,7 @@ export function ServiceNewForm({ shopId, userId }: { shopId: string; userId: str
   const [buffer, setBuffer] = useState(15);
   const [advanceDays, setAdvanceDays] = useState(30);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   function toggleDay(d: number) {
@@ -56,11 +57,15 @@ export function ServiceNewForm({ shopId, userId }: { shopId: string; userId: str
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    setUploadError(null);
     try {
       const url = await uploadShopAsset(userId, file);
       setImageUrl(url);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "อัปโหลดรูปไม่สำเร็จ");
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
   }
 
@@ -125,7 +130,7 @@ export function ServiceNewForm({ shopId, userId }: { shopId: string; userId: str
                   onClick={() => setDuration(d.value)}
                   className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
                     duration === d.value
-                      ? "border-ink bg-ink text-paper"
+                      ? "border-accent bg-accent text-paper"
                       : "border-line text-ink-soft hover:text-ink"
                   }`}
                 >
@@ -148,10 +153,11 @@ export function ServiceNewForm({ shopId, userId }: { shopId: string; userId: str
 
           <div>
             <label className="mb-1.5 block text-xs font-medium text-ink-soft">รูปบริการ</label>
-            <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-line bg-paper py-8 text-center text-xs text-muted hover:border-ink">
+            <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-line bg-paper py-8 text-center text-xs text-muted hover:border-accent">
               {imageUrl ? "อัปโหลดแล้ว ✓ (คลิกเพื่อเปลี่ยน)" : "ลากไฟล์มาวางที่นี่ หรือ คลิกเพื่อเลือก"}
               <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
             </label>
+            {uploadError && <p className="mt-2 text-xs text-red-600">{uploadError}</p>}
           </div>
 
           <div>
@@ -259,7 +265,7 @@ export function ServiceNewForm({ shopId, userId }: { shopId: string; userId: str
         <button
           type="submit"
           disabled={saving || uploading}
-          className="rounded-full bg-ink px-6 py-2.5 text-sm font-semibold text-paper transition hover:opacity-85 disabled:opacity-60"
+          className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-paper transition hover:bg-accent-hover disabled:opacity-60"
         >
           {saving ? "กำลังสร้าง..." : "สร้างบริการจอง"}
         </button>

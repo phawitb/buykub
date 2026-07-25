@@ -49,7 +49,7 @@ export default async function ProductsPage() {
         </div>
         <Link
           href="/dashboard/products/new"
-          className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-paper hover:opacity-85"
+          className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-paper hover:bg-accent-hover"
         >
           เพิ่มสินค้า
         </Link>
@@ -66,7 +66,7 @@ export default async function ProductsPage() {
             <p className="mt-1 text-xs text-muted">เริ่มสร้างสินค้าดิจิทัลชิ้นแรกของคุณ</p>
             <Link
               href="/dashboard/products/new"
-              className="mt-4 inline-block rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-paper"
+              className="mt-4 inline-block rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-paper hover:bg-accent-hover"
             >
               สร้างสินค้าใหม่
             </Link>

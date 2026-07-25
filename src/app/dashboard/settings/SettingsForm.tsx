@@ -32,17 +32,22 @@ export function SettingsForm({ initial, userId }: { initial: Shop; userId: strin
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>, target: "avatar" | "cover") {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    setError(null);
     try {
       const url = await uploadShopAsset(userId, file);
       if (target === "avatar") setAvatarUrl(url);
       else setCoverUrl(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "อัปโหลดรูปไม่สำเร็จ");
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
   }
 
@@ -50,6 +55,7 @@ export function SettingsForm({ initial, userId }: { initial: Shop; userId: strin
     e.preventDefault();
     setSaving(true);
     setError(null);
+    setSaved(false);
 
     const supabase = createClient();
     const { error: dbError } = await supabase.from("shops").upsert(
@@ -74,7 +80,11 @@ export function SettingsForm({ initial, userId }: { initial: Shop; userId: strin
       setError(dbError.message.includes("duplicate") ? "ลิงก์นี้ถูกใช้แล้ว" : dbError.message);
       return;
     }
-    router.refresh();
+    setSaved(true);
+    setTimeout(() => {
+      setSaved(false);
+      router.refresh();
+    }, 2000);
   }
 
   return (
@@ -234,13 +244,21 @@ export function SettingsForm({ initial, userId }: { initial: Shop; userId: strin
 
       {error && <p className="text-xs text-ink-soft">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={saving || uploading}
-        className="rounded-full bg-ink px-6 py-2.5 text-sm font-semibold text-paper transition hover:opacity-85 disabled:opacity-60"
-      >
-        {saving ? "กำลังบันทึก..." : "บันทึก"}
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={saving || uploading}
+          className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-paper transition hover:bg-accent-hover disabled:opacity-60"
+        >
+          {saving ? "กำลังบันทึก..." : "บันทึก"}
+        </button>
+
+        {saved && (
+          <span className="flex items-center gap-1.5 text-sm font-medium text-ink-soft">
+            <span aria-hidden>✓</span> บันทึกสำเร็จ
+          </span>
+        )}
+      </div>
     </form>
   );
 }

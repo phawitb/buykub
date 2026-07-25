@@ -26,7 +26,7 @@ export function RangeTabs({ current }: { current: string }) {
           onClick={() => setRange(o.key)}
           className={`rounded-full border px-4 py-1.5 text-xs font-medium ${
             current === o.key
-              ? "border-ink bg-ink text-paper"
+              ? "border-accent bg-accent text-paper"
               : "border-line text-ink-soft hover:text-ink"
           }`}
         >

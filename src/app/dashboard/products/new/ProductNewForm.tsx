@@ -31,7 +31,9 @@ export function ProductNewForm({ shopId, userId }: { shopId: string; userId: str
   const [faqA, setFaqA] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   function addHighlight() {
@@ -51,9 +53,12 @@ export function ProductNewForm({ shopId, userId }: { shopId: string; userId: str
     const file = e.target.files?.[0];
     if (!file || images.length >= 5) return;
     setUploading(true);
+    setUploadError(null);
     try {
       const url = await uploadShopAsset(userId, file);
       setImages((imgs) => [...imgs, url]);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "อัปโหลดรูปไม่สำเร็จ");
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -64,11 +69,16 @@ export function ProductNewForm({ shopId, userId }: { shopId: string; userId: str
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    setUploadError(null);
     try {
       const url = await uploadShopAsset(userId, file);
       setFileUrl(url);
+      setFileName(file.name);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "อัปโหลดไฟล์ไม่สำเร็จ");
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
   }
 
@@ -152,7 +162,7 @@ export function ProductNewForm({ shopId, userId }: { shopId: string; userId: str
                   onClick={() => setCategory(c)}
                   className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
                     category === c
-                      ? "border-ink bg-ink text-paper"
+                      ? "border-accent bg-accent text-paper"
                       : "border-line text-ink-soft hover:text-ink"
                   }`}
                 >
@@ -181,10 +191,19 @@ export function ProductNewForm({ shopId, userId }: { shopId: string; userId: str
         <p className="mt-1 text-xs text-muted">
           ไฟล์ดิจิทัลที่ลูกค้าจะได้รับหลังซื้อ — สูงสุด 1 ไฟล์
         </p>
-        <label className="mt-3 flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-line bg-paper py-8 text-center text-xs text-muted hover:border-ink">
-          {fileUrl ? "อัปโหลดแล้ว ✓ (คลิกเพื่อเปลี่ยน)" : "ลากไฟล์มาวางที่นี่ หรือ คลิกเพื่อเลือก"}
+        <label className="mt-3 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-line bg-paper py-8 text-center text-xs text-muted hover:border-accent">
+          {fileUrl ? (
+            <>
+              <span className="text-ink-soft">อัปโหลดแล้ว ✓</span>
+              <span className="max-w-xs truncate font-medium text-ink">{fileName}</span>
+              <span>คลิกเพื่อเปลี่ยนไฟล์</span>
+            </>
+          ) : (
+            "ลากไฟล์มาวางที่นี่ หรือ คลิกเพื่อเลือก"
+          )}
           <input type="file" onChange={handleFileUpload} className="hidden" />
         </label>
+        {uploadError && <p className="mt-2 text-xs text-red-600">{uploadError}</p>}
       </section>
 
       <section className="rounded-2xl border border-line bg-paper-dim p-6">
@@ -202,7 +221,7 @@ export function ProductNewForm({ shopId, userId }: { shopId: string; userId: str
             />
           ))}
           {images.length < 5 && (
-            <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-line text-xs text-muted hover:border-ink">
+            <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-line text-xs text-muted hover:border-accent">
               + เพิ่มรูป
               <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
             </label>
@@ -210,6 +229,12 @@ export function ProductNewForm({ shopId, userId }: { shopId: string; userId: str
         </div>
         <p className="mt-2 text-xs text-muted">{images.length}/5</p>
       </section>
+
+      {uploadError && (
+        <p className="-mt-4 text-xs text-red-600" role="alert">
+          {uploadError}
+        </p>
+      )}
 
       <section className="rounded-2xl border border-line bg-paper-dim p-6">
         <h2 className="text-sm font-semibold text-ink">จุดเด่น</h2>
@@ -291,7 +316,7 @@ export function ProductNewForm({ shopId, userId }: { shopId: string; userId: str
         <button
           type="submit"
           disabled={saving || uploading}
-          className="rounded-full bg-ink px-6 py-2.5 text-sm font-semibold text-paper transition hover:opacity-85 disabled:opacity-60"
+          className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-paper transition hover:bg-accent-hover disabled:opacity-60"
         >
           {saving ? "กำลังสร้าง..." : "สร้างสินค้า"}
         </button>

@@ -38,7 +38,7 @@ export function BuyButton({
     <button
       onClick={handleBuy}
       disabled={state === "loading"}
-      className="shrink-0 rounded-full bg-ink px-4 py-2 text-xs font-semibold text-paper transition hover:opacity-85 disabled:opacity-60"
+      className="shrink-0 rounded-full bg-accent px-4 py-2 text-xs font-semibold text-paper transition hover:bg-accent-hover disabled:opacity-60"
     >
       {state === "loading" ? "..." : "ซื้อ (ทดลอง)"}
     </button>

@@ -61,24 +61,26 @@ export function Pricing() {
             <div
               key={p.name}
               className={`relative rounded-2xl border p-7 ${
-                p.highlight ? "border-ink bg-ink text-paper" : "border-line bg-paper text-ink"
+                p.highlight
+                  ? "border-2 border-accent bg-paper text-ink"
+                  : "border-line bg-paper text-ink"
               }`}
             >
               {p.highlight && (
-                <span className="absolute -top-3 left-7 rounded-full bg-paper px-3 py-1 text-xs font-semibold text-ink">
+                <span className="absolute -top-3 left-7 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-paper">
                   แนะนำ
                 </span>
               )}
-              <p className="text-xs font-semibold tracking-widest opacity-60">{p.name}</p>
+              <p className="text-xs font-semibold tracking-widest text-muted">{p.name}</p>
               <p className="mt-3 text-3xl font-bold">
                 {p.price}
-                <span className="text-sm font-normal opacity-60"> {p.period}</span>
+                <span className="text-sm font-normal text-muted"> {p.period}</span>
               </p>
 
               <ul className="mt-6 space-y-2.5 text-sm">
                 {p.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 opacity-90">
-                    <span className="mt-0.5">✓</span>
+                  <li key={f} className="flex items-start gap-2 text-ink-soft">
+                    <span className="mt-0.5 text-accent">✓</span>
                     <span>{f}</span>
                   </li>
                 ))}
@@ -87,7 +89,7 @@ export function Pricing() {
               <button
                 className={`mt-7 w-full rounded-full px-5 py-3 text-sm font-semibold transition ${
                   p.highlight
-                    ? "bg-paper text-ink hover:opacity-85"
+                    ? "bg-accent text-paper hover:bg-accent-hover"
                     : "bg-ink text-paper hover:opacity-85"
                 }`}
               >

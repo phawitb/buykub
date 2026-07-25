@@ -41,7 +41,7 @@ export function BookButton({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="shrink-0 rounded-full bg-ink px-4 py-2 text-xs font-semibold text-paper transition hover:opacity-85"
+        className="shrink-0 rounded-full bg-accent px-4 py-2 text-xs font-semibold text-paper transition hover:bg-accent-hover"
       >
         จอง (ทดลอง)
       </button>
@@ -59,7 +59,7 @@ export function BookButton({
       <button
         onClick={handleBook}
         disabled={state === "loading" || !when}
-        className="rounded-full bg-ink px-4 py-2 text-xs font-semibold text-paper transition hover:opacity-85 disabled:opacity-60"
+        className="rounded-full bg-accent px-4 py-2 text-xs font-semibold text-paper transition hover:bg-accent-hover disabled:opacity-60"
       >
         {state === "loading" ? "..." : "ยืนยัน"}
       </button>

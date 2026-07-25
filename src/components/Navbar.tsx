@@ -27,7 +27,7 @@ export function Navbar({ user }: { user?: NavUser | null }) {
               </Link>
               <Link
                 href="/login"
-                className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-paper transition hover:opacity-85"
+                className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-paper transition hover:bg-accent-hover"
               >
                 สร้างร้านฟรี
               </Link>

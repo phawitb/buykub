@@ -12,7 +12,7 @@ export function ClosingCTA({ ctaHref = "/login" }: { ctaHref?: string }) {
         </p>
         <Link
           href={ctaHref}
-          className="mt-8 inline-block rounded-full bg-ink px-8 py-3.5 text-sm font-semibold text-paper transition hover:opacity-85"
+          className="mt-8 inline-block rounded-full bg-accent px-8 py-3.5 text-sm font-semibold text-paper transition hover:bg-accent-hover"
         >
           เปิดร้านเลย
         </Link>

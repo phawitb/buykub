@@ -28,7 +28,7 @@ export function OrderTabs({ orders }: { orders: Order[] }) {
             onClick={() => setTab(t.key as typeof tab)}
             className={`rounded-full border px-4 py-1.5 text-xs font-medium ${
               tab === t.key
-                ? "border-ink bg-ink text-paper"
+                ? "border-accent bg-accent text-paper"
                 : "border-line text-ink-soft hover:text-ink"
             }`}
           >

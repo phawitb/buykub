@@ -113,7 +113,7 @@ function FunnelStep({ n, label, value, of }: { n: string; label: string; value: 
         <span className="font-bold text-ink">{value}</span>
       </div>
       <div className="mt-1.5 h-2 w-full rounded-full bg-paper-dim">
-        <div className="h-2 rounded-full bg-ink" style={{ width: `${pct}%` }} />
+        <div className="h-2 rounded-full bg-accent" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );

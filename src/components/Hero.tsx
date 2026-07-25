@@ -26,7 +26,7 @@ export function Hero({ ctaHref = "/login" }: { ctaHref?: string }) {
         <div className="mt-8 flex flex-wrap items-center gap-4">
           <Link
             href={ctaHref}
-            className="rounded-full bg-ink px-7 py-3.5 text-sm font-semibold text-paper transition hover:opacity-85"
+            className="rounded-full bg-accent px-7 py-3.5 text-sm font-semibold text-paper transition hover:bg-accent-hover"
           >
             สร้างร้านฟรี →
           </Link>

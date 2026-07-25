@@ -33,7 +33,7 @@ export default async function DashboardOverview() {
         </p>
         <Link
           href="/dashboard/settings"
-          className="mt-6 inline-block rounded-full bg-ink px-6 py-3 text-sm font-semibold text-paper"
+          className="mt-6 inline-block rounded-full bg-accent px-6 py-3 text-sm font-semibold text-paper hover:bg-accent-hover"
         >
           สร้างร้านของคุณ
         </Link>
@@ -166,7 +166,7 @@ export default async function DashboardOverview() {
             <div key={d.label} className="flex flex-1 flex-col items-center gap-2">
               <div className="flex h-24 w-full items-end">
                 <div
-                  className="w-full rounded-t bg-ink"
+                  className="w-full rounded-t bg-accent"
                   style={{ height: `${Math.max(4, (d.total / maxDay) * 100)}%` }}
                 />
               </div>
@@ -205,7 +205,7 @@ export default async function DashboardOverview() {
               <div className="mt-4 flex justify-center gap-3">
                 <Link
                   href="/dashboard/products/new"
-                  className="rounded-full bg-ink px-4 py-2 text-xs font-semibold text-paper"
+                  className="rounded-full bg-accent px-4 py-2 text-xs font-semibold text-paper hover:bg-accent-hover"
                 >
                   + สร้างสินค้า
                 </Link>

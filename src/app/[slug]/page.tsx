@@ -156,7 +156,7 @@ function NotFoundCard({ slug }: { slug: string }) {
         </p>
         <Link
           href="/"
-          className="mt-6 inline-block rounded-full bg-ink px-6 py-3 text-sm font-semibold text-paper"
+          className="mt-6 inline-block rounded-full bg-accent px-6 py-3 text-sm font-semibold text-paper hover:bg-accent-hover"
         >
           กลับหน้าแรก
         </Link>
