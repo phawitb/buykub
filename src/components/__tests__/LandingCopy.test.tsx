@@ -35,6 +35,20 @@ describe("landing page copy", () => {
     expect(
       screen.getByRole("heading", { name: "เลือกแพลนที่ใช่" }),
     ).toBeInTheDocument();
+    expect(screen.getByText("ค่าธรรมเนียม 5% ต่อออเดอร์")).toBeInTheDocument();
+    expect(screen.getByText("สินค้าไม่จำกัด")).toBeInTheDocument();
+    expect(screen.getByText("จองไม่จำกัด")).toBeInTheDocument();
+    expect(screen.getByText("ไม่มีลายน้ำ")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("โอนเงินทุกวันจันทร์").length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      screen.getByRole("link", { name: "เริ่มเปิดร้านฟรี" }),
+    ).toHaveAttribute("href", "/login?next=%2Fdashboard");
+    expect(screen.queryByText("FREE")).not.toBeInTheDocument();
+    expect(screen.queryByText("PRO")).not.toBeInTheDocument();
+    expect(screen.queryByText("PRO+")).not.toBeInTheDocument();
+    expect(screen.queryByText(/8%|2%|0%/)).not.toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "คำถามที่เจอบ่อย" }),
     ).toBeInTheDocument();
