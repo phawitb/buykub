@@ -3,6 +3,14 @@
 import { useState } from "react";
 import type { ProductFAQ } from "@/features/products/model";
 
+function move<T>(items: T[], index: number, direction: -1 | 1): T[] {
+  const target = index + direction;
+  if (target < 0 || target >= items.length) return items;
+  const next = [...items];
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
+}
+
 export function HighlightFields({
   value,
   onChange,
@@ -45,6 +53,24 @@ export function HighlightFields({
               }
               className="field-input border-0 bg-transparent"
             />
+            <button
+              type="button"
+              aria-label={`เลื่อนจุดเด่น ${index + 1} ขึ้น`}
+              disabled={index === 0}
+              className="small-button disabled:opacity-30"
+              onClick={() => onChange(move(value, index, -1))}
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              aria-label={`เลื่อนจุดเด่น ${index + 1} ลง`}
+              disabled={index === value.length - 1}
+              className="small-button disabled:opacity-30"
+              onClick={() => onChange(move(value, index, 1))}
+            >
+              ↓
+            </button>
             <button
               type="button"
               className="small-button text-red-600"
@@ -133,6 +159,24 @@ export function FAQFields({
               }
               className="field-input mt-2 resize-y"
             />
+            <button
+              type="button"
+              aria-label={`เลื่อนคำถาม ${index + 1} ขึ้น`}
+              disabled={index === 0}
+              className="small-button mt-2 disabled:opacity-30"
+              onClick={() => onChange(move(value, index, -1))}
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              aria-label={`เลื่อนคำถาม ${index + 1} ลง`}
+              disabled={index === value.length - 1}
+              className="small-button mt-2 disabled:opacity-30"
+              onClick={() => onChange(move(value, index, 1))}
+            >
+              ↓
+            </button>
             <button
               type="button"
               className="small-button mt-2 text-red-600"

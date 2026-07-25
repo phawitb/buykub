@@ -3,7 +3,10 @@
 import DOMPurify from "isomorphic-dompurify";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { findRemovedProductAssets } from "@/features/products/asset-cleanup";
+import {
+  findNewProductAssets,
+  findRemovedProductAssets,
+} from "@/features/products/asset-cleanup";
 import { ProductFileUploader } from "@/features/products/components/ProductFileUploader";
 import { ProductImageUploader } from "@/features/products/components/ProductImageUploader";
 import { RichTextEditor } from "@/features/products/components/RichTextEditor";
@@ -22,6 +25,7 @@ import {
 import { validateProductEditor } from "@/features/products/validation";
 import { createClient } from "@/lib/supabase/client";
 import { deleteShopAsset } from "@/lib/supabase/upload";
+import type { UploadDestination } from "@/lib/supabase/upload";
 
 const CATEGORIES = [
   "PROMPT PACK",
@@ -42,6 +46,7 @@ export type ProductEditorProps = {
   existingSlugs: string[];
   initialValue: ProductEditorValue;
   productId?: string;
+  deleteAsset?: (destination: UploadDestination, path: string) => Promise<void>;
 };
 
 function visibleText(html: string): string {
@@ -55,6 +60,7 @@ export function ProductEditor({
   existingSlugs,
   initialValue,
   productId,
+  deleteAsset = deleteShopAsset,
 }: ProductEditorProps) {
   const router = useRouter();
   const [value, setValue] = useState(initialValue);
@@ -65,6 +71,7 @@ export function ProductEditor({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const persistedValue = useRef(initialValue);
+  const draftStorageKey = `framelink-product-draft-assets:${userId}`;
 
   const currentErrors = useMemo(() => validateProductEditor(value), [value]);
   const canSave =
@@ -82,18 +89,81 @@ export function ProductEditor({
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty, fileUploading, imagesUploading]);
 
+  useEffect(() => {
+    const staleDraft = window.localStorage.getItem(draftStorageKey);
+    if (!staleDraft) return;
+    window.localStorage.removeItem(draftStorageKey);
+    try {
+      const assets = JSON.parse(staleDraft) as Array<{
+        destination: UploadDestination;
+        path: string;
+      }>;
+      void Promise.allSettled(
+        assets.map((asset) => deleteAsset(asset.destination, asset.path)),
+      );
+    } catch {
+      // Ignore a corrupt local draft record; it never contains file contents.
+    }
+  }, [deleteAsset, draftStorageKey]);
+
+  useEffect(() => {
+    const assets = findNewProductAssets(persistedValue.current, value);
+    if (assets.length) {
+      window.localStorage.setItem(draftStorageKey, JSON.stringify(assets));
+    } else {
+      window.localStorage.removeItem(draftStorageKey);
+    }
+  }, [draftStorageKey, value]);
+
+  useEffect(() => {
+    const interceptNavigation = (event: MouseEvent) => {
+      if (!dirty && !fileUploading && !imagesUploading) return;
+      const anchor = (event.target as Element | null)?.closest("a");
+      if (
+        !anchor ||
+        anchor.target === "_blank" ||
+        anchor.origin !== window.location.origin
+      ) {
+        return;
+      }
+      event.preventDefault();
+      if (
+        !window.confirm(
+          "มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?",
+        )
+      ) {
+        return;
+      }
+      void cleanupDraftAssets().finally(() =>
+        router.push(`${anchor.pathname}${anchor.search}${anchor.hash}`),
+      );
+    };
+    document.addEventListener("click", interceptNavigation, true);
+    return () => document.removeEventListener("click", interceptNavigation, true);
+  });
+
   function update(patch: Partial<ProductEditorValue>) {
     setValue((current) => ({ ...current, ...patch }));
     setDirty(true);
   }
 
-  function leaveEditor() {
+  async function cleanupDraftAssets() {
+    await Promise.allSettled(
+      findNewProductAssets(persistedValue.current, value).map((asset) =>
+        deleteAsset(asset.destination, asset.path),
+      ),
+    );
+    window.localStorage.removeItem(draftStorageKey);
+  }
+
+  async function leaveEditor() {
     if (
       (dirty || fileUploading || imagesUploading) &&
       !window.confirm("มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?")
     ) {
       return;
     }
+    await cleanupDraftAssets();
     router.push("/dashboard/products");
   }
 
@@ -152,6 +222,7 @@ export function ProductEditor({
         return;
       }
       setDirty(false);
+      window.localStorage.removeItem(draftStorageKey);
       router.push("/dashboard/products");
       router.refresh();
       return;
@@ -169,10 +240,11 @@ export function ProductEditor({
     }
     await Promise.allSettled(
       findRemovedProductAssets(persistedValue.current, value).map((asset) =>
-        deleteShopAsset(asset.destination, asset.path),
+        deleteAsset(asset.destination, asset.path),
       ),
     );
     persistedValue.current = value;
+    window.localStorage.removeItem(draftStorageKey);
     setDirty(false);
     setSaving(false);
     router.refresh();
@@ -184,7 +256,7 @@ export function ProductEditor({
         <p className="text-sm text-muted">
           <button
             type="button"
-            onClick={leaveEditor}
+            onClick={() => void leaveEditor()}
             className="hover:text-ink"
           >
             สินค้า
@@ -318,7 +390,7 @@ export function ProductEditor({
       <div className="sticky bottom-0 -mx-5 flex justify-end gap-3 border-t border-line bg-paper/95 px-5 py-5 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0">
         <button
           type="button"
-          onClick={leaveEditor}
+          onClick={() => void leaveEditor()}
           className="secondary-button"
         >
           ยกเลิก

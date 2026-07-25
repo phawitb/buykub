@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { ProductEditorValue } from "@/features/products/model";
-import { findRemovedProductAssets } from "@/features/products/asset-cleanup";
+import {
+  findNewProductAssets,
+  findRemovedProductAssets,
+} from "@/features/products/asset-cleanup";
 
 const initial: ProductEditorValue = {
   name: "Product",
@@ -57,6 +60,34 @@ describe("findRemovedProductAssets", () => {
     expect(findRemovedProductAssets(initial, current)).toEqual([
       { destination: "product-file", path: "user/old-product.zip" },
       { destination: "product-image", path: "user/cover.webp" },
+    ]);
+  });
+});
+
+describe("findNewProductAssets", () => {
+  it("returns only newly uploaded draft assets", () => {
+    expect(
+      findNewProductAssets(initial, {
+        ...initial,
+        productFile: {
+          path: "user/new.zip",
+          fileName: "new.zip",
+          size: 20,
+          mimeType: "application/zip",
+        },
+        images: [
+          initial.images[0],
+          {
+            id: "new",
+            path: "user/new.webp",
+            publicUrl: "https://example.com/new.webp",
+            alt: "",
+          },
+        ],
+      }),
+    ).toEqual([
+      { destination: "product-file", path: "user/new.zip" },
+      { destination: "product-image", path: "user/new.webp" },
     ]);
   });
 });

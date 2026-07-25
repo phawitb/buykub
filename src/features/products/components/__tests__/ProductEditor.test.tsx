@@ -34,6 +34,37 @@ const emptyValue: ProductEditorValue = {
 };
 
 describe("ProductEditor", () => {
+  it("cleans draft uploads left behind by an abandoned editor session", async () => {
+    const deleteAsset = vi.fn().mockResolvedValue(undefined);
+    window.localStorage.setItem(
+      "framelink-product-draft-assets:user-123",
+      JSON.stringify([
+        { destination: "product-file", path: "user-123/orphan.zip" },
+        { destination: "product-image", path: "user-123/orphan.webp" },
+      ]),
+    );
+
+    render(
+      <ProductEditor
+        mode="create"
+        shopId="shop-123"
+        userId="user-123"
+        existingSlugs={[]}
+        initialValue={emptyValue}
+        deleteAsset={deleteAsset}
+      />,
+    );
+
+    await vi.waitFor(() => expect(deleteAsset).toHaveBeenCalledTimes(2));
+    expect(deleteAsset.mock.calls).toEqual([
+      ["product-file", "user-123/orphan.zip"],
+      ["product-image", "user-123/orphan.webp"],
+    ]);
+    expect(
+      window.localStorage.getItem("framelink-product-draft-assets:user-123"),
+    ).toBeNull();
+  });
+
   it("renders the PIXZA product sequence without AI Builder", () => {
     render(
       <ProductEditor
