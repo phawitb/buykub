@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { uploadShopAsset } from "@/lib/supabase/upload";
+import { CalendarConnection } from "./CalendarConnection";
 
 type Shop = {
   id: string | null;
@@ -29,7 +30,17 @@ const ACCENT_PRESETS = [
   { name: "Cyan", value: "#0891b2" },
 ];
 
-export function SettingsForm({ initial, userId }: { initial: Shop; userId: string }) {
+export function SettingsForm({
+  initial,
+  userId,
+  calendarConnected = false,
+  connectedEmail = null,
+}: {
+  initial: Shop;
+  userId: string;
+  calendarConnected?: boolean;
+  connectedEmail?: string | null;
+}) {
   const router = useRouter();
   const [slug, setSlug] = useState(initial.slug);
   const [name, setName] = useState(initial.name);
@@ -219,24 +230,10 @@ export function SettingsForm({ initial, userId }: { initial: Shop; userId: strin
         </div>
       </section>
 
-      <section className="border-b border-line pb-8">
-        <h2 className="text-sm font-semibold text-ink">Google Calendar</h2>
-        <p className="mt-2 text-xs leading-6 text-muted">
-          เชื่อมต่อเพื่อสร้าง Google Meet อัตโนมัติและเพิ่มนัดลง Calendar
-          ให้ทั้งคุณและลูกค้า
-        </p>
-        <button
-          type="button"
-          onClick={() =>
-            setError(
-              "Google Calendar ยังไม่ได้เชื่อม OAuth ใน environment นี้ — ส่วนนี้เป็นตัวอย่าง UI",
-            )
-          }
-          className="secondary-button mt-4"
-        >
-          เชื่อมต่อ Google Calendar
-        </button>
-      </section>
+      <CalendarConnection
+        connected={calendarConnected}
+        connectedEmail={connectedEmail}
+      />
 
       <section className="border-b border-line pb-8">
         <h2 className="text-sm font-semibold text-ink">ข้อมูลรับเงิน</h2>

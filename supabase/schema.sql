@@ -9,6 +9,9 @@ create table if not exists profiles (
   email text,
   full_name text,
   avatar_url text,
+  google_provider_token text,
+  google_provider_refresh_token text,
+  google_calendar_connected_at timestamptz,
   created_at timestamptz not null default now()
 );
 

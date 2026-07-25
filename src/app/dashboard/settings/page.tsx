@@ -20,6 +20,11 @@ export default async function SettingsPage({
     )
     .eq("owner_id", user!.id)
     .maybeSingle();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("email, google_calendar_connected_at")
+    .eq("id", user!.id)
+    .maybeSingle();
 
   return (
     <div className="max-w-xl">
@@ -51,6 +56,8 @@ export default async function SettingsPage({
       <div className="mt-10">
         <SettingsForm
           userId={user!.id}
+          calendarConnected={Boolean(profile?.google_calendar_connected_at)}
+          connectedEmail={profile?.email ?? user?.email ?? null}
           initial={
             shop ?? {
               id: null,

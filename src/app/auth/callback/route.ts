@@ -5,10 +5,11 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/dashboard";
+  const calendar = searchParams.get("calendar") === "1";
 
   if (code) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
       const {
@@ -24,8 +25,16 @@ export async function GET(request: Request) {
               email: user.email,
               full_name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
               avatar_url: user.user_metadata?.avatar_url ?? null,
+              ...(calendar && data.session?.provider_token
+                ? {
+                    google_provider_token: data.session.provider_token,
+                    google_provider_refresh_token:
+                      data.session.provider_refresh_token ?? null,
+                    google_calendar_connected_at: new Date().toISOString(),
+                  }
+                : {}),
             },
-            { onConflict: "id", ignoreDuplicates: true },
+            { onConflict: "id" },
           );
       }
 
