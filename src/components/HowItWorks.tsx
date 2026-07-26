@@ -26,7 +26,7 @@ function StepVisual({ step }: { step: string }) {
       >
         <div className="mx-auto h-full max-w-[210px] overflow-hidden rounded-xl border border-line bg-paper shadow-sm">
           <p className="border-b border-line px-3 py-2 text-center text-[9px] text-muted">
-            framelink.app/kanya
+            buykub.com/kanya
           </p>
           <div className="h-9 bg-accent-soft" />
           <div className="px-3">
@@ -70,7 +70,7 @@ function StepVisual({ step }: { step: string }) {
       className="mb-7 flex h-44 flex-col justify-center gap-4 rounded-2xl border border-line bg-paper-dim p-5"
     >
       <div className="rounded-full border border-line bg-paper px-4 py-2 text-center text-[10px] text-muted shadow-sm">
-        bio → framelink.app/kanya
+        bio → buykub.com/kanya
       </div>
       <div className="ml-auto flex w-[86%] items-center gap-3 rounded-xl bg-ink px-4 py-3 text-paper shadow-lg">
         <span className="flex size-7 items-center justify-center rounded-full bg-paper/15 text-xs">✓</span>

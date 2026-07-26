@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { BRAND_DOMAIN } from "@/lib/brand";
 import { createClient } from "@/lib/supabase/client";
 import { CalendarConnection } from "./CalendarConnection";
 import { ShopImageUploader } from "./ShopImageUploader";
@@ -276,7 +277,7 @@ export function SettingsForm({
               URL ร้าน
             </label>
             <div className="flex items-center rounded-lg border border-line bg-paper px-3.5 transition focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20">
-              <span className="text-sm text-muted">framelink.app/</span>
+              <span className="text-sm text-muted">{BRAND_DOMAIN}/</span>
               <input
                 id="shop-slug"
                 data-composite-input

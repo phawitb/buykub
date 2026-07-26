@@ -15,7 +15,7 @@ export function Footer() {
           <Link href="/privacy" className="hover:text-ink">
             นโยบายความเป็นส่วนตัว
           </Link>
-          <span>© 2026 Framelink</span>
+          <span>© 2026 BUYKUB</span>
         </div>
       </div>
     </footer>

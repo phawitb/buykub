@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
+import { BRAND_DOMAIN, BRAND_NAME } from "@/lib/brand";
 import { DashboardNavigation } from "./DashboardNavigation";
 import { SignOutButton } from "./SignOutButton";
 
@@ -24,7 +25,7 @@ export function DashboardLayoutContent({
   user: DashboardUser;
   shop: DashboardShop;
 }) {
-  const displayName = shop?.name ?? user.fullName ?? user.email ?? "Framelink";
+  const displayName = shop?.name ?? user.fullName ?? user.email ?? BRAND_NAME;
   const avatarUrl = shop?.avatarUrl ?? user.avatarUrl;
 
   return (
@@ -57,7 +58,7 @@ export function DashboardLayoutContent({
               <p className="truncate text-xs font-medium text-ink">{displayName}</p>
               {shop?.slug && (
                 <p className="mt-0.5 truncate text-[10px] text-muted">
-                  framelink.app/{shop.slug}
+                  {BRAND_DOMAIN}/{shop.slug}
                 </p>
               )}
             </div>

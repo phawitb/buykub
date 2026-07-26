@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans_Thai } from "next/font/google";
+import { BRAND_NAME, BRAND_ORIGIN } from "@/lib/brand";
 import "./globals.css";
 
 const thaiSans = IBM_Plex_Sans_Thai({
@@ -9,7 +10,8 @@ const thaiSans = IBM_Plex_Sans_Thai({
 });
 
 export const metadata: Metadata = {
-  title: "Framelink — แปะลิงก์ ขายได้เลย",
+  metadataBase: new URL(BRAND_ORIGIN),
+  title: `${BRAND_NAME} — แปะลิงก์ ขายได้เลย`,
   description: "ร้านค้าออนไลน์ในลิงก์เดียว สำหรับครีเอเตอร์ไทย",
 };
 

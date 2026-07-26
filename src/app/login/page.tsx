@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
+import { BRAND_NAME } from "@/lib/brand";
 import { EmailLoginForm } from "./EmailLoginForm";
 import { GoogleButton } from "./GoogleButton";
 
@@ -32,12 +33,12 @@ export default async function LoginPage({
           </p>
         </div>
 
-        <p className="text-xs text-paper/40">© 2026 Framelink</p>
+        <p className="text-xs text-paper/40">© 2026 {BRAND_NAME}</p>
       </div>
 
       <div className="flex items-center justify-center px-6 py-16">
         <div className="w-full max-w-sm rounded-2xl border border-line bg-paper p-8 shadow-sm">
-          <h2 className="text-xl font-bold text-ink">เริ่มต้นใช้ Framelink</h2>
+          <h2 className="text-xl font-bold text-ink">เริ่มต้นใช้ {BRAND_NAME}</h2>
           <p className="mt-1.5 text-sm text-muted">
             ใส่อีเมลเพื่อสร้างร้านหรือเข้าสู่ระบบ
           </p>

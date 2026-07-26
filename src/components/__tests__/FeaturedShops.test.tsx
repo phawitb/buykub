@@ -12,10 +12,10 @@ describe("FeaturedShops", () => {
     ).toHaveLength(6);
     expect(
       screen.getByRole("heading", {
-        name: "ตัวอย่างร้านที่สร้างได้บน Framelink",
+        name: "ตัวอย่างร้านที่สร้างได้บน BUYKUB",
       }),
     ).toBeInTheDocument();
-    expect(screen.queryByText("ร้านจริงที่เปิดอยู่บน Framelink")).not.toBeInTheDocument();
+    expect(screen.queryByText("ร้านจริงที่เปิดอยู่บน BUYKUB")).not.toBeInTheDocument();
   });
 
   it("uses responsive CSS-only gradient covers and overlapping avatars", () => {

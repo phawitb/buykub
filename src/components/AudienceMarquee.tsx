@@ -41,7 +41,7 @@ export function AudienceMarquee() {
               <div className="h-8 w-8 rounded-full bg-ink" />
               <div>
                 <p className="text-sm font-semibold text-ink">{s.name}</p>
-                <p className="text-xs text-muted">framelink.app/{s.slug}</p>
+                <p className="text-xs text-muted">buykub.com/{s.slug}</p>
               </div>
             </div>
           ))}

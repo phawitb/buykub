@@ -200,7 +200,7 @@ export default async function ShopPage({
           )}
 
           <p className="mt-12 text-center text-xs text-muted">
-            สร้างด้วย <span className="font-semibold text-ink">Framelink</span>{" "}
+            สร้างด้วย <span className="font-semibold text-ink">BUYKUB</span>{" "}
             —{" "}
             <Link href="/login" className="underline underline-offset-2">
               เปิดร้านฟรี

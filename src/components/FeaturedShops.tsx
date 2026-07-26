@@ -86,7 +86,7 @@ export function FeaturedShops() {
           Featured shops
         </p>
         <h2 className="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          ตัวอย่างร้านที่สร้างได้บน Framelink
+          ตัวอย่างร้านที่สร้างได้บน BUYKUB
         </h2>
         <p className="mt-3 max-w-xl text-sm leading-6 text-ink-soft">
           ตัวอย่างหน้าร้านสำหรับครีเอเตอร์หลายรูปแบบ — ชื่อและข้อมูลด้านล่างเป็นข้อมูลสาธิต
@@ -131,7 +131,7 @@ export function FeaturedShops() {
                     {s.name.slice(0, 1).toUpperCase()}
                   </div>
                   <h3 className="font-bold text-ink">{s.name}</h3>
-                  <p className="text-xs text-muted">framelink.app/{s.slug}</p>
+                  <p className="text-xs text-muted">buykub.com/{s.slug}</p>
                   <p className="mt-2 min-h-10 text-sm leading-6 text-ink-soft">
                     {s.bio}
                   </p>

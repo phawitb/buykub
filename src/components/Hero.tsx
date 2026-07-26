@@ -56,7 +56,7 @@ export function Hero({ ctaHref = "/login" }: { ctaHref?: string }) {
         <div className="overflow-hidden rounded-3xl border border-line bg-paper shadow-[0_1px_0_0_rgba(0,0,0,0.03)]">
           <div className="flex items-center justify-center border-b border-line bg-paper-dim px-4 py-3">
             <span className="rounded-full bg-paper px-4 py-1 text-xs text-muted">
-              framelink.app/kanya
+              buykub.com/kanya
             </span>
           </div>
 

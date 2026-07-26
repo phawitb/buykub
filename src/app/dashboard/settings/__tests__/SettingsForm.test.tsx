@@ -68,7 +68,7 @@ describe("SettingsForm", () => {
       "focus-within:ring-2",
       "focus-within:ring-accent/20",
     );
-    expect(slugInput.previousElementSibling).toHaveTextContent("framelink.app/");
+    expect(slugInput.previousElementSibling).toHaveTextContent("buykub.com/");
   });
 
   it("rejects an invalid PromptPay ID before saving settings", async () => {

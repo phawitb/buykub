@@ -7,6 +7,7 @@ import type { ProductFAQ, ProductImage } from "@/features/products/model";
 import { ProductViewTracker } from "@/features/analytics/ProductViewTracker";
 import { ProductGallery } from "@/features/storefront/ProductGallery";
 import { ProductDetailShell } from "@/features/storefront/ProductDetailShell";
+import { BRAND_NAME } from "@/lib/brand";
 import { createPublicClient } from "@/lib/supabase/public";
 import { ProductPurchase } from "./ProductPurchase";
 
@@ -55,7 +56,7 @@ export async function generateMetadata({
   params: Params;
 }): Promise<Metadata> {
   const result = await loadProduct(params);
-  if (!result) return { title: "ไม่พบสินค้า — Framelink" };
+  if (!result) return { title: `ไม่พบสินค้า — ${BRAND_NAME}` };
   return {
     title: `${result.product.name} — ${result.shop.name}`,
     description:

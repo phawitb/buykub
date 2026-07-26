@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { BRAND_NAME } from "@/lib/brand";
 import { createClient } from "@/lib/supabase/client";
 
 type Props = {
@@ -99,7 +100,7 @@ export function CalendarConnection({
           <p className="font-semibold">ก่อนเชื่อมต่อ Google Calendar</p>
           <p className="mt-1">
             ระหว่างช่วงทดสอบ Google อาจแสดงหน้าเตือนว่าแอปยังไม่ได้รับการยืนยัน
-            ให้เลือก <strong>Advanced</strong> แล้วดำเนินการต่อมายัง Framelink
+            ให้เลือก <strong>Advanced</strong> แล้วดำเนินการต่อมายัง {BRAND_NAME}
             จากนั้นกดอนุญาตสิทธิ์ Calendar
           </p>
         </div>

@@ -31,6 +31,6 @@ describe("ClosingCTA", () => {
       "focus-within:ring-2",
       "focus-within:ring-accent/20",
     );
-    expect(input.previousElementSibling).toHaveTextContent("framelink.app/");
+    expect(input.previousElementSibling).toHaveTextContent("buykub.com/");
   });
 });

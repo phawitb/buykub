@@ -24,7 +24,7 @@ describe("DashboardLayoutContent", () => {
     );
 
     expect(screen.getByText("ร้านตัวอย่าง")).toBeInTheDocument();
-    expect(screen.getByText("framelink.app/example")).toBeInTheDocument();
+    expect(screen.getByText("buykub.com/example")).toBeInTheDocument();
     expect(screen.getByText("เนื้อหา")).toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: /อัปเกรด/ }),

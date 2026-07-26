@@ -1,4 +1,5 @@
 import { LegalPage } from "@/components/LegalPage";
+import { SUPPORT_EMAIL } from "@/lib/brand";
 
 export default function PrivacyPage() {
   return (
@@ -30,7 +31,7 @@ export default function PrivacyPage() {
         <h2 className="text-lg font-semibold text-ink">สิทธิของคุณ</h2>
         <p className="mt-2">
           คุณสามารถแก้ไขหรือลบข้อมูลร้านและสินค้าได้จาก dashboard
-          หรือติดต่อ hello@framelink.app เพื่อสอบถามเกี่ยวกับข้อมูลส่วนบุคคล
+          หรือติดต่อ {SUPPORT_EMAIL} เพื่อสอบถามเกี่ยวกับข้อมูลส่วนบุคคล
         </p>
       </section>
     </LegalPage>

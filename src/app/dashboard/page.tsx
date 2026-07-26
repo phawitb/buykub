@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BRAND_DOMAIN, shopUrl } from "@/lib/brand";
 import { createClient } from "@/lib/supabase/server";
 import {
   bangkokDateKey,
@@ -127,9 +128,9 @@ export default async function DashboardOverview() {
         </div>
         <div className="mt-3 flex w-fit max-w-full items-center overflow-hidden rounded-full border border-line bg-paper">
           <span className="truncate py-1.5 pl-3 pr-2 text-xs text-ink-soft">
-            framelink.app/{shop.slug}
+            {BRAND_DOMAIN}/{shop.slug}
           </span>
-          <CopyLinkButton text={`framelink.app/${shop.slug}`} />
+          <CopyLinkButton text={shopUrl(shop.slug)} />
         </div>
       </div>
 

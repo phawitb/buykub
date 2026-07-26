@@ -41,7 +41,7 @@ export function ClosingCTA({ ctaHref = "/login" }: { ctaHref?: string }) {
           className="mx-auto mt-8 flex max-w-md items-center rounded-full border border-line bg-paper p-1.5 pl-5 shadow-sm transition focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20"
         >
           <span className="shrink-0 text-sm font-semibold text-muted">
-            framelink.app/
+            buykub.com/
           </span>
           <input
             data-composite-input

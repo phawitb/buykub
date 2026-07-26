@@ -20,7 +20,7 @@ export function WhyUs() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-24">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
-        Why Framelink
+        Why BUYKUB
       </p>
       <h2 className="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
         ออกแบบมาสำหรับครีเอเตอร์ไทยโดยเฉพาะ
