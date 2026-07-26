@@ -33,7 +33,7 @@ export function buildProductKeyEmail(input: ProductKeyEmailInput) {
   ].join("\n");
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#18181b">
-      <p style="font-size:13px;color:#2563eb;font-weight:700">FRAMELINK</p>
+      <p style="font-size:13px;color:#2563eb;font-weight:700">BUYKUB</p>
       <h1 style="font-size:24px;margin:12px 0">Product Key ของคุณพร้อมแล้ว</h1>
       <p>ขอบคุณสำหรับคำสั่งซื้อจาก <strong>${escapeHtml(input.shopName)}</strong></p>
       <div style="background:#f4f4f5;border-radius:16px;padding:20px;margin:24px 0">

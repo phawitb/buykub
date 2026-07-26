@@ -8,7 +8,7 @@ Required production secrets:
 
 ```sh
 npx supabase secrets set RESEND_API_KEY=re_xxx
-npx supabase secrets set RESEND_FROM_EMAIL='Framelink <orders@your-verified-domain.com>'
+npx supabase secrets set RESEND_FROM_EMAIL='BUYKUB <orders@mail.buykub.com>'
 ```
 
 Replies default to `support@buykub.com`. Set `RESEND_REPLY_TO_EMAIL` only when

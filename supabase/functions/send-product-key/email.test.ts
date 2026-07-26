@@ -2,6 +2,18 @@ import { describe, expect, it } from "vitest";
 import { buildProductKeyEmail } from "./email";
 
 describe("buildProductKeyEmail", () => {
+  it("uses BUYKUB identity without the legacy brand", () => {
+    const email = buildProductKeyEmail({
+      shopName: "BUYKUB Demo",
+      productName: "Windows Key",
+      orderId: "12345678-abcd",
+      keyValue: "AAAA-BBBB-CCCC",
+    });
+
+    expect(email.html).toContain("BUYKUB");
+    expect(email.html).not.toMatch(/FRAMELINK|Framelink/);
+  });
+
   it("includes the product, shop, order reference and key in both formats", () => {
     const email = buildProductKeyEmail({
       shopName: "Framelink Demo",

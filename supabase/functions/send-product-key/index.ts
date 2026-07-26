@@ -76,7 +76,7 @@ Deno.serve(async (request) => {
     admin.from("shops").select("name").eq("id", order.shop_id).maybeSingle(),
   ]);
   const email = buildProductKeyEmail({
-    shopName: shop?.name ?? "Framelink",
+    shopName: shop?.name ?? "BUYKUB",
     productName: product?.name ?? "สินค้า",
     orderId,
     keyValue: keyRow.key_value,
