@@ -33,6 +33,28 @@ const emptyValue: ProductEditorValue = {
   published: true,
 };
 
+const validValue: ProductEditorValue = {
+  ...emptyValue,
+  name: "Saved product",
+  price: "199",
+  descriptionHtml: "<p>รายละเอียดทดสอบ</p>",
+  productFile: {
+    path: "user-123/product.zip",
+    fileName: "product.zip",
+    size: 100,
+    mimeType: "application/zip",
+  },
+};
+
+function selectContents(element: HTMLElement) {
+  element.focus();
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
 describe("ProductEditor", () => {
   it("cleans draft uploads left behind by an abandoned editor session", async () => {
     const deleteAsset = vi.fn().mockResolvedValue(undefined);
@@ -163,6 +185,61 @@ describe("ProductEditor", () => {
     expect(await screen.findByText("บันทึกสินค้าเรียบร้อยแล้ว")).toBeInTheDocument();
     expect(saveProduct).toHaveBeenCalledOnce();
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it("saves rich text toolbar HTML when creating a product", async () => {
+    const user = userEvent.setup();
+    const saveProduct = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ProductEditor
+        mode="create"
+        shopId="shop-123"
+        userId="user-123"
+        existingSlugs={[]}
+        initialValue={validValue}
+        saveProduct={saveProduct}
+      />,
+    );
+    const description = await screen.findByLabelText("รายละเอียดสินค้า");
+    selectContents(description);
+
+    await user.click(screen.getByRole("button", { name: "ตัวหนา" }));
+    await user.click(screen.getByRole("button", { name: "สร้างสินค้า" }));
+
+    expect(saveProduct).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description_html: "<p><strong>รายละเอียดทดสอบ</strong></p>",
+      }),
+    );
+  });
+
+  it("saves rich text toolbar HTML when editing a product", async () => {
+    const user = userEvent.setup();
+    const saveProduct = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ProductEditor
+        mode="edit"
+        shopId="shop-123"
+        userId="user-123"
+        productId="product-123"
+        existingSlugs={["saved-product"]}
+        initialValue={validValue}
+        saveProduct={saveProduct}
+      />,
+    );
+    const description = await screen.findByLabelText("รายละเอียดสินค้า");
+    selectContents(description);
+
+    await user.click(screen.getByRole("button", { name: "ตัวเอียง" }));
+    await user.click(
+      screen.getByRole("button", { name: "บันทึกการเปลี่ยนแปลง" }),
+    );
+
+    expect(saveProduct).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description_html: "<p><em>รายละเอียดทดสอบ</em></p>",
+      }),
+    );
   });
 });
 
