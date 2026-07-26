@@ -12,12 +12,22 @@ function selectEditorContents(editor: HTMLElement) {
   selection?.addRange(range);
 }
 
-async function renderEditor() {
+function placeCursorAtEnd(editor: HTMLElement) {
+  editor.focus();
+  const range = document.createRange();
+  range.selectNodeContents(editor);
+  range.collapse(false);
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
+async function renderEditor(value = "<p>ข้อความทดสอบ</p>") {
   const onChange = vi.fn();
   const user = userEvent.setup();
   render(
     <RichTextEditor
-      value="<p>ข้อความทดสอบ</p>"
+      value={value}
       onChange={onChange}
     />,
   );
@@ -60,5 +70,89 @@ describe("RichTextEditor formatting toolbar", () => {
     fireEvent(document, new Event("selectionchange"));
 
     expect(boldButton).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
+describe("RichTextEditor link popover", () => {
+  it("links selected text and normalizes a bare domain", async () => {
+    const { onChange, user } = await renderEditor();
+
+    await user.click(screen.getByRole("button", { name: "เพิ่มลิงก์" }));
+    await user.type(screen.getByLabelText("URL ลิงก์"), "example.com");
+    await user.click(screen.getByRole("button", { name: "บันทึกลิงก์" }));
+
+    expect(onChange.mock.lastCall?.[0]).toContain(
+      'href="https://example.com/"',
+    );
+    expect(onChange.mock.lastCall?.[0]).toContain(
+      ">ข้อความทดสอบ</a>",
+    );
+  });
+
+  it("inserts linked URL text when there is no selection", async () => {
+    const { editor, onChange, user } = await renderEditor();
+    placeCursorAtEnd(editor);
+
+    await user.click(screen.getByRole("button", { name: "เพิ่มลิงก์" }));
+    await user.type(screen.getByLabelText("URL ลิงก์"), "https://framelink.app");
+    await user.click(screen.getByRole("button", { name: "บันทึกลิงก์" }));
+
+    expect(onChange.mock.lastCall?.[0]).toContain(
+      '<a target="_blank" rel="noopener noreferrer nofollow" href="https://framelink.app/">https://framelink.app/</a>',
+    );
+  });
+
+  it("keeps the popover open and content unchanged for an invalid URL", async () => {
+    const { onChange, user } = await renderEditor();
+    const htmlBeforeOpen = onChange.mock.lastCall?.[0];
+
+    await user.click(screen.getByRole("button", { name: "เพิ่มลิงก์" }));
+    await user.type(screen.getByLabelText("URL ลิงก์"), "javascript:alert(1)");
+    await user.click(screen.getByRole("button", { name: "บันทึกลิงก์" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "กรอก URL ที่ขึ้นต้นด้วย http:// หรือ https://",
+    );
+    expect(screen.getByLabelText("URL ลิงก์")).toBeInTheDocument();
+    expect(onChange.mock.lastCall?.[0]).toBe(htmlBeforeOpen);
+  });
+
+  it("closes without changing content when canceled", async () => {
+    const { onChange, user } = await renderEditor();
+    const htmlBeforeOpen = onChange.mock.lastCall?.[0];
+
+    await user.click(screen.getByRole("button", { name: "เพิ่มลิงก์" }));
+    await user.type(screen.getByLabelText("URL ลิงก์"), "example.com");
+    await user.click(screen.getByRole("button", { name: "ยกเลิก" }));
+
+    expect(screen.queryByLabelText("URL ลิงก์")).not.toBeInTheDocument();
+    expect(onChange.mock.lastCall?.[0]).toBe(htmlBeforeOpen);
+  });
+
+  it("prefills and removes an existing link", async () => {
+    const { onChange, user } = await renderEditor(
+      '<p><a href="https://old.example/">ข้อความทดสอบ</a></p>',
+    );
+
+    await user.click(screen.getByRole("button", { name: "เพิ่มลิงก์" }));
+    expect(screen.getByLabelText("URL ลิงก์")).toHaveValue(
+      "https://old.example/",
+    );
+    await user.click(screen.getByRole("button", { name: "ลบลิงก์" }));
+
+    expect(onChange.mock.lastCall?.[0]).toBe("<p>ข้อความทดสอบ</p>");
+    expect(screen.queryByLabelText("URL ลิงก์")).not.toBeInTheDocument();
+  });
+
+  it("closes the popover with Escape without changing content", async () => {
+    const { onChange, user } = await renderEditor();
+    const htmlBeforeOpen = onChange.mock.lastCall?.[0];
+
+    await user.click(screen.getByRole("button", { name: "เพิ่มลิงก์" }));
+    await user.type(screen.getByLabelText("URL ลิงก์"), "example.com");
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByLabelText("URL ลิงก์")).not.toBeInTheDocument();
+    expect(onChange.mock.lastCall?.[0]).toBe(htmlBeforeOpen);
   });
 });

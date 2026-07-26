@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Youtube from "@tiptap/extension-youtube";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { normalizeLinkUrl } from "./rich-text-urls";
 
 type Props = {
   value: string;
@@ -15,6 +17,14 @@ export function RichTextEditor({
   onChange,
   maxCharacters = 5000,
 }: Props) {
+  const [popover, setPopover] = useState<"link" | "video" | null>(null);
+  const [urlValue, setUrlValue] = useState("");
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const [linkWasActive, setLinkWasActive] = useState(false);
+  const [savedSelection, setSavedSelection] = useState<{
+    from: number;
+    to: number;
+  } | null>(null);
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -117,22 +127,58 @@ export function RichTextEditor({
     },
   ];
 
-  function setLink() {
+  function openLinkPopover() {
     const previous = activeEditor.getAttributes("link").href as
       | string
       | undefined;
-    const href = window.prompt("วาง URL", previous ?? "https://");
-    if (href === null) return;
-    if (!href.trim()) {
-      activeEditor.chain().focus().unsetLink().run();
+    const { from, to } = activeEditor.state.selection;
+    setSavedSelection({ from, to });
+    setUrlValue(previous ?? "");
+    setLinkWasActive(Boolean(previous));
+    setUrlError(null);
+    setPopover("link");
+  }
+
+  function closePopover() {
+    setPopover(null);
+    setUrlError(null);
+  }
+
+  function submitLink(event: React.FormEvent) {
+    event.preventDefault();
+    const href = normalizeLinkUrl(urlValue);
+    if (!href || !savedSelection) {
+      setUrlError("กรอก URL ที่ขึ้นต้นด้วย http:// หรือ https://");
       return;
     }
+
+    const command = activeEditor
+      .chain()
+      .focus()
+      .setTextSelection(savedSelection);
+    if (savedSelection.from === savedSelection.to) {
+      command
+        .insertContent({
+          type: "text",
+          text: href,
+          marks: [{ type: "link", attrs: { href } }],
+        })
+        .run();
+    } else {
+      command.setLink({ href }).run();
+    }
+    closePopover();
+  }
+
+  function removeLink() {
+    if (!savedSelection) return;
     activeEditor
       .chain()
       .focus()
-      .extendMarkRange("link")
-      .setLink({ href })
+      .setTextSelection(savedSelection)
+      .unsetLink()
       .run();
+    closePopover();
   }
 
   function addVideo() {
@@ -160,8 +206,9 @@ export function RichTextEditor({
           <button
             type="button"
             aria-label="เพิ่มลิงก์"
-            onClick={setLink}
-            className="editor-button"
+            aria-pressed={popover === "link"}
+            onClick={openLinkPopover}
+            className={`editor-button ${popover === "link" ? "bg-paper-dim text-ink" : ""}`}
           >
             🔗
           </button>
@@ -174,6 +221,68 @@ export function RichTextEditor({
             ▷
           </button>
         </div>
+        {popover === "link" && (
+          <form
+            role="dialog"
+            aria-label="เพิ่มลิงก์"
+            onSubmit={submitLink}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") closePopover();
+            }}
+            className="border-b border-line bg-paper-dim p-3"
+          >
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <label className="min-w-0 flex-1 text-xs font-medium text-ink-soft">
+                URL ลิงก์
+                <input
+                  autoFocus
+                  value={urlValue}
+                  onChange={(event) => {
+                    setUrlValue(event.target.value);
+                    if (urlError) setUrlError(null);
+                  }}
+                  aria-invalid={Boolean(urlError)}
+                  aria-describedby={urlError ? "rich-link-error" : undefined}
+                  placeholder="https://example.com"
+                  className="mt-1 block w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+                />
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  className="rounded-lg bg-ink px-3 py-2 text-xs font-semibold text-paper"
+                >
+                  บันทึกลิงก์
+                </button>
+                {linkWasActive && (
+                  <button
+                    type="button"
+                    onClick={removeLink}
+                    className="rounded-lg border border-red-200 bg-paper px-3 py-2 text-xs font-semibold text-red-600"
+                  >
+                    ลบลิงก์
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={closePopover}
+                  className="rounded-lg border border-line bg-paper px-3 py-2 text-xs font-semibold text-ink"
+                >
+                  ยกเลิก
+                </button>
+              </div>
+            </div>
+            {urlError && (
+              <p
+                id="rich-link-error"
+                role="alert"
+                className="mt-2 text-xs text-red-600"
+              >
+                {urlError}
+              </p>
+            )}
+          </form>
+        )}
         <EditorContent editor={activeEditor} />
       </div>
       <div className="mt-2 flex items-center justify-between text-[11px] text-muted">
