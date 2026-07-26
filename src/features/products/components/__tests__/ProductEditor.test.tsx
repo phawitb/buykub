@@ -21,6 +21,9 @@ vi.mock("next/navigation", () => ({
 }));
 
 const emptyValue: ProductEditorValue = {
+  deliveryType: "file",
+  keyInput: "",
+  keyInventory: { available: 0, assigned: 0, disabled: 0 },
   name: "",
   price: "",
   comparePrice: "",
@@ -110,6 +113,28 @@ describe("ProductEditor", () => {
       screen.getByRole("heading", { name: "คำถามที่พบบ่อย (FAQ)" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "สร้างสินค้า" })).toBeDisabled();
+  });
+
+  it("switches from file upload to product key inventory", async () => {
+    const user = userEvent.setup();
+    render(
+      <ProductEditor
+        mode="create"
+        shopId="shop-123"
+        userId="user-123"
+        existingSlugs={[]}
+        initialValue={emptyValue}
+      />,
+    );
+
+    await user.click(screen.getByRole("radio", { name: /Product Key/ }));
+
+    expect(
+      screen.getByRole("heading", { name: "คลัง Product Key" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "ไฟล์สินค้า *" }),
+    ).not.toBeInTheDocument();
   });
 
   it("initializes the rich editor without duplicate extensions", () => {

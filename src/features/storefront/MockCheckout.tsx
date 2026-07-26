@@ -19,11 +19,21 @@ type Product = {
   shopId: string;
   name: string;
   priceCents: number;
+  deliveryType?: "file" | "key";
+  availableStock?: number;
+};
+
+export type CheckoutResult = {
+  orderId: string;
+  deliveryType: "file" | "key";
+  assignedKey?: string;
+  emailStatus?: "sent" | "failed" | "pending";
+  remainingStock?: number;
 };
 
 type Props = {
   product: Product;
-  createOrder?: (value: MockCheckoutValue) => Promise<void>;
+  createOrder?: (value: MockCheckoutValue) => Promise<CheckoutResult | void>;
   trackEvent?: (event: StorefrontEventType) => Promise<void>;
 };
 
@@ -36,7 +46,12 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [result, setResult] = useState<CheckoutResult | null>(null);
+  const [copied, setCopied] = useState(false);
   const [showStickyPurchase, setShowStickyPurchase] = useState(false);
+  const [availableStock, setAvailableStock] = useState(
+    product.availableStock ?? 0,
+  );
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -88,8 +103,46 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
     }
   }
 
-  async function defaultCreateOrder(value: MockCheckoutValue) {
+  async function defaultCreateOrder(
+    value: MockCheckoutValue,
+  ): Promise<CheckoutResult> {
     const supabase = createPublicClient();
+    if (product.deliveryType === "key") {
+      const { data, error } = await supabase.rpc(
+        "complete_mock_key_purchase",
+        {
+          p_product_id: product.id,
+          p_buyer_email: value.buyerEmail,
+          p_payment_method: value.paymentMethod,
+        },
+      );
+      if (error) {
+        if (error.message.includes("sold_out")) {
+          throw new Error("สินค้าหมดแล้ว กรุณารีเฟรชหน้า");
+        }
+        throw new Error(error.message);
+      }
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row?.assigned_key) throw new Error("ไม่ได้รับ Product Key");
+      let emailStatus: CheckoutResult["emailStatus"] = "sent";
+      const { error: emailError } = await supabase.functions.invoke(
+        "send-product-key",
+        {
+          body: {
+            orderId: row.order_id,
+            emailToken: row.email_token,
+          },
+        },
+      );
+      if (emailError) emailStatus = "failed";
+      return {
+        orderId: row.order_id,
+        deliveryType: "key",
+        assignedKey: row.assigned_key,
+        remainingStock: row.remaining_stock,
+        emailStatus,
+      };
+    }
     const { error } = await supabase.from("orders").insert({
       shop_id: product.shopId,
       product_id: product.id,
@@ -101,6 +154,7 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
       mock: true,
     });
     if (error) throw new Error(error.message);
+    return { orderId: "", deliveryType: "file" };
   }
 
   function recordEvent(event: StorefrontEventType) {
@@ -115,6 +169,9 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
   }
 
   function openCheckout() {
+    if (product.deliveryType === "key" && availableStock <= 0) {
+      return;
+    }
     recordEvent("click_buy");
     setOpen(true);
     recordEvent("open_checkout");
@@ -134,11 +191,18 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await (createOrder ?? defaultCreateOrder)({
+      const checkoutResult = await (createOrder ?? defaultCreateOrder)({
         buyerName: "",
         buyerEmail: email,
         paymentMethod,
       });
+      if (checkoutResult) setResult(checkoutResult);
+      if (
+        checkoutResult?.deliveryType === "key" &&
+        checkoutResult.remainingStock !== undefined
+      ) {
+        setAvailableStock(checkoutResult.remainingStock);
+      }
       recordEvent("purchase");
       setDone(true);
     } catch (error) {
@@ -154,13 +218,33 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
 
   return (
     <>
+      {product.deliveryType === "key" && (
+        <p
+          className={`mb-3 text-center text-sm font-semibold ${
+            availableStock > 0
+              ? availableStock <= 5
+                ? "text-amber-700"
+                : "text-emerald-700"
+              : "text-red-600"
+          }`}
+        >
+          {availableStock > 0
+            ? `เหลือ ${availableStock} รายการ`
+            : "สินค้าหมด"}
+        </p>
+      )}
       <button
         ref={triggerRef}
         type="button"
         onClick={openCheckout}
+        disabled={
+          product.deliveryType === "key" && availableStock <= 0
+        }
         className="w-full rounded-2xl bg-accent px-6 py-4 text-base font-bold text-paper shadow-[0_10px_25px_color-mix(in_srgb,var(--accent)_22%,transparent)] transition hover:bg-accent-hover"
       >
-        ซื้อเลย {formatTHB(product.priceCents)}
+        {product.deliveryType === "key" && availableStock <= 0
+          ? "สินค้าหมด"
+          : `ซื้อเลย ${formatTHB(product.priceCents)}`}
       </button>
 
       {showStickyPurchase && !open && (
@@ -175,9 +259,16 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
             <button
               type="button"
               onClick={openCheckout}
+              disabled={
+                product.deliveryType === "key" &&
+                availableStock <= 0
+              }
               className="shrink-0 rounded-xl bg-accent px-6 py-3 text-sm font-bold text-paper hover:bg-accent-hover"
             >
-              ซื้อเลย
+              {product.deliveryType === "key" &&
+              availableStock <= 0
+                ? "สินค้าหมด"
+                : "ซื้อเลย"}
             </button>
           </div>
         </div>
@@ -207,8 +298,35 @@ export function MockCheckout({ product, createOrder, trackEvent }: Props) {
                   สร้างคำสั่งซื้อทดลองแล้ว
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-muted">
-                  ไม่มีการตัดเงินและไม่มีไฟล์ถูกส่งจริง
+                  ไม่มีการตัดเงินจริง
                 </p>
+                {result?.deliveryType === "key" && result.assignedKey && (
+                  <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left">
+                    <p className="text-xs font-semibold text-emerald-800">
+                      PRODUCT KEY ของคุณ
+                    </p>
+                    <code className="mt-2 block break-all rounded-xl bg-paper px-3 py-3 text-sm font-bold text-ink">
+                      {result.assignedKey}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(result.assignedKey!);
+                        setCopied(true);
+                      }}
+                      className="secondary-button mt-3 w-full"
+                    >
+                      {copied ? "คัดลอกแล้ว ✓" : "คัดลอก Key"}
+                    </button>
+                    <p className="mt-3 text-xs leading-5 text-emerald-900">
+                      {result.emailStatus === "sent"
+                        ? "ส่ง Key ไปยังอีเมลแล้ว"
+                        : result.emailStatus === "failed"
+                          ? "ส่งอีเมลไม่สำเร็จ กรุณาคัดลอก Key เก็บไว้"
+                          : "กำลังส่ง Key ไปยังอีเมล"}
+                    </p>
+                  </div>
+                )}
                 <button type="button" onClick={close} className="primary-button mt-6">
                   กลับไปดูสินค้า
                 </button>

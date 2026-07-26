@@ -24,7 +24,7 @@ export default async function OrderDetailPage({
 
   const { data: order } = await supabase
     .from("orders")
-    .select("id, buyer_name, buyer_email, payment_method, price_cents, status, mock, created_at, products(name)")
+    .select("id, buyer_name, buyer_email, payment_method, price_cents, status, mock, created_at, fulfilment_email_status, fulfilment_token, products(name)")
     .eq("id", orderId)
     .eq("shop_id", shop.id)
     .maybeSingle();
@@ -32,6 +32,12 @@ export default async function OrderDetailPage({
 
   const product = order.products as unknown as { name: string } | null;
   const status = order.status as "paid" | "refunded";
+  const { data: assignedKey } = await supabase
+    .from("product_keys")
+    .select("key_value")
+    .eq("assigned_order_id", order.id)
+    .eq("status", "assigned")
+    .maybeSingle();
 
   return (
     <div className="max-w-2xl">
@@ -82,7 +88,19 @@ export default async function OrderDetailPage({
       </div>
 
       <div className="mt-6">
-        <OrderActions orderId={order.id} status={status} />
+        <OrderActions
+          orderId={order.id}
+          status={status}
+          assignedKey={assignedKey?.key_value}
+          emailStatus={
+            order.fulfilment_email_status as
+              | "pending"
+              | "sent"
+              | "failed"
+              | null
+          }
+          emailToken={order.fulfilment_token}
+        />
       </div>
     </div>
   );

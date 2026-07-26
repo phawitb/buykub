@@ -6,6 +6,9 @@ import {
 } from "@/features/products/asset-cleanup";
 
 const initial: ProductEditorValue = {
+  deliveryType: "file",
+  keyInput: "",
+  keyInventory: { available: 0, assigned: 0, disabled: 0 },
   name: "Product",
   price: "100",
   comparePrice: "",

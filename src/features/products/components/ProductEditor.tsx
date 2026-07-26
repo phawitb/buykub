@@ -9,6 +9,7 @@ import {
 } from "@/features/products/asset-cleanup";
 import { ProductFileUploader } from "@/features/products/components/ProductFileUploader";
 import { ProductImageUploader } from "@/features/products/components/ProductImageUploader";
+import { ProductKeyInventory } from "@/features/products/components/ProductKeyInventory";
 import { RichTextEditor } from "@/features/products/components/RichTextEditor";
 import {
   FAQFields,
@@ -17,12 +18,14 @@ import {
 import type {
   ProductEditorValue,
   ProductFieldErrors,
+  ProductKeyRecord,
 } from "@/features/products/model";
 import {
   slugifyProductName,
   uniqueProductSlug,
 } from "@/features/products/slug";
 import { validateProductEditor } from "@/features/products/validation";
+import { parseProductKeys } from "@/features/products/product-keys";
 import { createClient } from "@/lib/supabase/client";
 import { deleteShopAsset } from "@/lib/supabase/upload";
 import type { UploadDestination } from "@/lib/supabase/upload";
@@ -46,12 +49,26 @@ export type ProductEditorProps = {
   existingSlugs: string[];
   initialValue: ProductEditorValue;
   productId?: string;
+  initialKeyRecords?: ProductKeyRecord[];
   saveProduct?: (payload: Record<string, unknown>) => Promise<void>;
   deleteAsset?: (destination: UploadDestination, path: string) => Promise<void>;
 };
 
 function visibleText(html: string): string {
   return DOMPurify.sanitize(html, { ALLOWED_TAGS: [] }).trim();
+}
+
+function errorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message;
+  }
+  return "กรุณาลองอีกครั้ง";
 }
 
 export function ProductEditor({
@@ -61,6 +78,7 @@ export function ProductEditor({
   existingSlugs,
   initialValue,
   productId,
+  initialKeyRecords = [],
   saveProduct,
   deleteAsset = deleteShopAsset,
 }: ProductEditorProps) {
@@ -73,6 +91,7 @@ export function ProductEditor({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [keyRecords, setKeyRecords] = useState(initialKeyRecords);
   const persistedValue = useRef(initialValue);
   const draftStorageKey = `framelink-product-draft-assets:${userId}`;
 
@@ -159,6 +178,41 @@ export function ProductEditor({
     window.localStorage.removeItem(draftStorageKey);
   }
 
+  async function changeKeyStatus(
+    id: string,
+    status: "available" | "disabled",
+  ) {
+    const previous = keyRecords.find((record) => record.id === id);
+    if (!previous || previous.status === "assigned") return;
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("product_keys")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("product_id", productId!);
+    if (error) {
+      setSaveError(`อัปเดต Key ไม่สำเร็จ: ${error.message}`);
+      return;
+    }
+    setKeyRecords((records) =>
+      records.map((record) =>
+        record.id === id ? { ...record, status } : record,
+      ),
+    );
+    setValue((current) => ({
+      ...current,
+      keyInventory: {
+        ...current.keyInventory,
+        available:
+          current.keyInventory.available +
+          (status === "available" ? 1 : -1),
+        disabled:
+          current.keyInventory.disabled +
+          (status === "disabled" ? 1 : -1),
+      },
+    }));
+  }
+
   async function leaveEditor() {
     if (
       (dirty || fileUploading || imagesUploading) &&
@@ -203,10 +257,13 @@ export function ProductEditor({
         .filter((item) => item.question && item.answer),
       images: value.images.map((image) => image.publicUrl),
       images_v2: value.images,
-      file_path: value.productFile!.path,
-      file_name: value.productFile!.fileName,
-      file_size: value.productFile!.size,
-      file_mime_type: value.productFile!.mimeType,
+      delivery_type: value.deliveryType,
+      file_path: value.deliveryType === "file" ? value.productFile?.path : null,
+      file_name:
+        value.deliveryType === "file" ? value.productFile?.fileName : null,
+      file_size: value.deliveryType === "file" ? value.productFile?.size : null,
+      file_mime_type:
+        value.deliveryType === "file" ? value.productFile?.mimeType : null,
       published: value.published,
       updated_at: new Date().toISOString(),
     };
@@ -218,18 +275,40 @@ export function ProductEditor({
       );
       try {
         if (saveProduct) {
-          await saveProduct({ ...payload, slug });
+          await saveProduct({
+            ...payload,
+            slug,
+            product_keys:
+              value.deliveryType === "key"
+                ? parseProductKeys(value.keyInput).keys
+                : [],
+          });
         } else {
           const supabase = createClient();
-          const { error } = await supabase
+          const { data: createdProduct, error } = await supabase
             .from("products")
-            .insert({ ...payload, slug });
+            .insert({ ...payload, slug })
+            .select("id")
+            .single();
           if (error) throw error;
+          if (value.deliveryType === "key") {
+            const { error: keyError } = await supabase.rpc(
+              "import_product_keys",
+              {
+                p_product_id: createdProduct.id,
+                p_keys: parseProductKeys(value.keyInput).keys,
+              },
+            );
+            if (keyError) {
+              await supabase.from("products").delete().eq("id", createdProduct.id);
+              throw keyError;
+            }
+          }
         }
       } catch (error) {
         setSaveError(
           `สร้างสินค้าไม่สำเร็จ: ${
-            error instanceof Error ? error.message : "กรุณาลองอีกครั้ง"
+            errorMessage(error)
           }`,
         );
         setSaving(false);
@@ -242,9 +321,20 @@ export function ProductEditor({
       return;
     }
 
+    let insertedKeyCount = 0;
     try {
       if (saveProduct) {
-        await saveProduct(payload);
+        insertedKeyCount =
+          value.deliveryType === "key"
+            ? parseProductKeys(value.keyInput).keys.length
+            : 0;
+        await saveProduct({
+          ...payload,
+          product_keys:
+            value.deliveryType === "key"
+              ? parseProductKeys(value.keyInput).keys
+              : [],
+        });
       } else {
         const supabase = createClient();
         const { error } = await supabase
@@ -253,11 +343,23 @@ export function ProductEditor({
           .eq("id", productId!)
           .eq("shop_id", shopId);
         if (error) throw error;
+        if (value.deliveryType === "key") {
+          const { data: keyResult, error: keyError } = await supabase.rpc(
+            "import_product_keys",
+            {
+              p_product_id: productId!,
+              p_keys: parseProductKeys(value.keyInput).keys,
+            },
+          );
+          if (keyError) throw keyError;
+          const resultRow = Array.isArray(keyResult) ? keyResult[0] : keyResult;
+          insertedKeyCount = Number(resultRow?.inserted_count ?? 0);
+        }
       }
     } catch (error) {
       setSaveError(
         `บันทึกสินค้าไม่สำเร็จ: ${
-          error instanceof Error ? error.message : "กรุณาลองอีกครั้ง"
+          errorMessage(error)
         }`,
       );
       setSaving(false);
@@ -268,7 +370,19 @@ export function ProductEditor({
         deleteAsset(asset.destination, asset.path),
       ),
     );
-    persistedValue.current = value;
+    const savedValue =
+      value.deliveryType === "key"
+        ? {
+            ...value,
+            keyInput: "",
+            keyInventory: {
+              ...value.keyInventory,
+              available: value.keyInventory.available + insertedKeyCount,
+            },
+          }
+        : value;
+    persistedValue.current = savedValue;
+    setValue(savedValue);
     window.localStorage.removeItem(draftStorageKey);
     setDirty(false);
     setSaving(false);
@@ -384,14 +498,76 @@ export function ProductEditor({
         </div>
       </section>
 
-      <ProductFileUploader
-        userId={userId}
-        value={value.productFile}
-        onChange={(productFile) => update({ productFile })}
-        onUploadingChange={setFileUploading}
-      />
-      {errors.productFile && (
-        <p className="-mt-8 text-xs text-red-600">{errors.productFile}</p>
+      <section className="product-section">
+        <h2 className="product-section-title">รูปแบบการส่งมอบ</h2>
+        <p className="product-help">
+          เลือกสิ่งที่ลูกค้าจะได้รับทันทีหลังชำระเงิน
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {[
+            {
+              value: "file" as const,
+              title: "ไฟล์ดาวน์โหลด",
+              description: "PDF, ZIP, วิดีโอ หรือไฟล์ดิจิทัล",
+            },
+            {
+              value: "key" as const,
+              title: "Product Key",
+              description: "จ่าย Key ไม่ซ้ำหนึ่งรายการต่อออเดอร์",
+            },
+          ].map((option) => (
+            <label
+              key={option.value}
+              className={`cursor-pointer rounded-2xl border p-4 transition ${
+                value.deliveryType === option.value
+                  ? "border-accent bg-accent-soft"
+                  : "border-line hover:border-ink/30"
+              }`}
+            >
+              <span className="flex items-start gap-3">
+                <input
+                  type="radio"
+                  name="delivery-type"
+                  value={option.value}
+                  checked={value.deliveryType === option.value}
+                  onChange={() => update({ deliveryType: option.value })}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-ink">
+                    {option.title}
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-muted">
+                    {option.description}
+                  </span>
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </section>
+
+      {value.deliveryType === "file" ? (
+        <>
+          <ProductFileUploader
+            userId={userId}
+            value={value.productFile}
+            onChange={(productFile) => update({ productFile })}
+            onUploadingChange={setFileUploading}
+          />
+          {errors.productFile && (
+            <p className="-mt-8 text-xs text-red-600">{errors.productFile}</p>
+          )}
+        </>
+      ) : (
+        <ProductKeyInventory
+          value={value.keyInput}
+          onChange={(keyInput) => update({ keyInput })}
+          summary={value.keyInventory}
+          records={keyRecords}
+          error={errors.productKeys}
+          onStatusChange={mode === "edit" ? changeKeyStatus : undefined}
+        />
       )}
 
       <ProductImageUploader

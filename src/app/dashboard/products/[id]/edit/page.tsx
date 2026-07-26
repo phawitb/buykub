@@ -4,6 +4,7 @@ import type {
   ProductEditorValue,
   ProductFAQ,
   ProductImage,
+  ProductKeyRecord,
 } from "@/features/products/model";
 import { createClient } from "@/lib/supabase/server";
 
@@ -34,16 +35,21 @@ export default async function EditProductPage({
     .maybeSingle();
   if (!shop) redirect("/dashboard/settings");
 
-  const [{ data: product }, { data: slugRows }] = await Promise.all([
+  const [{ data: product }, { data: slugRows }, { data: keyRows }] = await Promise.all([
     supabase
       .from("products")
       .select(
-        "id, name, slug, description, description_html, category, price_cents, compare_price_cents, highlights, faq, images, images_v2, file_url, file_path, file_name, file_size, file_mime_type, published",
+        "id, name, slug, description, description_html, category, price_cents, compare_price_cents, highlights, faq, images, images_v2, file_url, file_path, file_name, file_size, file_mime_type, delivery_type, published",
       )
       .eq("id", id)
       .eq("shop_id", shop.id)
       .maybeSingle(),
     supabase.from("products").select("slug").eq("shop_id", shop.id).neq("id", id),
+    supabase
+      .from("product_keys")
+      .select("id, key_value, status, assigned_order_id, created_at")
+      .eq("product_id", id)
+      .order("created_at", { ascending: false }),
   ]);
   if (!product) notFound();
 
@@ -67,6 +73,13 @@ export default async function EditProductPage({
   );
 
   const initialValue: ProductEditorValue = {
+    deliveryType: product.delivery_type === "key" ? "key" : "file",
+    keyInput: "",
+    keyInventory: {
+      available: (keyRows ?? []).filter((row) => row.status === "available").length,
+      assigned: (keyRows ?? []).filter((row) => row.status === "assigned").length,
+      disabled: (keyRows ?? []).filter((row) => row.status === "disabled").length,
+    },
     name: product.name,
     price: String(product.price_cents / 100),
     comparePrice: product.compare_price_cents
@@ -101,6 +114,15 @@ export default async function EditProductPage({
         .map((row) => row.slug)
         .filter((slug): slug is string => Boolean(slug))}
       initialValue={initialValue}
+      initialKeyRecords={(keyRows ?? []).map(
+        (row): ProductKeyRecord => ({
+          id: row.id,
+          keyValue: row.key_value,
+          status: row.status as ProductKeyRecord["status"],
+          assignedOrderId: row.assigned_order_id,
+          createdAt: row.created_at,
+        }),
+      )}
     />
   );
 }

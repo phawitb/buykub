@@ -10,6 +10,8 @@ export function ProductPurchase({
     shopId: string;
     name: string;
     priceCents: number;
+    deliveryType: "file" | "key";
+    availableStock?: number;
   };
 }) {
   return <MockCheckout product={product} />;

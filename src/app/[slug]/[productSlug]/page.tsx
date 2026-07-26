@@ -26,7 +26,7 @@ async function loadProduct(params: Params) {
   const { data: product } = await supabase
     .from("products")
     .select(
-      "id, shop_id, slug, name, description, description_html, category, price_cents, compare_price_cents, highlights, faq, images, images_v2, published",
+      "id, shop_id, slug, name, description, description_html, category, price_cents, compare_price_cents, highlights, faq, images, images_v2, delivery_type, published",
     )
     .eq("shop_id", shop.id)
     .eq("slug", productSlug)
@@ -34,7 +34,19 @@ async function loadProduct(params: Params) {
     .maybeSingle();
   if (!product) return null;
 
-  return { shop, product };
+  const { data: availableStock } =
+    product.delivery_type === "key"
+      ? await supabase.rpc("product_available_key_count", {
+          p_product_id: product.id,
+        })
+      : { data: null };
+
+  return {
+    shop,
+    product,
+    availableStock:
+      product.delivery_type === "key" ? Number(availableStock ?? 0) : undefined,
+  };
 }
 
 export async function generateMetadata({
@@ -55,7 +67,7 @@ export async function generateMetadata({
 export default async function ProductDetailPage({ params }: { params: Params }) {
   const result = await loadProduct(params);
   if (!result) notFound();
-  const { shop, product } = result;
+  const { shop, product, availableStock } = result;
 
   const imagesV2 = Array.isArray(product.images_v2)
     ? (product.images_v2 as ProductImage[])
@@ -143,6 +155,9 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
                 shopId: shop.id,
                 name: product.name,
                 priceCents: product.price_cents,
+                deliveryType:
+                  product.delivery_type === "key" ? "key" : "file",
+                availableStock,
               }}
             />
             <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-muted">

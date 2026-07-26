@@ -8,6 +8,8 @@ export type StorefrontProductCard = {
   priceCents: number;
   comparePriceCents: number | null;
   thumbnailUrl: string | null;
+  deliveryType?: "file" | "key";
+  availableStock?: number;
 };
 
 export function ProductCard({
@@ -56,6 +58,21 @@ export function ProductCard({
           </span>
         )}
       </p>
+      {product.deliveryType === "key" && (
+        <p
+          className={`mt-2 text-xs font-semibold ${
+            (product.availableStock ?? 0) > 0
+              ? (product.availableStock ?? 0) <= 5
+                ? "text-amber-700"
+                : "text-emerald-700"
+              : "text-red-600"
+          }`}
+        >
+          {(product.availableStock ?? 0) > 0
+            ? `เหลือ ${product.availableStock} รายการ`
+            : "สินค้าหมด"}
+        </p>
+      )}
     </Link>
   );
 }

@@ -4,6 +4,9 @@ import type { ProductEditorValue } from "@/features/products/model";
 import { createClient } from "@/lib/supabase/server";
 
 const initialValue: ProductEditorValue = {
+  deliveryType: "file",
+  keyInput: "",
+  keyInventory: { available: 0, assigned: 0, disabled: 0 },
   name: "",
   price: "",
   comparePrice: "",

@@ -3,6 +3,7 @@ import type {
   ProductFieldErrors,
   ProductImageValidationError,
 } from "@/features/products/model";
+import { parseProductKeys } from "@/features/products/product-keys";
 
 export const MAX_PRODUCT_FILE_SIZE = 500 * 1024 * 1024;
 export const MAX_PRODUCT_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -27,7 +28,16 @@ export function validateProductEditor(
   ) {
     errors.comparePrice = "ราคาเดิมต้องมากกว่าราคาขาย";
   }
-  if (!value.productFile) errors.productFile = "กรุณาอัปโหลดไฟล์สินค้า";
+  if (value.deliveryType === "file" && !value.productFile) {
+    errors.productFile = "กรุณาอัปโหลดไฟล์สินค้า";
+  }
+  if (
+    value.deliveryType === "key" &&
+    value.published &&
+    value.keyInventory.available + parseProductKeys(value.keyInput).keys.length === 0
+  ) {
+    errors.productKeys = "กรุณาเพิ่ม Key อย่างน้อย 1 รายการก่อนเผยแพร่";
+  }
 
   return errors;
 }

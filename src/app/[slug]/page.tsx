@@ -28,7 +28,7 @@ export default async function ShopPage({
     supabase
       .from("products")
       .select(
-        "id, slug, name, category, price_cents, compare_price_cents, images, images_v2, created_at",
+        "id, slug, name, category, price_cents, compare_price_cents, images, images_v2, delivery_type, created_at",
       )
       .eq("shop_id", shop.id)
       .eq("published", true)
@@ -43,6 +43,18 @@ export default async function ShopPage({
 
   await supabase.from("shop_views").insert({ shop_id: shop.id });
 
+  const stockEntries = await Promise.all(
+    (products ?? [])
+      .filter((product) => product.delivery_type === "key")
+      .map(async (product) => {
+        const { data } = await supabase.rpc("product_available_key_count", {
+          p_product_id: product.id,
+        });
+        return [product.id, Number(data ?? 0)] as const;
+      }),
+  );
+  const stockByProduct = new Map(stockEntries);
+
   const productCards = (products ?? []).map((product) => {
     const imagesV2 = Array.isArray(product.images_v2)
       ? (product.images_v2 as Array<{ publicUrl?: string }>)
@@ -54,6 +66,11 @@ export default async function ShopPage({
       priceCents: product.price_cents,
       comparePriceCents: product.compare_price_cents,
       thumbnailUrl: imagesV2[0]?.publicUrl ?? product.images?.[0] ?? null,
+      deliveryType: product.delivery_type === "key" ? ("key" as const) : ("file" as const),
+      availableStock:
+        product.delivery_type === "key"
+          ? stockByProduct.get(product.id) ?? 0
+          : undefined,
     };
   });
 

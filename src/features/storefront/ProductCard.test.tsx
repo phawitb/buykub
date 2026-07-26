@@ -39,4 +39,30 @@ describe("ProductCard", () => {
       screen.getByRole("img", { name: "ยังไม่มีรูปสำหรับ E-Book + Audio Book" }),
     ).toBeInTheDocument();
   });
+
+  it("shows remaining stock and sold-out state for key products", () => {
+    const { rerender } = render(
+      <ProductCard
+        shopSlug="demo-shop"
+        product={{
+          ...product,
+          deliveryType: "key",
+          availableStock: 3,
+        }}
+      />,
+    );
+    expect(screen.getByText("เหลือ 3 รายการ")).toBeInTheDocument();
+
+    rerender(
+      <ProductCard
+        shopSlug="demo-shop"
+        product={{
+          ...product,
+          deliveryType: "key",
+          availableStock: 0,
+        }}
+      />,
+    );
+    expect(screen.getByText("สินค้าหมด")).toBeInTheDocument();
+  });
 });

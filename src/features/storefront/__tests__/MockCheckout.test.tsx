@@ -78,6 +78,54 @@ describe("MockCheckout", () => {
     });
   });
 
+  it("reveals an assigned product key and copies it", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    render(
+      <MockCheckout
+        product={{
+          ...product,
+          deliveryType: "key",
+          availableStock: 1,
+        }}
+        createOrder={vi.fn().mockResolvedValue({
+          orderId: "order-1",
+          deliveryType: "key",
+          assignedKey: "AAAA-BBBB-CCCC",
+          emailStatus: "sent",
+          remainingStock: 0,
+        })}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "ซื้อเลย ฿389" }));
+    await user.type(screen.getByLabelText("อีเมล"), "ada@example.com");
+    await user.click(screen.getByRole("button", { name: "ชำระเงิน (ทดลอง)" }));
+
+    expect(await screen.findByText("AAAA-BBBB-CCCC")).toBeInTheDocument();
+    expect(screen.getByText("ส่ง Key ไปยังอีเมลแล้ว")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "คัดลอก Key" }));
+    expect(writeText).toHaveBeenCalledWith("AAAA-BBBB-CCCC");
+  });
+
+  it("disables every purchase button when key stock is empty", async () => {
+    render(
+      <MockCheckout
+        product={{
+          ...product,
+          deliveryType: "key",
+          availableStock: 0,
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "สินค้าหมด" })).toBeDisabled();
+  });
+
   it("records the buy, checkout, and purchase funnel steps", async () => {
     const user = userEvent.setup();
     const trackEvent = vi.fn().mockResolvedValue(undefined);

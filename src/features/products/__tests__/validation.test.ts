@@ -18,6 +18,9 @@ function fileWithSize(name: string, type: string, size: number) {
 }
 
 const validValue: ProductEditorValue = {
+  deliveryType: "file",
+  keyInput: "",
+  keyInventory: { available: 0, assigned: 0, disabled: 0 },
   name: "E-Book เสริมรายได้",
   price: "199",
   comparePrice: "399",
@@ -60,6 +63,40 @@ describe("validateProductEditor", () => {
     expect(
       validateProductEditor({ ...validValue, productFile: null }).productFile,
     ).toBe("กรุณาอัปโหลดไฟล์สินค้า");
+  });
+
+  it("accepts a published key product with imported stock and no file", () => {
+    expect(
+      validateProductEditor({
+        ...validValue,
+        deliveryType: "key",
+        productFile: null,
+        keyInput: "KEY-001",
+      }),
+    ).toEqual({});
+  });
+
+  it("requires stock before publishing a key product", () => {
+    expect(
+      validateProductEditor({
+        ...validValue,
+        deliveryType: "key",
+        productFile: null,
+        keyInput: "",
+      }).productKeys,
+    ).toBe("กรุณาเพิ่ม Key อย่างน้อย 1 รายการก่อนเผยแพร่");
+  });
+
+  it("allows an out-of-stock key product to be saved as a draft", () => {
+    expect(
+      validateProductEditor({
+        ...validValue,
+        deliveryType: "key",
+        productFile: null,
+        keyInput: "",
+        published: false,
+      }),
+    ).toEqual({});
   });
 });
 
