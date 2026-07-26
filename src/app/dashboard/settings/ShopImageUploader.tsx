@@ -69,6 +69,7 @@ export function ShopImageUploader({
   const config = CONFIG[kind];
   const inputRef = useRef<HTMLInputElement>(null);
   const controllerRef = useRef<AbortController | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
@@ -81,9 +82,9 @@ export function ShopImageUploader({
   useEffect(() => {
     return () => {
       controllerRef.current?.abort();
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
     };
-  }, [previewUrl]);
+  }, []);
 
   function validate(nextFile: File) {
     if (!ACCEPTED_TYPES.has(nextFile.type)) {
@@ -99,8 +100,10 @@ export function ShopImageUploader({
     const validationError = validate(nextFile);
     setFile(nextFile);
     setError(validationError);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(URL.createObjectURL(nextFile));
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    const nextPreviewUrl = URL.createObjectURL(nextFile);
+    previewUrlRef.current = nextPreviewUrl;
+    setPreviewUrl(nextPreviewUrl);
     if (validationError) {
       setStatus("error");
       return;
