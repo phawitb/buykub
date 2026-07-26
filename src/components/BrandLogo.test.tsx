@@ -3,20 +3,19 @@ import { describe, expect, it } from "vitest";
 import { BrandLogo } from "./BrandLogo";
 
 describe("BrandLogo", () => {
-  it("keeps FRAME inherited and renders LINK with the approved gradient", () => {
+  it("renders the accessible BUYKUB split-color wordmark", () => {
     render(<BrandLogo className="text-lg" />);
 
-    const logo = screen.getByLabelText("FRAMELINK");
-    expect(logo).toHaveTextContent("FRAMELINK");
+    const logo = screen.getByLabelText("BUYKUB");
+    expect(logo).toHaveTextContent("BUYKUB");
     expect(logo).toHaveClass("text-lg");
-    expect(screen.getByText("LINK")).toHaveClass(
+    expect(screen.getByText("BUY")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByText("KUB")).toHaveClass(
       "bg-gradient-to-r",
-      "from-[#006CFC]",
-      "via-[#475AFE]",
-      "to-[#8938FB]",
+      "from-[#2563EB]",
+      "to-[#7C3AED]",
       "bg-clip-text",
       "text-transparent",
     );
-    expect(screen.getByText("FRAME")).not.toHaveClass("text-muted");
   });
 });

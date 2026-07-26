@@ -1,15 +1,17 @@
+import { BRAND_NAME } from "@/lib/brand";
+
 export function BrandLogo({ className = "" }: { className?: string }) {
   return (
     <span
-      aria-label="FRAMELINK"
+      aria-label={BRAND_NAME}
       className={`inline-flex font-bold tracking-tight ${className}`}
     >
-      <span aria-hidden>FRAME</span>
+      <span aria-hidden>BUY</span>
       <span
         aria-hidden
-        className="bg-gradient-to-r from-[#006CFC] via-[#475AFE] to-[#8938FB] bg-clip-text text-transparent"
+        className="bg-gradient-to-r from-[#2563EB] to-[#7C3AED] bg-clip-text text-transparent"
       >
-        LINK
+        KUB
       </span>
     </span>
   );
