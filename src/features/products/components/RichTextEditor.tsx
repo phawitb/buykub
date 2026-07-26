@@ -1,7 +1,7 @@
 "use client";
 
 import Youtube from "@tiptap/extension-youtube";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 
 type Props = {
@@ -37,6 +37,23 @@ export function RichTextEditor({
       onChange(currentEditor.getHTML());
     },
   });
+  const editorState = useEditorState({
+    editor,
+    selector: ({ editor: currentEditor }) =>
+      currentEditor
+        ? {
+            bold: currentEditor.isActive("bold"),
+            italic: currentEditor.isActive("italic"),
+            strike: currentEditor.isActive("strike"),
+            heading2: currentEditor.isActive("heading", { level: 2 }),
+            heading3: currentEditor.isActive("heading", { level: 3 }),
+            bulletList: currentEditor.isActive("bulletList"),
+            orderedList: currentEditor.isActive("orderedList"),
+            blockquote: currentEditor.isActive("blockquote"),
+            characterCount: currentEditor.getText().length,
+          }
+        : null,
+  });
 
   if (!editor) return <div className="rich-editor min-h-72 animate-pulse" />;
   const activeEditor = editor;
@@ -45,51 +62,51 @@ export function RichTextEditor({
     {
       label: "ตัวหนา",
       text: "B",
-      active: activeEditor.isActive("bold"),
+      active: editorState?.bold ?? false,
       action: () => activeEditor.chain().focus().toggleBold().run(),
     },
     {
       label: "ตัวเอียง",
       text: "I",
-      active: activeEditor.isActive("italic"),
+      active: editorState?.italic ?? false,
       action: () => activeEditor.chain().focus().toggleItalic().run(),
     },
     {
       label: "ขีดทับ",
       text: "S",
-      active: activeEditor.isActive("strike"),
+      active: editorState?.strike ?? false,
       action: () => activeEditor.chain().focus().toggleStrike().run(),
     },
     {
       label: "หัวข้อระดับ 2",
       text: "H₂",
-      active: activeEditor.isActive("heading", { level: 2 }),
+      active: editorState?.heading2 ?? false,
       action: () =>
         activeEditor.chain().focus().toggleHeading({ level: 2 }).run(),
     },
     {
       label: "หัวข้อระดับ 3",
       text: "H₃",
-      active: activeEditor.isActive("heading", { level: 3 }),
+      active: editorState?.heading3 ?? false,
       action: () =>
         activeEditor.chain().focus().toggleHeading({ level: 3 }).run(),
     },
     {
       label: "รายการหัวข้อ",
       text: "☷",
-      active: activeEditor.isActive("bulletList"),
+      active: editorState?.bulletList ?? false,
       action: () => activeEditor.chain().focus().toggleBulletList().run(),
     },
     {
       label: "รายการลำดับเลข",
       text: "1.",
-      active: activeEditor.isActive("orderedList"),
+      active: editorState?.orderedList ?? false,
       action: () => activeEditor.chain().focus().toggleOrderedList().run(),
     },
     {
       label: "ข้อความอ้างอิง",
       text: "❞",
-      active: activeEditor.isActive("blockquote"),
+      active: editorState?.blockquote ?? false,
       action: () => activeEditor.chain().focus().toggleBlockquote().run(),
     },
     {
@@ -162,7 +179,7 @@ export function RichTextEditor({
       <div className="mt-2 flex items-center justify-between text-[11px] text-muted">
         <span>เคล็ดลับ: ใช้ heading + bullet list ทำให้อ่านง่ายขึ้น</span>
         <span>
-          {activeEditor.getText().length.toLocaleString("th-TH")} /{" "}
+          {(editorState?.characterCount ?? 0).toLocaleString("th-TH")} /{" "}
           {maxCharacters.toLocaleString("th-TH")} ตัวอักษร
         </span>
       </div>
