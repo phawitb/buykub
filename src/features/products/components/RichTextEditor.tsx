@@ -4,7 +4,7 @@ import { useState } from "react";
 import Youtube from "@tiptap/extension-youtube";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { normalizeLinkUrl } from "./rich-text-urls";
+import { normalizeLinkUrl, normalizeYoutubeUrl } from "./rich-text-urls";
 
 type Props = {
   value: string;
@@ -181,10 +181,29 @@ export function RichTextEditor({
     closePopover();
   }
 
-  function addVideo() {
-    const url = window.prompt("วางลิงก์ YouTube");
-    if (url?.trim())
-      activeEditor.commands.setYoutubeVideo({ src: url.trim() });
+  function openVideoPopover() {
+    const { from, to } = activeEditor.state.selection;
+    setSavedSelection({ from, to });
+    setUrlValue("");
+    setUrlError(null);
+    setPopover("video");
+  }
+
+  function submitVideo(event: React.FormEvent) {
+    event.preventDefault();
+    const src = normalizeYoutubeUrl(urlValue);
+    if (!src || !savedSelection) {
+      setUrlError("รองรับเฉพาะลิงก์ YouTube");
+      return;
+    }
+
+    activeEditor
+      .chain()
+      .focus()
+      .setTextSelection(savedSelection)
+      .setYoutubeVideo({ src })
+      .run();
+    closePopover();
   }
 
   return (
@@ -215,8 +234,9 @@ export function RichTextEditor({
           <button
             type="button"
             aria-label="เพิ่มวิดีโอ"
-            onClick={addVideo}
-            className="editor-button"
+            aria-pressed={popover === "video"}
+            onClick={openVideoPopover}
+            className={`editor-button ${popover === "video" ? "bg-paper-dim text-ink" : ""}`}
           >
             ▷
           </button>
@@ -275,6 +295,59 @@ export function RichTextEditor({
             {urlError && (
               <p
                 id="rich-link-error"
+                role="alert"
+                className="mt-2 text-xs text-red-600"
+              >
+                {urlError}
+              </p>
+            )}
+          </form>
+        )}
+        {popover === "video" && (
+          <form
+            role="dialog"
+            aria-label="เพิ่มวิดีโอ YouTube"
+            onSubmit={submitVideo}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") closePopover();
+            }}
+            className="border-b border-line bg-paper-dim p-3"
+          >
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <label className="min-w-0 flex-1 text-xs font-medium text-ink-soft">
+                URL YouTube
+                <input
+                  autoFocus
+                  value={urlValue}
+                  onChange={(event) => {
+                    setUrlValue(event.target.value);
+                    if (urlError) setUrlError(null);
+                  }}
+                  aria-invalid={Boolean(urlError)}
+                  aria-describedby={urlError ? "rich-video-error" : undefined}
+                  placeholder="https://youtube.com/watch?v=..."
+                  className="mt-1 block w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+                />
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  className="rounded-lg bg-ink px-3 py-2 text-xs font-semibold text-paper"
+                >
+                  บันทึกวิดีโอ
+                </button>
+                <button
+                  type="button"
+                  onClick={closePopover}
+                  className="rounded-lg border border-line bg-paper px-3 py-2 text-xs font-semibold text-ink"
+                >
+                  ยกเลิก
+                </button>
+              </div>
+            </div>
+            {urlError && (
+              <p
+                id="rich-video-error"
                 role="alert"
                 className="mt-2 text-xs text-red-600"
               >

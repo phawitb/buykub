@@ -156,3 +156,53 @@ describe("RichTextEditor link popover", () => {
     expect(onChange.mock.lastCall?.[0]).toBe(htmlBeforeOpen);
   });
 });
+
+describe("RichTextEditor YouTube popover", () => {
+  it("inserts a YouTube embed from a watch URL", async () => {
+    const { onChange, user } = await renderEditor();
+
+    await user.click(screen.getByRole("button", { name: "เพิ่มวิดีโอ" }));
+    await user.type(
+      screen.getByLabelText("URL YouTube"),
+      "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    );
+    await user.click(screen.getByRole("button", { name: "บันทึกวิดีโอ" }));
+
+    expect(onChange.mock.lastCall?.[0]).toContain(
+      'src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"',
+    );
+  });
+
+  it("rejects a non-YouTube URL without changing content", async () => {
+    const { onChange, user } = await renderEditor();
+    const htmlBeforeOpen = onChange.mock.lastCall?.[0];
+
+    await user.click(screen.getByRole("button", { name: "เพิ่มวิดีโอ" }));
+    await user.type(
+      screen.getByLabelText("URL YouTube"),
+      "https://example.com/video",
+    );
+    await user.click(screen.getByRole("button", { name: "บันทึกวิดีโอ" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "รองรับเฉพาะลิงก์ YouTube",
+    );
+    expect(screen.getByLabelText("URL YouTube")).toBeInTheDocument();
+    expect(onChange.mock.lastCall?.[0]).toBe(htmlBeforeOpen);
+  });
+
+  it("cancels a video insertion with Escape", async () => {
+    const { onChange, user } = await renderEditor();
+    const htmlBeforeOpen = onChange.mock.lastCall?.[0];
+
+    await user.click(screen.getByRole("button", { name: "เพิ่มวิดีโอ" }));
+    await user.type(
+      screen.getByLabelText("URL YouTube"),
+      "https://youtu.be/dQw4w9WgXcQ",
+    );
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByLabelText("URL YouTube")).not.toBeInTheDocument();
+    expect(onChange.mock.lastCall?.[0]).toBe(htmlBeforeOpen);
+  });
+});
