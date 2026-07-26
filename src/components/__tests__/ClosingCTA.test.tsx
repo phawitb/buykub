@@ -20,4 +20,17 @@ describe("ClosingCTA", () => {
       "/login?next=%2Fdashboard%2Fsettings%3Fslug%3Dmy-shop",
     );
   });
+
+  it("draws one focus ring around the complete shop URL and submit field", () => {
+    render(<ClosingCTA />);
+
+    const input = screen.getByRole("textbox", { name: "ชื่อร้านของคุณ" });
+    expect(input).toHaveAttribute("data-composite-input");
+    expect(input).toHaveClass("focus-visible:outline-none");
+    expect(input.closest("form")).toHaveClass(
+      "focus-within:ring-2",
+      "focus-within:ring-accent/20",
+    );
+    expect(input.previousElementSibling).toHaveTextContent("framelink.app/");
+  });
 });

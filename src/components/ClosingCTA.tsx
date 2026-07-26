@@ -38,17 +38,18 @@ export function ClosingCTA({ ctaHref = "/login" }: { ctaHref?: string }) {
         </p>
         <form
           onSubmit={submit}
-          className="mx-auto mt-8 flex max-w-md items-center rounded-full border border-line bg-paper p-1.5 pl-5 shadow-sm focus-within:border-ink"
+          className="mx-auto mt-8 flex max-w-md items-center rounded-full border border-line bg-paper p-1.5 pl-5 shadow-sm transition focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20"
         >
           <span className="shrink-0 text-sm font-semibold text-muted">
             framelink.app/
           </span>
           <input
+            data-composite-input
             value={shopName}
             onChange={(event) => setShopName(event.target.value)}
             aria-label="ชื่อร้านของคุณ"
             placeholder="ชื่อร้านของคุณ"
-            className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm text-ink outline-none"
+            className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm text-ink outline-none focus-visible:outline-none"
           />
           <button
             type="submit"
