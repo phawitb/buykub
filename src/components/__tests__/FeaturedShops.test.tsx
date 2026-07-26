@@ -17,4 +17,24 @@ describe("FeaturedShops", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("ร้านจริงที่เปิดอยู่บน Framelink")).not.toBeInTheDocument();
   });
+
+  it("uses responsive CSS-only gradient covers and overlapping avatars", () => {
+    render(<FeaturedShops />);
+
+    expect(screen.getByTestId("featured-shop-grid")).toHaveClass(
+      "grid-cols-1",
+      "sm:grid-cols-2",
+      "lg:grid-cols-3",
+    );
+    expect(screen.getAllByTestId("shop-cover")).toHaveLength(6);
+    expect(screen.getAllByTestId("shop-avatar")).toHaveLength(6);
+    expect(screen.getAllByTestId("shop-motif")).toHaveLength(6);
+    expect(document.querySelectorAll("img")).toHaveLength(0);
+
+    for (const link of screen.getAllByRole("link", {
+      name: /สร้างร้านแบบ/,
+    })) {
+      expect(link).toHaveAttribute("href", "/login?next=%2Fdashboard");
+    }
+  });
 });
