@@ -7,7 +7,7 @@ export function BrandLogo({ className = "" }: { className?: string }) {
       <span aria-hidden>FRAME</span>
       <span
         aria-hidden
-        className="bg-gradient-to-r from-[#2563EB] to-[#4F46E5] bg-clip-text text-transparent"
+        className="bg-gradient-to-r from-[#006CFC] via-[#475AFE] to-[#8938FB] bg-clip-text text-transparent"
       >
         LINK
       </span>

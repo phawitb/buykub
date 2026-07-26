@@ -11,8 +11,9 @@ describe("BrandLogo", () => {
     expect(logo).toHaveClass("text-lg");
     expect(screen.getByText("LINK")).toHaveClass(
       "bg-gradient-to-r",
-      "from-[#2563EB]",
-      "to-[#4F46E5]",
+      "from-[#006CFC]",
+      "via-[#475AFE]",
+      "to-[#8938FB]",
       "bg-clip-text",
       "text-transparent",
     );
