@@ -28,6 +28,8 @@ Deno.serve(async (request) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   const from = Deno.env.get("RESEND_FROM_EMAIL");
+  const replyTo =
+    Deno.env.get("RESEND_REPLY_TO_EMAIL") ?? "support@buykub.com";
   if (!supabaseUrl || !serviceRoleKey) {
     return json({ error: "Function configuration is incomplete" }, 500);
   }
@@ -110,6 +112,7 @@ Deno.serve(async (request) => {
     },
     body: JSON.stringify({
       from,
+      reply_to: replyTo,
       to: [order.buyer_email],
       subject: email.subject,
       html: email.html,

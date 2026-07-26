@@ -11,6 +11,9 @@ npx supabase secrets set RESEND_API_KEY=re_xxx
 npx supabase secrets set RESEND_FROM_EMAIL='Framelink <orders@your-verified-domain.com>'
 ```
 
+Replies default to `support@buykub.com`. Set `RESEND_REPLY_TO_EMAIL` only when
+the support address needs to change.
+
 Deploy as a public checkout endpoint; request authorization is provided by the
 unpredictable order/token pair:
 
