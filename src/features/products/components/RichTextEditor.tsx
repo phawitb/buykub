@@ -144,8 +144,7 @@ export function RichTextEditor({
     setUrlError(null);
   }
 
-  function submitLink(event: React.FormEvent) {
-    event.preventDefault();
+  function submitLink() {
     const href = normalizeLinkUrl(urlValue);
     if (!href || !savedSelection) {
       setUrlError("กรอก URL ที่ขึ้นต้นด้วย http:// หรือ https://");
@@ -189,8 +188,7 @@ export function RichTextEditor({
     setPopover("video");
   }
 
-  function submitVideo(event: React.FormEvent) {
-    event.preventDefault();
+  function submitVideo() {
     const src = normalizeYoutubeUrl(urlValue);
     if (!src || !savedSelection) {
       setUrlError("รองรับเฉพาะลิงก์ YouTube");
@@ -242,12 +240,15 @@ export function RichTextEditor({
           </button>
         </div>
         {popover === "link" && (
-          <form
+          <div
             role="dialog"
             aria-label="เพิ่มลิงก์"
-            onSubmit={submitLink}
             onKeyDown={(event) => {
               if (event.key === "Escape") closePopover();
+              if (event.key === "Enter") {
+                event.preventDefault();
+                submitLink();
+              }
             }}
             className="border-b border-line bg-paper-dim p-3"
           >
@@ -269,7 +270,8 @@ export function RichTextEditor({
               </label>
               <div className="flex gap-2">
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={submitLink}
                   className="rounded-lg bg-ink px-3 py-2 text-xs font-semibold text-paper"
                 >
                   บันทึกลิงก์
@@ -301,15 +303,18 @@ export function RichTextEditor({
                 {urlError}
               </p>
             )}
-          </form>
+          </div>
         )}
         {popover === "video" && (
-          <form
+          <div
             role="dialog"
             aria-label="เพิ่มวิดีโอ YouTube"
-            onSubmit={submitVideo}
             onKeyDown={(event) => {
               if (event.key === "Escape") closePopover();
+              if (event.key === "Enter") {
+                event.preventDefault();
+                submitVideo();
+              }
             }}
             className="border-b border-line bg-paper-dim p-3"
           >
@@ -331,7 +336,8 @@ export function RichTextEditor({
               </label>
               <div className="flex gap-2">
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={submitVideo}
                   className="rounded-lg bg-ink px-3 py-2 text-xs font-semibold text-paper"
                 >
                   บันทึกวิดีโอ
@@ -354,7 +360,7 @@ export function RichTextEditor({
                 {urlError}
               </p>
             )}
-          </form>
+          </div>
         )}
         <EditorContent editor={activeEditor} />
       </div>

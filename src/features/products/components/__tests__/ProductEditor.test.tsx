@@ -130,6 +130,24 @@ describe("ProductEditor", () => {
     );
   });
 
+  it("opens editor popovers without nesting a form inside ProductEditor", async () => {
+    const user = userEvent.setup();
+    render(
+      <ProductEditor
+        mode="create"
+        shopId="shop-123"
+        userId="user-123"
+        existingSlugs={[]}
+        initialValue={emptyValue}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "เพิ่มลิงก์" }));
+
+    expect(screen.getByRole("dialog", { name: "เพิ่มลิงก์" })).toBeInTheDocument();
+    expect(document.querySelector("form form")).toBeNull();
+  });
+
   it("keeps an edited product form open when the user cancels leaving", async () => {
     const user = userEvent.setup();
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
