@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/BrandLogo";
 import { DashboardNavigation } from "./DashboardNavigation";
 import { SignOutButton } from "./SignOutButton";
 
@@ -31,9 +32,9 @@ export function DashboardLayoutContent({
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col overflow-y-auto border-r border-line bg-paper-dim px-5 py-6 sm:flex">
         <Link
           href="/dashboard"
-          className="mb-10 text-lg font-bold tracking-tight text-ink"
+          className="mb-10 text-ink"
         >
-          FRAME<span className="text-muted">LINK</span>
+          <BrandLogo className="text-lg" />
         </Link>
 
         <DashboardNavigation />

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogo } from "./BrandLogo";
 import { ProfileMenu } from "./ProfileMenu";
 
 type NavUser = {
@@ -10,8 +11,8 @@ export function Navbar({ user }: { user?: NavUser | null }) {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-paper/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <Link href="/" className="text-lg font-bold tracking-tight text-ink">
-          FRAME<span className="text-muted">LINK</span>
+        <Link href="/" className="text-ink">
+          <BrandLogo className="text-lg" />
         </Link>
 
         <div className="flex items-center gap-3">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogo } from "./BrandLogo";
 
 export function LegalPage({
   title,
@@ -12,8 +13,8 @@ export function LegalPage({
   return (
     <main className="min-h-screen bg-[#faf9f7] px-5 py-10 sm:py-16">
       <article className="mx-auto max-w-3xl rounded-3xl border border-line bg-paper p-6 shadow-sm sm:p-10">
-        <Link href="/" className="text-sm font-bold tracking-tight text-ink">
-          FRAME<span className="text-muted">LINK</span>
+        <Link href="/" className="text-ink">
+          <BrandLogo className="text-sm" />
         </Link>
         <h1 className="mt-8 text-3xl font-bold text-ink">{title}</h1>
         <p className="mt-2 text-xs text-muted">อัปเดตล่าสุด {updatedAt}</p>

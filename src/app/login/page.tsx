@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/BrandLogo";
 import { EmailLoginForm } from "./EmailLoginForm";
 import { GoogleButton } from "./GoogleButton";
 
@@ -13,8 +14,8 @@ export default async function LoginPage({
   return (
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
       <div className="hidden flex-col justify-between bg-ink px-10 py-10 text-paper lg:flex xl:px-16">
-        <Link href="/" className="text-xl font-bold tracking-tight">
-          FRAME<span className="text-muted">LINK</span>
+        <Link href="/">
+          <BrandLogo className="text-xl" />
         </Link>
 
         <div>
