@@ -1,97 +1,69 @@
 import Link from "next/link";
+import { ArrowRightIcon } from "./icons";
 
-const stats = [
-  { value: "50+", label: "ร้านที่เปิดใช้งานแล้ว" },
-  { value: "฿330K+", label: "ยอดขายรวมผ่านระบบ" },
-  { value: "ทุกวันจันทร์", label: "รอบจ่ายเงิน ไม่เคยพลาด" },
-];
-
-export function Hero({ ctaHref = "/login" }: { ctaHref?: string }) {
+/**
+ * Split hero: copy on the left over the paper ground, photograph bleeding off
+ * the right edge. Title and subtitle still come from site settings so an admin
+ * edit keeps driving this page.
+ */
+export function Hero({
+  ctaHref = "/login",
+  title = "แปะลิงก์\nขายได้เลย",
+  subtitle = "ร้านค้าออนไลน์ในลิงก์เดียว สำหรับครีเอเตอร์ไทย ไม่ต้องทำเว็บเอง ไม่ต้องใช้บัตรเครดิต รับเงินผ่านพร้อมเพย์ได้ทันที",
+}: {
+  ctaHref?: string;
+  title?: string;
+  subtitle?: string;
+}) {
   return (
-    <section className="mx-auto grid max-w-6xl grid-cols-1 gap-16 px-6 pb-24 pt-16 lg:grid-cols-2 lg:items-center lg:pt-24">
-      <div>
-        <p className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-muted">
-          Biolink ที่ขายของได้จริง
-        </p>
-        <h1 className="text-5xl font-bold leading-[1.05] tracking-tight text-ink sm:text-6xl">
-          แปะลิงก์
-          <br />
-          <span className="text-muted">ขายได้เลย</span>
-        </h1>
-        <p className="mt-6 max-w-md text-lg leading-relaxed text-ink-soft">
-          ร้านค้าออนไลน์ในลิงก์เดียว สำหรับครีเอเตอร์ไทย ไม่ต้องทำเว็บเอง
-          ไม่ต้องใช้บัตรเครดิต รับเงินผ่านพร้อมเพย์ได้ทันที
-        </p>
+    <section className="bg-paper">
+      {/* Two real columns rather than a negative-margin bleed: the percentage
+          in `calc((100% - 100vw) / 2)` resolves against this column, not the
+          page shell, which pushed the layout 236px past the viewport. */}
+      <div className="grid lg:grid-cols-2 lg:items-stretch lg:pt-10">
+        <div className="flex items-center px-6 py-16 lg:justify-end lg:py-20 lg:pl-10 lg:pr-12">
+          <div className="w-full lg:max-w-[34rem]" data-enter>
+          <h1 className="text-[2.5rem] font-semibold leading-[1.1] text-ink sm:text-[3.25rem] lg:text-[3.5rem]">
+            {title.split("\n").map((line, index) => (
+              <span key={index} className="block">
+                {line}
+              </span>
+            ))}
+          </h1>
 
-        <div className="mt-8 flex flex-wrap items-center gap-4">
-          <Link
-            href={ctaHref}
-            className="rounded-full bg-accent px-7 py-3.5 text-sm font-semibold text-paper transition hover:bg-accent-hover"
-          >
-            สร้างร้านฟรี →
-          </Link>
-          <Link
-            href="#pricing"
-            className="text-sm font-semibold text-ink-soft hover:text-ink"
-          >
-            ดูราคา →
-          </Link>
-        </div>
+          <p className="measure mt-5 text-lg leading-8 text-ink-soft">{subtitle}</p>
 
-        <p className="mt-4 text-xs text-muted">
-          ฟรีเริ่มต้น · ไม่ต้องผูกบัตร · เลิกใช้เมื่อไหร่ก็ได้
-        </p>
-
-        <dl className="mt-14 grid max-w-md grid-cols-3 gap-6 border-t border-line pt-8">
-          {stats.map((s) => (
-            <div key={s.label}>
-              <dt className="text-2xl font-bold text-ink">{s.value}</dt>
-              <dd className="mt-1 text-xs leading-snug text-muted">{s.label}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-
-      <div className="relative">
-        <div className="overflow-hidden rounded-3xl border border-line bg-paper shadow-[0_1px_0_0_rgba(0,0,0,0.03)]">
-          <div className="flex items-center justify-center border-b border-line bg-paper-dim px-4 py-3">
-            <span className="rounded-full bg-paper px-4 py-1 text-xs text-muted">
-              buykub.com/kanya
-            </span>
+          <div className="mt-8 flex flex-wrap items-center gap-x-7 gap-y-4">
+            <Link
+              href={ctaHref}
+              className="group inline-flex h-12 items-center gap-2 rounded-full bg-accent pl-7 pr-6 text-[15px] font-medium text-on-ink transition duration-[120ms] ease-out hover:bg-accent-hover active:scale-[0.98]"
+            >
+              เปิดร้านฟรี
+              <ArrowRightIcon className="size-4 transition-transform duration-[200ms] ease-out group-hover:translate-x-1" />
+            </Link>
+            <Link
+              href="#how"
+              className="draw-link text-[15px] font-medium text-ink-soft transition-colors hover:text-ink"
+            >
+              ดูวิธีใช้งาน
+            </Link>
           </div>
 
-          <div className="h-24 bg-[repeating-linear-gradient(135deg,var(--color-paper-dim)_0px,var(--color-paper-dim)_10px,var(--color-paper)_10px,var(--color-paper)_20px)]" />
-
-          <div className="px-6 pb-6 pt-5">
-            <div className="-mt-14 mb-4 flex h-16 w-16 items-center justify-center rounded-full border-4 border-paper bg-ink text-xl font-bold text-paper">
-              ก
-            </div>
-            <h3 className="text-lg font-bold text-ink">กัญญา — สอนออกแบบกราฟิก</h3>
-            <p className="mt-1 text-sm text-muted">คอร์สออนไลน์ · ให้คำปรึกษา 1:1</p>
-
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <div className="rounded-xl border border-line p-3">
-                <div className="mb-3 h-16 rounded-lg bg-paper-dim" />
-                <p className="text-sm font-medium text-ink">คอร์สเริ่มต้น Figma</p>
-                <p className="text-sm font-bold text-ink">฿990</p>
-              </div>
-              <div className="rounded-xl border border-line p-3">
-                <div className="mb-3 h-16 rounded-lg bg-paper-dim" />
-                <p className="text-sm font-medium text-ink">ชุดฟอนต์ 80 แบบ</p>
-                <p className="text-sm font-bold text-ink">฿199</p>
-              </div>
-            </div>
+          <p className="mt-12 border-t border-line pt-5 text-[11px] font-medium uppercase tracking-[0.22em] text-muted">
+            Your store. Your ideas. Your business.
+          </p>
           </div>
         </div>
 
-        <div className="absolute -bottom-6 -left-6 flex items-center gap-3 rounded-2xl border border-line bg-ink px-5 py-4 text-paper shadow-lg">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-paper/15 text-sm">
-            ✓
-          </span>
-          <div>
-            <p className="text-xs text-paper/60">เงินเข้าแล้ว</p>
-            <p className="text-sm font-bold">+฿990.00</p>
-          </div>
+        <div className="relative mx-6 h-64 overflow-hidden rounded-container sm:h-80 lg:mx-0 lg:h-full lg:min-h-[clamp(480px,42vw,600px)] lg:rounded-r-none">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/landing/hero.webp"
+            alt="ผู้ชายสวมแว่นกำลังพิมพ์งานบนโน้ตบุ๊กที่โต๊ะทำงาน"
+            fetchPriority="high"
+            decoding="async"
+            className="absolute inset-0 size-full object-cover"
+          />
         </div>
       </div>
     </section>

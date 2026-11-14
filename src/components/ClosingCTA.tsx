@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowRightIcon } from "./icons";
 
 function normalizeSlug(value: string) {
   return value
@@ -19,7 +20,7 @@ export function ClosingCTA({ ctaHref = "/login" }: { ctaHref?: string }) {
     event.preventDefault();
     const slug = normalizeSlug(shopName);
     if (!slug) return;
-    const settingsPath = `/dashboard/settings?slug=${slug}`;
+    const settingsPath = `/dashboard/products?slug=${slug}`;
     router.push(
       ctaHref === "/login"
         ? `/login?next=${encodeURIComponent(settingsPath)}`
@@ -28,19 +29,19 @@ export function ClosingCTA({ ctaHref = "/login" }: { ctaHref?: string }) {
   }
 
   return (
-    <section className="border-t border-line py-24">
+    <section className="bg-paper py-20 sm:py-24">
       <div className="mx-auto max-w-3xl px-6 text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          พร้อมเริ่มขายหรือยัง?
+        <h2 className="text-3xl text-ink sm:text-[2.25rem]">
+          เริ่มต้นสร้างร้านของคุณวันนี้
         </h2>
-        <p className="mt-3 text-ink-soft">
-          สมัครฟรี ตั้งร้านในไม่กี่นาที แปะลิงก์ใน bio แล้วเริ่มมีรายได้
+        <p className="mt-4 text-base leading-7 text-ink-soft">
+          เปิดร้านฟรี ไม่มีรายเดือน ค่าธรรมเนียมเพียง 5% ต่อออเดอร์
         </p>
         <form
           onSubmit={submit}
-          className="mx-auto mt-8 flex max-w-md items-center rounded-full border border-line bg-paper p-1.5 pl-5 shadow-sm transition focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20"
+          className="mx-auto mt-9 flex h-14 max-w-md items-center rounded-full border border-line bg-paper p-1.5 pl-5 transition duration-[200ms] ease-out focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20"
         >
-          <span className="shrink-0 text-sm font-semibold text-muted">
+          <span className="shrink-0 text-sm font-medium text-muted">
             buykub.com/
           </span>
           <input
@@ -54,12 +55,13 @@ export function ClosingCTA({ ctaHref = "/login" }: { ctaHref?: string }) {
           <button
             type="submit"
             disabled={!normalizeSlug(shopName)}
-            className="shrink-0 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-paper transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-45"
+            className="group inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-accent pl-5 pr-4 text-sm font-medium text-on-ink transition duration-[120ms] ease-out hover:bg-accent-hover active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45 disabled:active:scale-100"
           >
             เปิดร้านเลย
+            <ArrowRightIcon className="size-3.5 transition-transform duration-[200ms] ease-out group-hover:translate-x-0.5 group-disabled:translate-x-0" />
           </button>
         </form>
-        <p className="mt-3 text-xs text-muted">ใช้เวลาไม่ถึง 2 นาที</p>
+        <p className="mt-4 text-xs text-muted">ใช้เวลาไม่ถึง 2 นาที</p>
       </div>
     </section>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MinusIcon, PlusIcon } from "./icons";
 
 const faqs = [
   {
@@ -9,7 +10,7 @@ const faqs = [
   },
   {
     q: "ขายแล้วได้เงินเมื่อไหร่?",
-    a: "โอนเงินเข้าบัญชีทุกวันจันทร์ หลังพ้นระยะเวลาตรวจสอบมาตรฐานของแต่ละยอดขาย",
+    a: "ยอดที่ลูกค้าชำระแล้วจะเข้ารอบจ่ายหลังพ้นระยะถือครอง 7 วัน หลังจากนั้นทีมงานจะโอนเข้าบัญชีที่คุณกรอกไว้ในหน้าตั้งค่า และแนบสลิปยืนยันการโอนให้ทุกครั้ง ยังไม่มีระบบโอนอัตโนมัติ",
   },
   {
     q: "ต้องจดทะเบียนธุรกิจไหม?",
@@ -21,7 +22,7 @@ const faqs = [
   },
   {
     q: "ขายอะไรได้บ้าง?",
-    a: "สินค้าดิจิทัลทุกแบบ เช่น e-book, template, ไฟล์เสียง/วิดีโอ และบริการจองคิวแบบ 1:1",
+    a: "สินค้าดิจิทัลทุกแบบ เช่น e-book, template, ไฟล์เสียง/วิดีโอ คีย์สินค้า และคอร์สออนไลน์",
   },
 ];
 
@@ -29,32 +30,39 @@ export function FAQ() {
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <section className="border-t border-line bg-paper-dim py-24">
+    <section className="py-20 sm:py-24">
       <div className="mx-auto max-w-3xl px-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
-          FAQ
-        </p>
-        <h2 className="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          คำถามที่เจอบ่อย
-        </h2>
-        <p className="mt-3 text-sm leading-6 text-ink-soft">
+        <h2 className="text-3xl text-ink sm:text-[2.5rem]">คำถามที่เจอบ่อย</h2>
+        <p className="mt-4 text-[15px] leading-7 text-ink-soft">
           รวมคำตอบเรื่องการเปิดร้าน การขายสินค้า การรับเงิน และค่าธรรมเนียม
         </p>
 
-        <div className="mt-10 divide-y divide-line border-y border-line">
-          {faqs.map((f, i) => {
-            const isOpen = open === i;
+        <div className="card mt-10 divide-y divide-line px-6">
+          {faqs.map((faq, index) => {
+            const isOpen = open === index;
+            const panelId = `faq-panel-${index}`;
             return (
-              <div key={f.q}>
-                <button
-                  onClick={() => setOpen(isOpen ? null : i)}
-                  className="flex w-full items-center justify-between py-5 text-left"
-                >
-                  <span className="font-medium text-ink">{f.q}</span>
-                  <span className="text-xl text-muted">{isOpen ? "−" : "+"}</span>
-                </button>
+              <div key={faq.q}>
+                <h3>
+                  <button
+                    type="button"
+                    onClick={() => setOpen(isOpen ? null : index)}
+                    aria-expanded={isOpen}
+                    aria-controls={panelId}
+                    className="group flex w-full items-center justify-between gap-6 py-5 text-left"
+                  >
+                    <span className="font-medium text-ink transition-colors group-hover:text-accent-text">
+                      {faq.q}
+                    </span>
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-line bg-paper text-muted transition duration-[160ms] ease-out group-hover:border-accent group-hover:text-accent-text">
+                      {isOpen ? <MinusIcon className="size-3.5" /> : <PlusIcon className="size-3.5" />}
+                    </span>
+                  </button>
+                </h3>
                 {isOpen && (
-                  <p className="pb-5 text-sm leading-relaxed text-ink-soft">{f.a}</p>
+                  <p id={panelId} className="pb-6 pr-12 text-sm leading-7 text-ink-soft">
+                    {faq.a}
+                  </p>
                 )}
               </div>
             );

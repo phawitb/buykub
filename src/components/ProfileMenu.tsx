@@ -38,31 +38,31 @@ export function ProfileMenu({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-full border border-line py-1 pl-1 pr-3 hover:bg-paper-dim"
+        className="flex size-10 items-center justify-center rounded-full transition-colors hover:bg-paper-dim"
       >
         {avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatarUrl} alt="" className="h-7 w-7 rounded-full object-cover" />
+          <img src={avatarUrl} alt="" className="size-8 rounded-full object-cover" />
         ) : (
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-xs font-semibold text-paper">
+          <span className="flex size-8 items-center justify-center rounded-full bg-ink text-xs font-medium text-on-ink">
             {name.slice(0, 1).toUpperCase()}
           </span>
         )}
-        <span className="max-w-[8rem] truncate text-sm font-medium text-ink">{name}</span>
+        <span className="sr-only">{name}</span>
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-xl border border-line bg-paper shadow-lg">
+        <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-container border border-line bg-paper p-1 shadow-lift-3">
           <Link
-            href="/dashboard"
+            href="/dashboard/products"
             onClick={() => setOpen(false)}
-            className="block px-4 py-2.5 text-sm text-ink-soft hover:bg-paper-dim hover:text-ink"
+            className="block rounded-inner px-3.5 py-2.5 text-sm text-ink-soft transition-colors hover:bg-paper-dim hover:text-ink"
           >
-            แดชบอร์ด
+            บัญชีของฉัน
           </Link>
           <button
             onClick={handleSignOut}
-            className="block w-full px-4 py-2.5 text-left text-sm text-ink-soft hover:bg-paper-dim hover:text-ink"
+            className="block w-full rounded-inner px-3.5 py-2.5 text-left text-sm text-ink-soft transition-colors hover:bg-paper-dim hover:text-ink"
           >
             ออกจากระบบ
           </button>
