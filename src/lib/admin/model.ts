@@ -5,8 +5,8 @@ export type SiteSettings = {
   support_email: string;
 };
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
-  hero_title: "แปะลิงก์\nขายได้เลย",
-  hero_subtitle: "ร้านค้าออนไลน์ในลิงก์เดียว สำหรับครีเอเตอร์ไทย ไม่ต้องทำเว็บเอง ไม่ต้องใช้บัตรเครดิต รับเงินผ่านพร้อมเพย์ได้ทันที",
+  hero_title: "ลงสินค้าแล้ว\nรอรับเงินได้เลย",
+  hero_subtitle: "ระบบยืนยันเงินเข้า ส่งของ และเปิดสิทธิ์ให้ลูกค้าเองทุกออเดอร์ คุณไม่ต้องนั่งเช็กสลิป ไม่ต้องส่งไฟล์เอง ไม่ต้องกดอะไรเลย",
   announcement: "",
   support_email: "support@buykub.com",
 };

@@ -11,8 +11,9 @@ const thaiSans = Noto_Sans_Thai({
 
 export const metadata: Metadata = {
   metadataBase: new URL(BRAND_ORIGIN),
-  title: `${BRAND_NAME} — แปะลิงก์ ขายได้เลย`,
-  description: "ร้านค้าออนไลน์ในลิงก์เดียว สำหรับครีเอเตอร์ไทย",
+  title: `${BRAND_NAME} — ลงสินค้าแล้ว รอรับเงินได้เลย`,
+  description:
+    "ขายไฟล์ คีย์สินค้า และคอร์สออนไลน์ ระบบยืนยันเงินเข้า ส่งของ และเปิดสิทธิ์ให้ลูกค้าเองทุกออเดอร์",
 };
 
 export default function RootLayout({

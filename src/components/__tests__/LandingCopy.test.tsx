@@ -45,6 +45,23 @@ describe("landing page copy", () => {
     expect(screen.queryByText(/8%|2%|0%/)).not.toBeInTheDocument();
   });
 
+  it("promises only automation that exists", () => {
+    const { container } = renderLanding();
+    const text = container.textContent ?? "";
+
+    // What the platform really does after payment: confirm through the
+    // provider's webhook, release the file or key, open classroom access.
+    expect(screen.getByRole("heading", { name: /ที่เหลือเราทำให้/ })).toBeInTheDocument();
+    expect(screen.getByText("ยืนยันเงินเข้าให้เอง")).toBeInTheDocument();
+    expect(screen.getByText("ส่งของให้เอง")).toBeInTheDocument();
+    expect(screen.getByText("เปิดสิทธิ์ให้เอง")).toBeInTheDocument();
+
+    // Delivery types are file, key and course only. There is no feature that
+    // adds a buyer to a LINE, Facebook or Discord group, so the page may not
+    // promise one however appealing it sounds.
+    expect(text).not.toMatch(/เข้ากลุ่ม|ดึงเข้า|เพิ่มเพื่อน|LINE group|Discord|ชวนเข้า/);
+  });
+
   it("promises no payout schedule the platform does not keep", () => {
     const { container } = renderLanding();
     const text = container.textContent ?? "";

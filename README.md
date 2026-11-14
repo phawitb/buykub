@@ -648,3 +648,39 @@ there is no horizontal overflow at 390 or 1440, and the console is clean.
 **Not verified:** presentation only — no checkout, payment, refund, product save, payout or
 admin write was exercised. The lesson editor, order detail and admin workspace were not
 opened in a browser.
+
+## Landing hook rewrite — 2026-11-14
+
+Production deployment `dpl_EuxcBBkc5dXSEUJmLNSQf3FM4pjA` is aliased to
+https://buykub.com, superseding `dpl_7oV2fL7BypFDuF9ZRcimyb1uQBAG`.
+
+The hook now leads with what the seller does not have to do:
+
+> **ลงสินค้าแล้ว / รอรับเงินได้เลย**
+> ระบบยืนยันเงินเข้า ส่งของ และเปิดสิทธิ์ให้ลูกค้าเองทุกออเดอร์
+> คุณไม่ต้องนั่งเช็กสลิป ไม่ต้องส่งไฟล์เอง ไม่ต้องกดอะไรเลย
+
+`platform_site_settings` is empty, so `getPublicSiteSettings` falls back to
+`DEFAULT_SITE_SETTINGS`; those defaults are what production renders and are what
+changed. The document title, meta description and the sign-in panel were brought
+into step with it.
+
+The dark band was reframed from "three steps to start" to what happens after the
+customer pays — confirm payment, deliver, open access — because that is the part
+the seller is actually buying.
+
+**"ดึงลูกค้าเข้ากลุ่ม" was requested and deliberately left out.** No such feature
+exists: `ProductDeliveryType` is `file | key | course`, and there is no LINE,
+Facebook or Discord invite anywhere in `src/` or `supabase/`. The nearest true
+capability is course classroom access, which opens automatically against the
+buyer's Google account and appears as "เปิดสิทธิ์ให้เอง".
+`src/components/__tests__/LandingCopy.test.tsx` now fails if the page gains
+`เข้ากลุ่ม`, `ดึงเข้า`, `ชวนเข้า` or `Discord` while that remains true.
+
+Verification: 615 tests / 117 files, lint (0 errors, 2 pre-existing warnings) and
+the production build pass; `/` is still static with 1m revalidate. After
+promotion the live page carries the new headline, subtitle, band heading and all
+three automation lines, the document title reads
+"BUYKUB — ลงสินค้าแล้ว รอรับเงินได้เลย", and no group-invite wording appears.
+Landing, login, example shop and terms return 200; `/dashboard/products`
+redirects and `POST /api/admin/hold` returns 403.

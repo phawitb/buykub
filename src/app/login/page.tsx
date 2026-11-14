@@ -33,12 +33,12 @@ export default async function LoginPage({
 
         <div>
           <h1 className="text-4xl font-bold leading-tight xl:text-5xl">
-            แปะลิงก์
+            ลงสินค้าแล้ว
             <br />
-            ขายได้เลย
+            รอรับเงินได้เลย
           </h1>
           <p className="mt-4 max-w-sm text-sm text-on-ink-soft">
-            ตั้งร้านออนไลน์ในลิงก์เดียว ขายสินค้าดิจิทัลและคอร์สออนไลน์ เริ่มได้ในไม่กี่นาที
+            ขายไฟล์ คีย์สินค้า และคอร์สออนไลน์ ระบบส่งของและเปิดสิทธิ์ให้ลูกค้าเอง
           </p>
         </div>
 
