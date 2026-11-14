@@ -13,6 +13,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored agent skills: third-party assets, not this project's source.
+    ".agents/**",
+    ".claude/skills/**",
   ]),
 ]);
 

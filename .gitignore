@@ -45,3 +45,17 @@ next-env.d.ts
 
 # local Supabase CLI link metadata
 /supabase/.temp/
+
+# local image-source research
+/.firecrawl/
+
+# Private operational backups; never deploy or commit customer records
+/.private-backups/
+
+# Vendored agent skills (installed with npx; reinstall rather than commit)
+/.agents/
+/.claude/skills/
+/.claude/agents/
+
+# Agent skill lockfile; the skills themselves are vendored and reinstallable
+/skills-lock.json
