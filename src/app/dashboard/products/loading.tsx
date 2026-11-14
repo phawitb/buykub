@@ -3,10 +3,10 @@ export default function ProductsLoading() {
     <div
       role="status"
       aria-live="polite"
-      aria-label="กำลังโหลดสินค้า"
+      aria-label="กำลังโหลดร้านค้าของฉัน"
       className="max-w-3xl animate-pulse"
     >
-      <span className="sr-only">กำลังโหลดสินค้า</span>
+      <span className="sr-only">กำลังโหลดร้านค้าของฉัน</span>
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="h-7 w-24 rounded bg-paper-dim" />

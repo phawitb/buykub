@@ -4,6 +4,20 @@ import { describe, expect, it, vi } from "vitest";
 import { ShopImageUploader } from "./ShopImageUploader";
 
 describe("ShopImageUploader", () => {
+  it("shows a newly selected default cover after an upload has finished", async () => {
+    const upload = vi.fn().mockResolvedValue({ path: "user/cover.png", publicUrl: "https://cdn/cover.png" });
+    const onUploaded = vi.fn();
+    const props = { kind: "cover" as const, userId: "user-1", onUploaded, upload };
+    const { container, rerender } = render(<ShopImageUploader {...props} value={null} />);
+    fireEvent.change(screen.getByLabelText("เลือกรูปปก"), {
+      target: { files: [new File(["cover"], "cover.png", { type: "image/png" })] },
+    });
+    await waitFor(() => expect(onUploaded).toHaveBeenCalled());
+    rerender(<ShopImageUploader {...props} value="https://cdn/cover.png" />);
+    rerender(<ShopImageUploader {...props} value="/images/shop-covers/nature-01.webp" />);
+    expect(container.querySelector("img")).toHaveAttribute("src", "/images/shop-covers/nature-01.webp");
+  });
+
   it("shows the full PIXZA image guidance for profile and cover images", () => {
     const { rerender } = render(
       <ShopImageUploader

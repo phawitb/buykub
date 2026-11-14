@@ -1,0 +1,131 @@
+{
+  "origin": "https://buykub.com",
+  "results": [
+    {
+      "path": "/",
+      "samples": [
+        {
+          "status": 200,
+          "ttfb": 0.662963,
+          "total": 0.687494,
+          "bytes": 111442,
+          "cache": "PRERENDER"
+        },
+        {
+          "status": 200,
+          "ttfb": 0.239847,
+          "total": 0.269457,
+          "bytes": 111442,
+          "cache": "HIT"
+        },
+        {
+          "status": 200,
+          "ttfb": 0.054989,
+          "total": 0.083334,
+          "bytes": 111442,
+          "cache": "HIT"
+        },
+        {
+          "status": 200,
+          "ttfb": 0.128243,
+          "total": 0.157561,
+          "bytes": 111442,
+          "cache": "HIT"
+        },
+        {
+          "status": 200,
+          "ttfb": 0.196414,
+          "total": 0.226909,
+          "bytes": 111442,
+          "cache": "HIT"
+        }
+      ],
+      "medianTotal": 0.226909,
+      "medianTTFB": 0.196414
+    },
+    {
+      "path": "/buykub-test-phawit/product",
+      "samples": [
+        {
+          "status": 200,
+          "ttfb": 0.308488,
+          "total": 0.326865,
+          "bytes": 21313,
+          "cache": "MISS"
+        },
+        {
+          "status": 200,
+          "ttfb": 0.298466,
+          "total": 0.309636,
+          "bytes": 21313,
+          "cache": "MISS"
+        },
+        {
+          "status": 200,
+          "ttfb": 0.211605,
+          "total": 0.233575,
+          "bytes": 21313,
+          "cache": "MISS"
+        },
+        {
+          "status": 200,
+          "ttfb": 0.193455,
+          "total": 0.201338,
+          "bytes": 21313,
+          "cache": "MISS"
+        },
+        {
+          "status": 200,
+          "ttfb": 0.221759,
+          "total": 0.236284,
+          "bytes": 21313,
+          "cache": "MISS"
+        }
+      ],
+      "medianTotal": 0.236284,
+      "medianTTFB": 0.221759
+    },
+    {
+      "path": "/buykub-test-phawit",
+      "samples": [
+        {
+          "status": 200,
+          "ttfb": 0.420483,
+          "total": 1.445993,
+          "bytes": 23107,
+          "cache": "MISS"
+        },
+        {
+          "status": 200,
+          "ttfb": 0.192371,
+          "total": 0.203027,
+          "bytes": 23107,
+          "cache": "MISS"
+        },
+        {
+          "status": 200,
+          "ttfb": 0.272426,
+          "total": 0.273824,
+          "bytes": 23107,
+          "cache": "MISS"
+        },
+        {
+          "status": 200,
+          "ttfb": 0.21101,
+          "total": 0.230053,
+          "bytes": 23107,
+          "cache": "MISS"
+        },
+        {
+          "status": 200,
+          "ttfb": 0.188377,
+          "total": 0.205162,
+          "bytes": 23107,
+          "cache": "MISS"
+        }
+      ],
+      "medianTotal": 0.230053,
+      "medianTTFB": 0.21101
+    }
+  ]
+}

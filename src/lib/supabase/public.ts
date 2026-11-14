@@ -1,12 +1,13 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 
-let publicClient: SupabaseClient | undefined;
+let publicClient: ReturnType<typeof buildPublicClient> | undefined;
 
 function buildPublicClient(browserRuntime: boolean) {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      db: { schema: process.env.NEXT_PUBLIC_SUPABASE_DB_SCHEMA || "public" },
       auth: {
         autoRefreshToken: false,
         detectSessionInUrl: false,

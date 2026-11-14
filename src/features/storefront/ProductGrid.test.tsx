@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { ProductGrid } from "./ProductGrid";
 
 describe("ProductGrid", () => {
-  it("uses one column on mobile and two columns from the desktop breakpoint", () => {
+  it("uses responsive columns for a full-width storefront", () => {
     render(
       <ProductGrid>
         <article>สินค้า</article>
@@ -13,6 +13,6 @@ describe("ProductGrid", () => {
     const grid = screen.getByRole("list", { name: "สินค้าดิจิทัล" });
     expect(grid).toHaveClass("grid-cols-1");
     expect(grid).toHaveClass("sm:grid-cols-2");
-    expect(grid).toHaveClass("sm:gap-x-[14px]");
+    expect(grid).toHaveClass("lg:grid-cols-3", "2xl:grid-cols-4");
   });
 });

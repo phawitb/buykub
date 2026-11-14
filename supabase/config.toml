@@ -1,0 +1,11 @@
+# Endpoints enforce their own authorization in the handler.
+# Stripe sends HMAC-signed events; buyers present a paid checkout capability.
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.download-product]
+verify_jwt = false
+
+# Delivery verifies service-role credentials or a seller JWT and order ownership.
+[functions.send-product-key]
+verify_jwt = false

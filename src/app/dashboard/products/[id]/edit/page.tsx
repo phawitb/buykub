@@ -6,7 +6,7 @@ import type {
   ProductImage,
   ProductKeyRecord,
 } from "@/features/products/model";
-import { createClient } from "@/lib/supabase/server";
+import { getSellerContext } from "@/lib/supabase/seller-context";
 
 type DatabaseFAQ = {
   id?: string;
@@ -22,24 +22,14 @@ export default async function EditProductPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: shop } = await supabase
-    .from("shops")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-  if (!shop) redirect("/dashboard/settings");
+  const { supabase, user, shop } = await getSellerContext();
+  if (!shop) redirect("/dashboard/products");
 
   const [{ data: product }, { data: slugRows }, { data: keyRows }] = await Promise.all([
     supabase
       .from("products")
       .select(
-        "id, name, slug, description, description_html, category, price_cents, compare_price_cents, highlights, faq, images, images_v2, file_url, file_path, file_name, file_size, file_mime_type, delivery_type, published",
+        "id, name, slug, description, description_html, category, price_cents, compare_price_cents, highlights, faq, images, images_v2, file_url, file_path, file_name, file_size, file_mime_type, delivery_type, course_access_days, published",
       )
       .eq("id", id)
       .eq("shop_id", shop.id)
@@ -73,7 +63,8 @@ export default async function EditProductPage({
   );
 
   const initialValue: ProductEditorValue = {
-    deliveryType: product.delivery_type === "key" ? "key" : "file",
+    deliveryType: product.delivery_type === "course" ? "course" : product.delivery_type === "key" ? "key" : "file",
+    courseAccessDays: product.course_access_days == null ? "" : String(product.course_access_days),
     keyInput: "",
     keyInventory: {
       available: (keyRows ?? []).filter((row) => row.status === "available").length,

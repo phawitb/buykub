@@ -39,6 +39,11 @@ const validValue: ProductEditorValue = {
 };
 
 describe("validateProductEditor", () => {
+  it("requires whole positive days for courses and accepts lifetime without a file", () => {
+    expect(validateProductEditor({...validValue,deliveryType:"course",productFile:null,courseAccessDays:""})).toEqual({});
+    expect(validateProductEditor({...validValue,deliveryType:"course",productFile:null,courseAccessDays:"1.5"}).courseAccessDays).toBeTruthy();
+  });
+
   it("accepts a complete valid product", () => {
     expect(validateProductEditor(validValue)).toEqual({});
   });
@@ -101,15 +106,15 @@ describe("validateProductEditor", () => {
 });
 
 describe("upload validation", () => {
-  it("rejects a product file one byte over 500 MB", () => {
+  it("rejects a product file one byte over 50 MB", () => {
     const tooLarge = fileWithSize(
       "large.zip",
       "application/zip",
-      500 * 1024 * 1024 + 1,
+      50 * 1024 * 1024 + 1,
     );
 
     expect(validateProductFile(tooLarge)).toBe(
-      "ไฟล์ต้องมีขนาดไม่เกิน 500 MB",
+      "ไฟล์ต้องมีขนาดไม่เกิน 50 MB",
     );
   });
 

@@ -1,0 +1,19 @@
+{
+  "deployment_id": "dpl_DVbBwbemqKS3AmTA2Yhhe2g3inGg",
+  "deployment_url": "https://buykub-iefej8cet-phawitbs-projects.vercel.app",
+  "url": "https://buykub.com",
+  "verification": {
+    "full_suite": "467 tests / 98 files passed before final draft-retention fix",
+    "final_targeted": "27 tests passed including unchanged-section draft regression",
+    "lint": "full suite and final changed-file checks passed",
+    "build": "local webpack and final Vercel Turbopack/TypeScript passed",
+    "review": "one draft-retention finding verified failing before fix and passing after",
+    "local_browser": "Profile, cover, name and bio open distinct dialogs; unchanged bio save succeeds; labeled Add product opens Course/File editor",
+    "responsive": "390px page has no horizontal overflow; bio dialog fits viewport at 358px wide",
+    "preflight": "200; File/Course badges present, OTHER absent",
+    "live_browser": "New controls render; profile opens dedicated dialog; closed and restored management view"
+  },
+  "database_migration": false,
+  "test_data": "Saved existing dummy-shop bio unchanged; no new product or payment",
+  "screenshots": "Attachments waived by user; visual browser checks completed"
+}

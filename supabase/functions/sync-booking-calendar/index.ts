@@ -41,7 +41,9 @@ Deno.serve(async (request) => {
     return response({ error: "Invalid booking id" }, 400);
   }
 
-  const admin = createClient(supabaseUrl, serviceRoleKey);
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    db: { schema: Deno.env.get("SUPABASE_DB_SCHEMA") || "public" },
+  });
   const { data: booking, error: bookingError } = await admin
     .from("bookings")
     .select(

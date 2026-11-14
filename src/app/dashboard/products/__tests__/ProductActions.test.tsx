@@ -39,3 +39,5 @@ describe("ProductActions", () => {
     ]);
   });
 });
+
+vi.mock("@/lib/storefront/invalidate", () => ({ invalidatePublicCatalog: vi.fn(async () => true), CATALOG_REFRESH_WARNING: "Refresh delayed" }));

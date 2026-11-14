@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
 import { ProductEditor } from "@/features/products/components/ProductEditor";
 import type { ProductEditorValue } from "@/features/products/model";
-import { createClient } from "@/lib/supabase/server";
+import { getSellerContext } from "@/lib/supabase/seller-context";
 
 const initialValue: ProductEditorValue = {
   deliveryType: "file",
+  courseAccessDays: "",
   keyInput: "",
   keyInventory: { available: 0, assigned: 0, disabled: 0 },
   name: "",
@@ -20,18 +21,9 @@ const initialValue: ProductEditorValue = {
 };
 
 export default async function NewProductPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, shop } = await getSellerContext();
 
-  const { data: shop } = await supabase
-    .from("shops")
-    .select("id")
-    .eq("owner_id", user!.id)
-    .maybeSingle();
-
-  if (!shop) redirect("/dashboard/settings");
+  if (!shop) redirect("/dashboard/products?create=1");
 
   const { data: products } = await supabase
     .from("products")

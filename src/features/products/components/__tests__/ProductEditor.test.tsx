@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProductEditorValue } from "@/features/products/model";
 import { ProductEditor } from "@/features/products/components/ProductEditor";
 import { ProductFileUploader } from "@/features/products/components/ProductFileUploader";
@@ -8,6 +8,7 @@ import { ProductImageUploader } from "@/features/products/components/ProductImag
 import type { UploadRequest, UploadResult } from "@/lib/supabase/upload";
 
 const push = vi.fn();
+beforeEach(() => push.mockClear());
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -59,6 +60,13 @@ function selectContents(element: HTMLElement) {
 }
 
 describe("ProductEditor", () => {
+  it("creates courses as drafts with a duration snapshot setting and no download file", async () => {
+    const saveProduct = vi.fn().mockResolvedValue(undefined);
+    render(<ProductEditor mode="create" shopId="shop-123" userId="user-123" existingSlugs={[]} initialValue={{...validValue, deliveryType:"course", courseAccessDays:"90", productFile:null}} saveProduct={saveProduct}/>);
+    await userEvent.click(screen.getByRole("button", {name:"สร้างคอร์สและเพิ่มบทเรียน"}));
+    await vi.waitFor(() => expect(saveProduct).toHaveBeenCalledWith(expect.objectContaining({delivery_type:"course",category:"COURSE",course_access_days:90,published:false,file_path:null})));
+  });
+
   it("cleans draft uploads left behind by an abandoned editor session", async () => {
     const deleteAsset = vi.fn().mockResolvedValue(undefined);
     window.localStorage.setItem(
@@ -115,26 +123,50 @@ describe("ProductEditor", () => {
     expect(screen.getByRole("button", { name: "สร้างสินค้า" })).toBeDisabled();
   });
 
-  it("switches from file upload to product key inventory", async () => {
-    const user = userEvent.setup();
-    render(
-      <ProductEditor
-        mode="create"
-        shopId="shop-123"
-        userId="user-123"
-        existingSlugs={[]}
-        initialValue={emptyValue}
-      />,
-    );
+  it("offers only Course and File without a second category picker", async () => {
+    render(<ProductEditor mode="create" shopId="shop-123" userId="user-123" existingSlugs={[]} initialValue={emptyValue} />);
 
-    await user.click(screen.getByRole("radio", { name: /Product Key/ }));
+    expect(screen.getAllByRole("radio")).toHaveLength(2);
+    expect(screen.getByRole("radio", { name: /Course/ })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /File/ })).toBeChecked();
+    expect(screen.queryByRole("button", { name: "OTHER" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /Product Key/ })).not.toBeInTheDocument();
 
-    expect(
-      screen.getByRole("heading", { name: "คลัง Product Key" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", { name: "ไฟล์สินค้า *" }),
-    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("radio", { name: /Course/ }));
+    expect(screen.getByRole("heading", { name: "สิทธิ์เข้าเรียน" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "ไฟล์สินค้า *" })).not.toBeInTheDocument();
+  });
+
+  it.each(["create", "edit"] as const)("saves the File category from its delivery type in %s mode", async (mode) => {
+    const saveProduct = vi.fn().mockResolvedValue(undefined);
+    render(<ProductEditor mode={mode} shopId="shop-123" userId="user-123" productId={mode === "edit" ? "product-123" : undefined} existingSlugs={[]} initialValue={{ ...validValue, category: "GUIDE" }} saveProduct={saveProduct} />);
+
+    await userEvent.click(screen.getByRole("button", { name: mode === "create" ? "สร้างสินค้า" : "บันทึกการเปลี่ยนแปลง" }));
+    await vi.waitFor(() => expect(saveProduct).toHaveBeenCalledWith(expect.objectContaining({ category: "FILE", delivery_type: "file", file_path: "user-123/product.zip" })));
+  });
+
+  it("updates the saved category when switching from File to Course", async () => {
+    const saveProduct = vi.fn().mockResolvedValue(undefined);
+    render(<ProductEditor mode="create" shopId="shop-123" userId="user-123" existingSlugs={[]} initialValue={validValue} saveProduct={saveProduct} />);
+
+    await userEvent.click(screen.getByRole("radio", { name: /Course/ }));
+    await userEvent.click(screen.getByRole("button", { name: "สร้างคอร์สและเพิ่มบทเรียน" }));
+    await vi.waitFor(() => expect(saveProduct).toHaveBeenCalledWith(expect.objectContaining({ category: "COURSE", delivery_type: "course", published: false, file_path: null })));
+  });
+
+  it("preserves legacy key delivery, stock controls, and key import while using the File category", async () => {
+    const saveProduct = vi.fn().mockResolvedValue(undefined);
+    render(<ProductEditor mode="edit" shopId="shop-123" userId="user-123" productId="key-product" existingSlugs={[]} initialValue={{ ...validValue, deliveryType: "key", productFile: null, keyInventory: { available: 2, assigned: 1, disabled: 0 } }} initialKeyRecords={[{ id: "key-1", keyValue: "TEST-KEY-1234", status: "available", assignedOrderId: null, createdAt: "2026-11-12" }]} saveProduct={saveProduct} />);
+
+    expect(screen.getByRole("heading", { name: "คลัง Product Key" })).toBeInTheDocument();
+    expect(screen.getByText("พร้อมขาย 2")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ปิดใช้ Key TEST" })).toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    await userEvent.type(screen.getByRole("textbox", { name: "รายการ Product Key" }), "NEW-KEY-5678");
+    await userEvent.click(screen.getByRole("button", { name: "บันทึกการเปลี่ยนแปลง" }));
+
+    await vi.waitFor(() => expect(saveProduct).toHaveBeenCalledWith(expect.objectContaining({ category: "FILE", delivery_type: "key", product_keys: ["NEW-KEY-5678"], file_path: null })));
+    expect(await screen.findByText("พร้อมขาย 3")).toBeInTheDocument();
   });
 
   it("initializes the rich editor without duplicate extensions", () => {
@@ -430,3 +462,5 @@ describe("ProductImageUploader", () => {
     ]);
   });
 });
+
+vi.mock("@/lib/storefront/invalidate", () => ({ invalidatePublicCatalog: vi.fn(async () => true), CATALOG_REFRESH_WARNING: "Refresh delayed" }));

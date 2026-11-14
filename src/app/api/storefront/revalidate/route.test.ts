@@ -1,0 +1,12 @@
+import { beforeEach, expect, it, vi } from 'vitest';
+const m=vi.hoisted(()=>({getUser:vi.fn(),shop:vi.fn(),tag:vi.fn()}));
+vi.mock('@/lib/supabase/server',()=>({createClient:async()=>({auth:{getUser:m.getUser},from:()=>({select:()=>({eq:()=>({maybeSingle:m.shop})})})})}));
+vi.mock('next/cache',()=>({revalidateTag:m.tag}));
+import { POST } from './route';
+const req=(origin='https://buykub.com')=>new Request('https://buykub.com/api/storefront/revalidate',{method:'POST',headers:{origin}});
+beforeEach(()=>{vi.clearAllMocks();m.getUser.mockResolvedValue({data:{user:{id:'owner',app_metadata:{provider:'google'}}}});m.shop.mockResolvedValue({data:{id:'shop'},error:null});});
+it('invalidates immediately after authenticated seller changes',async()=>{expect((await POST(req())).status).toBe(200);expect(m.tag).toHaveBeenCalledWith('public-catalog-v1',{expire:0});});
+it('rejects cross-origin requests without looking up credentials',async()=>{expect((await POST(req('https://evil.example'))).status).toBe(403);expect(m.getUser).not.toHaveBeenCalled();expect(m.tag).not.toHaveBeenCalled();});
+it('does not allow anonymous callers to purge caches',async()=>{m.getUser.mockResolvedValue({data:{user:null}});expect((await POST(req())).status).toBe(401);expect(m.tag).not.toHaveBeenCalled();});
+it('requires a seller shop',async()=>{m.shop.mockResolvedValue({data:null,error:null});expect((await POST(req())).status).toBe(403);expect(m.tag).not.toHaveBeenCalled();});
+it('returns an error instead of success when ownership cannot be read',async()=>{m.shop.mockResolvedValue({data:null,error:{message:'offline'}});expect((await POST(req())).status).toBe(503);expect(m.tag).not.toHaveBeenCalled();});

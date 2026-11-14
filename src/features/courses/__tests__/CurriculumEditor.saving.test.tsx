@@ -1,0 +1,21 @@
+import { act, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { expect, it, vi } from "vitest";
+import { CurriculumEditor } from "../CurriculumEditor";
+const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
+vi.mock("@/lib/supabase/client", () => ({ createClient: () => ({ rpc }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+it("locks the real rich text editor while saving and restores it after failure without losing content", async () => {
+  let complete!: (result: { error: { message: string } }) => void;
+  rpc.mockReturnValue(new Promise(resolve => { complete = resolve; }));
+  render(<CurriculumEditor productId="product" productName="Course" userId="owner" published initialLessons={[{ id:"11111111-1111-4111-8111-111111111111", title:"Lesson", position:0, content_html:"<p>Keep my text</p>", youtube_url:null, documents:[], published:true }]}/>);
+  const editor = await screen.findByLabelText("เนื้อหาบทเรียน");
+  expect(editor).toHaveAttribute("contenteditable", "true");
+  await userEvent.click(screen.getByRole("button", { name:"บันทึกบทเรียน" }));
+  await waitFor(() => expect(editor).toHaveAttribute("contenteditable", "false"));
+  expect(screen.getByRole("button", {name:"ตัวหนา"})).toBeDisabled();
+  await act(async () => { complete({ error:{ message:"Try again" } }); });
+  expect(await screen.findByRole("alert")).toHaveTextContent("Try again");
+  await waitFor(() => expect(editor).toHaveAttribute("contenteditable", "true"));
+  expect(editor).toHaveTextContent("Keep my text");
+});

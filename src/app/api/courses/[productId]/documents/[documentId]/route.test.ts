@@ -1,0 +1,16 @@
+import { beforeEach, expect, it, vi } from "vitest";
+const {getUser,rpc,eq,createSignedUrl}=vi.hoisted(()=>({getUser:vi.fn(),rpc:vi.fn(),eq:vi.fn(),createSignedUrl:vi.fn()}));
+vi.mock("@/lib/supabase/server",()=>({createClient:async()=>({auth:{getUser},rpc,from:()=>({select:()=>({eq})}),storage:{from:()=>{throw new Error("Buyers must not have storage signing permission");}}})}));
+vi.mock("@/lib/supabase/admin",()=>({createAdminClient:()=>({storage:{from:()=>({createSignedUrl})}})}));
+import { GET } from "./route";
+const productId="12345678-1234-4123-8123-123456789abc";
+const documentId="12345678-1234-4123-8123-123456789abd";
+const request=()=>GET(new Request("https://buykub.com/api/courses/test"),{params:Promise.resolve({productId,documentId})});
+beforeEach(()=>{vi.clearAllMocks();getUser.mockResolvedValue({data:{user:{id:"buyer",app_metadata:{provider:"google"}}}});rpc.mockImplementation(async(name)=>({data:name==='can_read_course_document'?true:{allowed:true},error:null}));eq.mockResolvedValue({data:[{documents:[{id:documentId,name:"Notes.pdf",path:"owner/notes.pdf"}]}],error:null});createSignedUrl.mockResolvedValue({data:{signedUrl:"https://storage.example/notes?token=private"},error:null});});
+it("requires Google login before accessing paid documents",async()=>{getUser.mockResolvedValue({data:{user:null}});expect((await request()).status).toBe(401);expect(rpc).not.toHaveBeenCalled();expect(createSignedUrl).not.toHaveBeenCalled();});
+it("denies expired or refunded grants without signing a file",async()=>{rpc.mockResolvedValue({data:{allowed:false,reason:"expired"},error:null});expect((await request()).status).toBe(403);expect(createSignedUrl).not.toHaveBeenCalled();});
+it("only signs a document attached to this course with a short lifetime",async()=>{const response=await request();expect(response.status).toBe(303);expect(createSignedUrl).toHaveBeenCalledWith("owner/notes.pdf",300,{download:"Notes.pdf"});expect(response.headers.get("cache-control")).toBe("private, no-store");});
+it("does not let a document id select arbitrary storage paths",async()=>{eq.mockResolvedValue({data:[{documents:[{id:"different",path:"other/private.pdf"}]}],error:null});expect((await request()).status).toBe(404);expect(createSignedUrl).not.toHaveBeenCalled();});
+it("rejects path traversal even in a stored attachment",async()=>{eq.mockResolvedValue({data:[{documents:[{id:documentId,name:"Notes",path:"owner/../other/private.pdf"}]}],error:null});expect((await request()).status).toBe(404);expect(createSignedUrl).not.toHaveBeenCalled();});
+it.each(["owner/%2e%2e/other/private.pdf","owner/%252e%252e/other/private.pdf","owner/notes.pdf?other","owner/notes.pdf#fragment","owner//notes.pdf","owner/./notes.pdf","owner/notes.pdf/"])("rejects storage URL normalization for %s before privileged signing",async(path)=>{eq.mockResolvedValue({data:[{documents:[{id:documentId,name:"Notes",path}]}],error:null});expect((await request()).status).toBe(404);expect(createSignedUrl).not.toHaveBeenCalled();});
+it("never signs an attachment outside its course owner's storage prefix",async()=>{rpc.mockImplementation(async(name)=>({data:name==='can_read_course_document'?false:{allowed:true},error:null}));expect((await request()).status).toBe(403);expect(createSignedUrl).not.toHaveBeenCalled();});

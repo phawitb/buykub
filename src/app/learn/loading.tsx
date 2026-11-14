@@ -1,0 +1,1 @@
+export default function LearnLoading() { return <main className="mx-auto min-h-screen max-w-5xl px-6 py-16" aria-busy="true"><p role="status" className="text-sm text-muted">กำลังโหลดพื้นที่เรียนรู้...</p><div className="mt-8 h-12 w-2/3 animate-pulse rounded-xl bg-paper-dim"/><div className="mt-8 h-64 animate-pulse rounded-2xl bg-paper-dim"/></main>; }

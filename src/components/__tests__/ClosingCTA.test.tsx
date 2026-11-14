@@ -17,7 +17,7 @@ describe("ClosingCTA", () => {
     await user.click(screen.getByRole("button", { name: "เปิดร้านเลย" }));
 
     expect(push).toHaveBeenCalledWith(
-      "/login?next=%2Fdashboard%2Fsettings%3Fslug%3Dmy-shop",
+      "/login?next=%2Fdashboard%2Fproducts%3Fslug%3Dmy-shop",
     );
   });
 

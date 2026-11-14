@@ -1,0 +1,26 @@
+{
+  "deployment_id": "dpl_EWqfZqiweAPvKeB4apjQ1FzB694M",
+  "deployment_url": "https://buykub-ein0ecs2a-phawitbs-projects.vercel.app",
+  "url": "https://buykub.com",
+  "region": "sin1",
+  "verification": {
+    "full_suite": "450 tests across 97 files passed before final preview-only fix",
+    "final_preview_fix": "24 targeted tests passed, including new uploaded-to-default-cover regression",
+    "lint": "full lint and final changed-file lint passed",
+    "local_build": "webpack passed before final preview-only fix",
+    "vercel_build": "final production Turbopack and TypeScript passed",
+    "review": "Strict Mode dialog close-event finding fixed; regression confirmed failing before fix and passing after",
+    "local_browser": "Authenticated slim toolbar, mode toggle, cover shuffle preview, course placeholder; guest file/course buy opens Google modal, close/Escape restores buy button",
+    "responsive": "390px viewport: toolbar controls share same row, document scrollWidth equals clientWidth",
+    "live_browser": "Authenticated My Shop renders new cover, loaded successfully; manage/customer toggle verified",
+    "preflight_store": 200,
+    "live_cover": 200,
+    "live_credits": 200,
+    "live_anonymous_checkout": 401
+  },
+  "cover_pool": "10 verified Unsplash License photographs, locally hosted WebP with mobile variants",
+  "database_changes": false,
+  "payments_created": false,
+  "google_oauth_completed_this_release": false,
+  "screenshots": "User waived attachments; browser visual inspection completed"
+}

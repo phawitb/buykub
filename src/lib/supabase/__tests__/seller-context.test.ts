@@ -1,0 +1,11 @@
+import { beforeEach, expect, it, vi } from 'vitest';
+const m=vi.hoisted(()=>({getUser:vi.fn(),maybeSingle:vi.fn(),eq:vi.fn(),select:vi.fn()}));
+vi.mock('server-only',()=>({}));
+vi.mock('../server',()=>({createClient:async()=>({auth:{getUser:m.getUser},from:()=>({select:m.select})})}));
+vi.mock('next/navigation',()=>({redirect:(path:string)=>{throw new Error(`redirect:${path}`);}}));
+import { getSellerContext } from '../seller-context';
+beforeEach(()=>{vi.clearAllMocks();m.select.mockReturnValue({eq:m.eq});m.eq.mockReturnValue({maybeSingle:m.maybeSingle});m.maybeSingle.mockResolvedValue({data:{id:'shop'},error:null});m.getUser.mockResolvedValue({data:{user:{id:'owner',app_metadata:{provider:'google'}}}});});
+it('binds the shop lookup to the verified user',async()=>{const result=await getSellerContext();expect(result.shop?.id).toBe('shop');expect(m.eq).toHaveBeenCalledWith('owner_id','owner');});
+it('does not read seller data for anonymous visitors',async()=>{m.getUser.mockResolvedValue({data:{user:null}});await expect(getSellerContext()).rejects.toThrow('redirect:/login');expect(m.select).not.toHaveBeenCalled();});
+it('rejects non-Google users',async()=>{m.getUser.mockResolvedValue({data:{user:{id:'owner',app_metadata:{provider:'email'}}}});await expect(getSellerContext()).rejects.toThrow('google_required');expect(m.select).not.toHaveBeenCalled();});
+it('does not mask database outages as a missing shop',async()=>{m.maybeSingle.mockResolvedValue({data:null,error:new Error('offline')});await expect(getSellerContext()).rejects.toThrow('offline');});

@@ -8,22 +8,6 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("OrderActions", () => {
-  it("marks a paid mock order as refunded after confirmation", async () => {
-    const user = userEvent.setup();
-    const updateStatus = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(window, "confirm").mockReturnValue(true);
-    render(
-      <OrderActions
-        orderId="order-1"
-        status="paid"
-        updateStatus={updateStatus}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "คืนเงิน (Mock)" }));
-    expect(updateStatus).toHaveBeenCalledWith("refunded");
-  });
-
   it("copies an assigned key and retries failed email delivery", async () => {
     const user = userEvent.setup();
     const writeText = vi.fn().mockResolvedValue(undefined);
@@ -33,12 +17,11 @@ describe("OrderActions", () => {
     });
     const sendEmail = vi.fn().mockResolvedValue(undefined);
     render(
-      <OrderActions
-        orderId="order-1"
-        status="paid"
-        assignedKey="AAAA-BBBB"
+        <OrderActions
+          orderId="order-1"
+          assignedKey="AAAA-BBBB"
         emailStatus="failed"
-        emailToken="token-1"
+        canRetryEmail
         sendEmail={sendEmail}
       />,
     );
@@ -46,6 +29,18 @@ describe("OrderActions", () => {
     await user.click(screen.getByRole("button", { name: "คัดลอก Key" }));
     expect(writeText).toHaveBeenCalledWith("AAAA-BBBB");
     await user.click(screen.getByRole("button", { name: "ส่งอีเมลอีกครั้ง" }));
-    expect(sendEmail).toHaveBeenCalledWith("order-1", "token-1");
+    expect(sendEmail).toHaveBeenCalledWith("order-1");
   });
+});
+
+it('offers retry and status for a file purchase without requiring a key',async()=>{
+  const user=userEvent.setup(); const sendEmail=vi.fn().mockResolvedValue(undefined);
+  render(<OrderActions orderId="file-order" emailStatus="failed" canRetryEmail sendEmail={sendEmail} />);
+  await user.click(screen.getByRole('button',{name:'ส่งอีเมลอีกครั้ง'}));
+  expect(sendEmail).toHaveBeenCalledWith('file-order');
+  expect(await screen.findByRole('status')).toHaveTextContent('ส่งอีเมลเรียบร้อยแล้ว');
+});
+it('does not expose retry for a refunded purchase',()=>{
+  render(<OrderActions orderId="refunded-order" assignedKey="KEY" emailStatus="failed" canRetryEmail={false} />);
+  expect(screen.queryByRole('button',{name:'ส่งอีเมลอีกครั้ง'})).not.toBeInTheDocument();
 });

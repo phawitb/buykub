@@ -9,6 +9,7 @@ vi.mock("@supabase/supabase-js", () => ({
 describe("createPublicClient", () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_DB_SCHEMA", "public");
     createSupabaseClient.mockClear();
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-key");
@@ -23,6 +24,7 @@ describe("createPublicClient", () => {
       "https://project.supabase.co",
       "anon-key",
       {
+        db: { schema: "public" },
         auth: {
           autoRefreshToken: false,
           detectSessionInUrl: false,
@@ -56,6 +58,7 @@ describe("createPublicClient", () => {
       "https://project.supabase.co",
       "anon-key",
       {
+        db: { schema: "public" },
         auth: {
           autoRefreshToken: false,
           detectSessionInUrl: false,

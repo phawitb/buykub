@@ -20,7 +20,7 @@ describe("CalendarConnection", () => {
     );
 
     expect(screen.getByText("ก่อนเชื่อมต่อ Google Calendar")).toBeInTheDocument();
-    expect(screen.getByText(/Advanced/)).toBeInTheDocument();
+    expect(screen.getByText(/ตรวจสอบบัญชี Google และสิทธิ์ Calendar/)).toBeInTheDocument();
     await user.click(
       screen.getByRole("button", { name: "เชื่อมต่อ Google Calendar" }),
     );

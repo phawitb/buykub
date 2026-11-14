@@ -1,3 +1,4 @@
+import { validAccessDays } from "@/features/courses/validation";
 import type {
   ProductEditorValue,
   ProductFieldErrors,
@@ -5,7 +6,7 @@ import type {
 } from "@/features/products/model";
 import { parseProductKeys } from "@/features/products/product-keys";
 
-export const MAX_PRODUCT_FILE_SIZE = 500 * 1024 * 1024;
+export const MAX_PRODUCT_FILE_SIZE = 50 * 1024 * 1024;
 export const MAX_PRODUCT_IMAGE_SIZE = 5 * 1024 * 1024;
 export const MAX_PRODUCT_IMAGES = 5;
 
@@ -39,12 +40,16 @@ export function validateProductEditor(
     errors.productKeys = "กรุณาเพิ่ม Key อย่างน้อย 1 รายการก่อนเผยแพร่";
   }
 
+  if (value.deliveryType === "course" && !validAccessDays(value.courseAccessDays)) {
+    errors.courseAccessDays = "ระบุจำนวนวันเต็ม 1–36500 วัน หรือเลือกตลอดชีพ";
+  }
+
   return errors;
 }
 
 export function validateProductFile(file: File): string | null {
   if (file.size > MAX_PRODUCT_FILE_SIZE) {
-    return "ไฟล์ต้องมีขนาดไม่เกิน 500 MB";
+    return "ไฟล์ต้องมีขนาดไม่เกิน 50 MB";
   }
   return null;
 }

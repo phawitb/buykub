@@ -13,6 +13,7 @@ export type ProductListItem = {
   compare_price_cents: number | null;
   category: string;
   published: boolean;
+  delivery_type?: string;
   thumbnailUrl: string | null;
   assets: ProductAsset[];
 };
@@ -89,6 +90,7 @@ export function ProductRow({
         >
           ดูหน้าขาย
         </Link>
+        {product.delivery_type === "course" && <Link className="small-button" href={`/dashboard/products/${product.id}/lessons`}>จัดการบทเรียน</Link>}
         <div className="ml-auto">
           <ProductActions
             productId={product.id}

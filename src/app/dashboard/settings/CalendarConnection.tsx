@@ -99,9 +99,8 @@ export function CalendarConnection({
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-6 text-amber-950">
           <p className="font-semibold">ก่อนเชื่อมต่อ Google Calendar</p>
           <p className="mt-1">
-            ระหว่างช่วงทดสอบ Google อาจแสดงหน้าเตือนว่าแอปยังไม่ได้รับการยืนยัน
-            ให้เลือก <strong>Advanced</strong> แล้วดำเนินการต่อมายัง {BRAND_NAME}
-            จากนั้นกดอนุญาตสิทธิ์ Calendar
+            ตรวจสอบบัญชี Google และสิทธิ์ Calendar ที่ {BRAND_NAME} ขอเข้าถึง
+            ก่อนยืนยันการเชื่อมต่อ
           </p>
         </div>
       )}

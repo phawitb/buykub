@@ -11,7 +11,7 @@ describe("DashboardNotFound", () => {
       "href",
       "/dashboard",
     );
-    expect(screen.getByRole("link", { name: "ไปหน้าสินค้า" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "ไปร้านค้าของฉัน" })).toHaveAttribute(
       "href",
       "/dashboard/products",
     );

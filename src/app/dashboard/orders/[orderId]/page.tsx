@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { formatTHB } from "@/features/products/format";
 import { formatBangkokDateTime } from "@/lib/bangkok-date";
-import { createClient } from "@/lib/supabase/server";
+import { getSellerContext } from "@/lib/supabase/seller-context";
 import { OrderActions } from "./OrderActions";
 
 export default async function OrderDetailPage({
@@ -11,27 +11,19 @@ export default async function OrderDetailPage({
   params: Promise<{ orderId: string }>;
 }) {
   const { orderId } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: shop } = await supabase
-    .from("shops")
-    .select("id")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-  if (!shop) redirect("/dashboard/settings");
+  const { supabase, shop } = await getSellerContext();
+  if (!shop) redirect("/dashboard/products");
 
   const { data: order } = await supabase
     .from("orders")
-    .select("id, buyer_name, buyer_email, payment_method, price_cents, status, mock, created_at, fulfilment_email_status, fulfilment_token, products(name)")
+    .select("id, buyer_name, buyer_email, payment_method, price_cents, status, created_at, fulfilment_email_status, fulfilment_token, products(name)")
     .eq("id", orderId)
     .eq("shop_id", shop.id)
     .maybeSingle();
   if (!order) notFound();
 
   const product = order.products as unknown as { name: string } | null;
-  const status = order.status as "paid" | "refunded";
+  const status = order.status as "pending" | "paid" | "refunded" | "failed";
   const { data: assignedKey } = await supabase
     .from("product_keys")
     .select("key_value")
@@ -42,7 +34,7 @@ export default async function OrderDetailPage({
   return (
     <div className="max-w-2xl">
       <p className="text-xs text-muted">
-        <Link href="/dashboard/orders" className="hover:text-ink">ออเดอร์</Link>
+        <Link href="/dashboard/analytics#orders" className="hover:text-ink">ออเดอร์</Link>
         {" / รายละเอียด"}
       </p>
       <div className="mt-2 flex items-start justify-between gap-4">
@@ -55,7 +47,7 @@ export default async function OrderDetailPage({
             ? "bg-emerald-50 text-emerald-700"
             : "bg-paper-dim text-muted"
         }`}>
-          {status === "paid" ? "ชำระแล้ว" : "คืนเงินแล้ว"}
+          {status === "paid" ? "ชำระแล้ว" : status === "pending" ? "รอชำระเงิน" : status === "refunded" ? "คืนเงินแล้ว" : "ชำระเงินไม่สำเร็จ"}
         </span>
       </div>
 
@@ -78,19 +70,17 @@ export default async function OrderDetailPage({
         <section className="rounded-2xl border border-line p-5">
           <h2 className="text-sm font-semibold text-ink">การชำระเงิน</h2>
           <p className="mt-3 text-sm text-ink">
-            {order.payment_method === "card" ? "บัตรเครดิต" : "PromptPay"}
+            {order.payment_method === "stripe" ? "Stripe" : order.payment_method === "card" ? "บัตรเครดิต" : "PromptPay"}
           </p>
           <p className="mt-1 text-xs text-muted">
             {formatBangkokDateTime(new Date(order.created_at))}
           </p>
-          {order.mock && <p className="mt-2 text-xs font-medium text-amber-700">รายการทดลอง · ไม่มีการตัดเงินจริง</p>}
         </section>
       </div>
 
       <div className="mt-6">
         <OrderActions
           orderId={order.id}
-          status={status}
           assignedKey={assignedKey?.key_value}
           emailStatus={
             order.fulfilment_email_status as
@@ -99,7 +89,7 @@ export default async function OrderDetailPage({
               | "failed"
               | null
           }
-          emailToken={order.fulfilment_token}
+          canRetryEmail={status === "paid" && Boolean(order.fulfilment_token)}
         />
       </div>
     </div>

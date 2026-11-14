@@ -15,7 +15,7 @@ describe("brand contract", () => {
     expect(BRAND_DOMAIN).toBe("buykub.com");
     expect(BRAND_ORIGIN).toBe("https://buykub.com");
     expect(SUPPORT_EMAIL).toBe("support@buykub.com");
-    expect(ORDER_EMAIL).toBe("orders@mail.buykub.com");
+    expect(ORDER_EMAIL).toBe("orders@notify.buykub.com");
   });
 
   it("builds canonical encoded shop and product URLs", () => {

@@ -9,7 +9,6 @@ type Order = {
   buyer_name: string | null;
   buyer_email: string | null;
   payment_method: string | null;
-  mock: boolean;
   price_cents: number;
   status: string;
   created_at: string;
@@ -17,7 +16,7 @@ type Order = {
 };
 
 export function OrderTabs({ orders }: { orders: Order[] }) {
-  const [tab, setTab] = useState<"all" | "paid" | "refunded">("all");
+  const [tab, setTab] = useState<"all" | "paid" | "pending" | "refunded">("all");
 
   const filtered = orders.filter((o) => tab === "all" || o.status === tab);
 
@@ -27,6 +26,7 @@ export function OrderTabs({ orders }: { orders: Order[] }) {
         {[
           { key: "all", label: "ทั้งหมด" },
           { key: "paid", label: "ชำระแล้ว" },
+          { key: "pending", label: "รอชำระ" },
           { key: "refunded", label: "คืนเงิน" },
         ].map((t) => (
           <button
@@ -54,7 +54,7 @@ export function OrderTabs({ orders }: { orders: Order[] }) {
               <p className="font-medium text-ink">{o.products?.name ?? "สินค้า"}</p>
               <p className="text-xs text-muted">
                 {formatBangkokDateTime(new Date(o.created_at))} ·{" "}
-                {o.status === "paid" ? "ชำระแล้ว" : "คืนเงิน"}
+                {o.status === "paid" ? "ชำระแล้ว" : o.status === "pending" ? "รอชำระ" : o.status === "refunded" ? "คืนเงิน" : "ไม่สำเร็จ"}
               </p>
             </div>
             <span className="font-semibold text-ink">

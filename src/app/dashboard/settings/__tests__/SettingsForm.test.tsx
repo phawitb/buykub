@@ -2,74 +2,20 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsForm } from "@/app/dashboard/settings/SettingsForm";
-import { readSettingsDraft } from "@/app/dashboard/settings/settings-draft";
 
+const database = vi.hoisted(() => {
+  const query = { upsert: vi.fn(), select: vi.fn(), single: vi.fn() };
+  return { query, from: vi.fn() };
+});
+vi.mock("@/lib/supabase/client", () => ({ createClient: () => ({ from: database.from }) }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }));
 
+const identity = { full_name_th: "สมชาย ใจดี", contact_phone: "0812345678", national_id: "1101700207030", address_line: "12/3 หมู่ 4", subdistrict: "คลองตัน", district: "คลองเตย", province: "กรุงเทพมหานคร", postal_code: "10110" };
+
 describe("SettingsForm", () => {
   beforeEach(() => sessionStorage.clear());
-
-  it("associates store fields with the same visible labels customers see", () => {
-    render(
-      <SettingsForm
-        userId="user-1"
-        initial={{
-          id: "shop-1",
-          slug: "my-shop",
-          name: "My shop",
-          bio: "About my shop",
-          avatar_url: null,
-          cover_url: null,
-          accent_color: "#f97316",
-          payout_method: "promptpay",
-          promptpay_id: "",
-          bank_details: "",
-        }}
-      />,
-    );
-
-    expect(screen.getByRole("textbox", { name: "ชื่อร้าน" })).toHaveValue(
-      "My shop",
-    );
-    expect(screen.getByRole("textbox", { name: "URL ร้าน" })).toHaveValue(
-      "my-shop",
-    );
-    expect(screen.getByRole("textbox", { name: /แนะนำร้าน/ })).toHaveAttribute(
-      "maxlength",
-      "160",
-    );
-  });
-
-  it("draws one focus ring around the complete shop URL field", () => {
-    render(
-      <SettingsForm
-        userId="user-1"
-        initial={{
-          id: "shop-1",
-          slug: "my-shop",
-          name: "My shop",
-          bio: "",
-          avatar_url: null,
-          cover_url: null,
-          accent_color: "#f97316",
-          payout_method: "promptpay",
-          promptpay_id: "",
-          bank_details: "",
-        }}
-      />,
-    );
-
-    const slugInput = screen.getByRole("textbox", { name: "URL ร้าน" });
-    expect(slugInput).toHaveClass("focus-visible:outline-none");
-    expect(slugInput).toHaveAttribute("data-composite-input");
-    expect(slugInput.parentElement).toHaveClass(
-      "focus-within:ring-2",
-      "focus-within:ring-accent/20",
-    );
-    expect(slugInput.previousElementSibling).toHaveTextContent("buykub.com/");
-  });
 
   it("rejects an invalid PromptPay ID before saving settings", async () => {
     const user = userEvent.setup();
@@ -79,13 +25,8 @@ describe("SettingsForm", () => {
         userId="user-1"
         saveSettings={saveSettings}
         initial={{
+          ...identity,
           id: "shop-1",
-          slug: "my-shop",
-          name: "My shop",
-          bio: "",
-          avatar_url: null,
-          cover_url: null,
-          accent_color: "#f97316",
           payout_method: "promptpay",
           promptpay_id: "08023423522",
           bank_details: "",
@@ -101,43 +42,13 @@ describe("SettingsForm", () => {
     expect(saveSettings).not.toHaveBeenCalled();
   });
 
-  it("offers named PIXZA-style accent presets", async () => {
-    const user = userEvent.setup();
-    render(
-      <SettingsForm
-        userId="user-1"
-        initial={{
-          id: "shop-1",
-          slug: "my-shop",
-          name: "My shop",
-          bio: "",
-          avatar_url: null,
-          cover_url: null,
-          accent_color: "#f97316",
-          payout_method: "promptpay",
-          promptpay_id: "",
-          bank_details: "",
-        }}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Violet" }));
-
-    expect(screen.getByLabelText("ค่าสี accent")).toHaveValue("#7c3aed");
-  });
-
   it("presents payout methods as PIXZA-style choice cards", () => {
     render(
       <SettingsForm
         userId="user-1"
         initial={{
+          ...identity,
           id: "shop-1",
-          slug: "my-shop",
-          name: "My shop",
-          bio: "",
-          avatar_url: null,
-          cover_url: null,
-          accent_color: "#f97316",
           payout_method: "promptpay",
           promptpay_id: "",
           bank_details: "",
@@ -150,70 +61,6 @@ describe("SettingsForm", () => {
     expect(screen.getByRole("radio", { name: /PromptPay/ })).toBeChecked();
   });
 
-  it("restores unsaved values after an OAuth-style unmount and remount", async () => {
-    const user = userEvent.setup();
-    const initial = {
-      id: "shop-1",
-      slug: "my-shop",
-      name: "My shop",
-      bio: "",
-      avatar_url: null,
-      cover_url: null,
-      accent_color: "#f97316",
-      payout_method: "promptpay" as const,
-      promptpay_id: "0812345678",
-      bank_details: "",
-    };
-    const firstRender = render(
-      <SettingsForm userId="user-1" initial={initial} />,
-    );
-
-    await user.clear(screen.getByRole("textbox", { name: "ชื่อร้าน" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "ชื่อร้าน" }),
-      "Draft shop",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: /แนะนำร้าน/ }),
-      "Unsaved description",
-    );
-    await user.click(screen.getByRole("button", { name: "Violet" }));
-    await user.click(screen.getByRole("radio", { name: /โอนเข้าบัญชีธนาคาร/ }));
-    await user.click(screen.getByRole("button", { name: "เลือกธนาคาร" }));
-    await user.click(screen.getByRole("button", { name: /ธนาคารกสิกรไทย/ }));
-    await user.type(screen.getByRole("textbox", { name: "เลขบัญชี" }), "1234567890");
-    await user.type(screen.getByRole("textbox", { name: "ชื่อบัญชี" }), "Owner");
-
-    await waitFor(() =>
-      expect(readSettingsDraft("user-1")?.name).toBe("Draft shop"),
-    );
-    firstRender.unmount();
-    render(<SettingsForm userId="user-1" initial={initial} />);
-
-    await waitFor(() =>
-      expect(screen.getByRole("textbox", { name: "ชื่อร้าน" })).toHaveValue(
-        "Draft shop",
-      ),
-    );
-    expect(screen.getByRole("textbox", { name: /แนะนำร้าน/ })).toHaveValue(
-      "Unsaved description",
-    );
-    expect(screen.getByRole("button", { name: "Violet" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    expect(
-      screen.getByRole("radio", { name: /โอนเข้าบัญชีธนาคาร/ }),
-    ).toBeChecked();
-    expect(screen.getByText("ธนาคารกสิกรไทย")).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "เลขบัญชี" })).toHaveValue(
-      "1234567890",
-    );
-    expect(screen.getByRole("textbox", { name: "ชื่อบัญชี" })).toHaveValue(
-      "Owner",
-    );
-  });
-
   it("serializes the selected bank and validates structured account fields", async () => {
     const user = userEvent.setup();
     const saveSettings = vi.fn().mockResolvedValue(undefined);
@@ -222,13 +69,8 @@ describe("SettingsForm", () => {
         userId="user-1"
         saveSettings={saveSettings}
         initial={{
+          ...identity,
           id: "shop-1",
-          slug: "my-shop",
-          name: "My shop",
-          bio: "",
-          avatar_url: null,
-          cover_url: null,
-          accent_color: "#f97316",
           payout_method: "bank",
           promptpay_id: "",
           bank_details: "",
@@ -248,48 +90,91 @@ describe("SettingsForm", () => {
     await user.type(screen.getByRole("textbox", { name: "ชื่อบัญชี" }), "สมชาย");
     await user.click(screen.getByRole("button", { name: "บันทึก" }));
 
+    expect(screen.getAllByText("ชื่อบัญชีต้องเป็นชื่อเดียวกับข้อมูลที่ให้ไว้ข้างต้นเท่านั้น").length).toBeGreaterThan(0);
+    expect(saveSettings).not.toHaveBeenCalled();
+    await user.clear(screen.getByRole("textbox", { name: "ชื่อบัญชี" }));
+    await user.type(screen.getByRole("textbox", { name: "ชื่อบัญชี" }), "สมชาย  ใจดี");
+    await user.click(screen.getByRole("button", { name: "บันทึก" }));
+
     await waitFor(() => expect(saveSettings).toHaveBeenCalledOnce());
     const payload = saveSettings.mock.calls[0][0];
     expect(JSON.parse(payload.bank_details)).toEqual({
       version: 1,
       bankCode: "scb",
       accountNumber: "1234567890",
-      accountName: "สมชาย",
+      accountName: "สมชาย ใจดี",
     });
   });
 
-  it("clears the draft after settings save succeeds", async () => {
+  it("saves payout only and has no appearance fields", async () => {
     const user = userEvent.setup();
     const saveSettings = vi.fn().mockResolvedValue(undefined);
-    render(
-      <SettingsForm
-        userId="user-1"
-        saveSettings={saveSettings}
-        initial={{
-          id: "shop-1",
-          slug: "my-shop",
-          name: "My shop",
-          bio: "",
-          avatar_url: null,
-          cover_url: null,
-          accent_color: "#f97316",
-          payout_method: "promptpay",
-          promptpay_id: "0812345678",
-          bank_details: "",
-        }}
-      />,
-    );
-
-    await user.type(
-      screen.getByRole("textbox", { name: /แนะนำร้าน/ }),
-      "Draft",
-    );
-    await waitFor(() =>
-      expect(readSettingsDraft("user-1")?.bio).toBe("Draft"),
-    );
+    render(<SettingsForm userId="user-1" saveSettings={saveSettings} initial={{ ...identity, id: "shop-1", payout_method: "promptpay", promptpay_id: "0812345678", bank_details: "" }} />);
+    expect(screen.queryByRole("textbox", { name: "ชื่อร้าน" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("ค่าสี accent")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "บันทึก" }));
-
     await waitFor(() => expect(saveSettings).toHaveBeenCalledOnce());
-    expect(readSettingsDraft("user-1")).toBeNull();
+    expect(saveSettings.mock.calls[0][0]).toEqual({ ...identity, payout_method: "promptpay", promptpay_id: "0812345678", bank_details: null });
   });
+});
+
+it("removes old private drafts and never persists identity or payout changes in browser storage", async () => {
+  const user = userEvent.setup();
+  sessionStorage.clear(); localStorage.clear();
+  const appearance = JSON.stringify({ name: "Unsaved shop" });
+  sessionStorage.setItem("buykub:appearance-draft:user-1:shop-1", appearance);
+  sessionStorage.setItem("buykub:payout-draft:user-1:shop-1", JSON.stringify({ promptpayId: "0898765432" }));
+  localStorage.setItem("buykub:payout-draft:previous-user:old-shop", "old sensitive data");
+  sessionStorage.setItem("framelink:settings-draft:user-1", JSON.stringify({ promptpayId: "0898765432" }));
+  localStorage.setItem("framelink:settings-draft:previous-user", "old bank account details");
+  render(<SettingsForm userId="user-1" initial={{ ...identity, id: "shop-1", payout_method: "promptpay", promptpay_id: "0812345678", bank_details: "" }} />);
+  expect(screen.getByRole("textbox", { name: /เลข PromptPay/ })).toHaveValue("0812345678");
+  await user.clear(screen.getByLabelText(/เลขบัตรประชาชน 13 หลัก/));
+  await user.type(screen.getByLabelText(/เลขบัตรประชาชน 13 หลัก/), "1101700207031");
+  expect(sessionStorage.getItem("buykub:payout-draft:user-1:shop-1")).toBeNull();
+  expect(localStorage.length).toBe(0);
+  expect(sessionStorage.length).toBe(1);
+  expect(sessionStorage.getItem("buykub:appearance-draft:user-1:shop-1")).toBe(appearance);
+});
+
+it("atomically upserts all payout identity and payment fields to the private table", async () => {
+  const user = userEvent.setup();
+  vi.clearAllMocks();
+  database.from.mockReturnValue(database.query);
+  for (const method of [database.query.upsert, database.query.select]) method.mockReturnValue(database.query);
+  database.query.single.mockResolvedValue({ data: { shop_id: "shop-1" }, error: null });
+  render(<SettingsForm userId="user-1" initial={{ ...identity, id: "shop-1", payout_method: "promptpay", promptpay_id: "0812345678", bank_details: "" }} />);
+  await user.click(screen.getByRole("button", { name: "บันทึก" }));
+  await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("บันทึกสำเร็จ"));
+  expect(database.from).toHaveBeenCalledWith("seller_payout_profiles");
+  expect(database.query.upsert).toHaveBeenCalledWith({ shop_id: "shop-1", ...identity, payout_method: "promptpay", promptpay_id: "0812345678", bank_details: null }, { onConflict: "shop_id" });
+});
+
+it("reports a denied save without success or browser storage persistence", async () => {
+  const user = userEvent.setup();
+  sessionStorage.clear();
+  vi.clearAllMocks();
+  database.from.mockReturnValue(database.query);
+  for (const method of [database.query.upsert, database.query.select]) method.mockReturnValue(database.query);
+  database.query.single.mockResolvedValue({ data: null, error: { message: "Failing row contains national_id=1101700207030 address_line=12/3 หมู่ 4" } });
+  render(<SettingsForm userId="user-1" initial={{ ...identity, id: "shop-1", payout_method: "promptpay", promptpay_id: "0812345678", bank_details: "" }} />);
+  await user.click(screen.getByRole("button", { name: "บันทึก" }));
+  await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("บันทึกไม่สำเร็จ กรุณาตรวจสอบข้อมูลและลองอีกครั้ง"));
+  expect(screen.getByRole("alert")).not.toHaveTextContent("1101700207030");
+  expect(screen.getByRole("alert")).not.toHaveTextContent("12/3 หมู่ 4");
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(sessionStorage.length).toBe(0);
+});
+
+it("requires identity and address before saving and masks national ID until explicitly shown", async () => {
+  const user = userEvent.setup();
+  const saveSettings = vi.fn();
+  render(<SettingsForm userId="user-1" saveSettings={saveSettings} initial={{ id: "shop-1", payout_method: "promptpay", promptpay_id: "0812345678", bank_details: "" }} />);
+  const nationalId = screen.getByLabelText(/เลขบัตรประชาชน 13 หลัก/);
+  expect(nationalId).toHaveAttribute("type", "password");
+  await user.click(screen.getByRole("button", { name: "แสดงเลขบัตรประชาชน" }));
+  expect(nationalId).toHaveAttribute("type", "text");
+  await user.click(screen.getByRole("button", { name: "บันทึก" }));
+  expect(screen.getAllByRole("alert")).toHaveLength(8);
+  expect(saveSettings).not.toHaveBeenCalled();
 });

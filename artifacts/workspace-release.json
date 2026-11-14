@@ -1,0 +1,23 @@
+{
+  "deployment": "dpl_29g7njjeQv8ma5WFx3ujiE5614Y9",
+  "domain": "https://buykub.com",
+  "region": "sin1",
+  "tests": 383,
+  "testFiles": 90,
+  "lint": "passed",
+  "localBuild": "webpack passed",
+  "productionBuild": "Turbopack + TypeScript passed",
+  "liveChecks": [
+    "signed-in root -> My Shop",
+    "My Shop bio save/reload/restore",
+    "public restored bio",
+    "old orders -> Analytics#orders",
+    "platform fee estimate5%",
+    "purchase library expected empty state",
+    "guest home200",
+    "guest purchases307"
+  ],
+  "limits": [
+    "No new live purchase; nonempty purchase variants verified with automated tests"
+  ]
+}

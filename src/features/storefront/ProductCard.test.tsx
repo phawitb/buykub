@@ -22,21 +22,36 @@ describe("ProductCard", () => {
       "src",
       product.thumbnailUrl,
     );
-    expect(screen.getByText("E-BOOK")).toBeInTheDocument();
+    expect(screen.getByText("File")).toBeInTheDocument();
+    expect(screen.queryByText("E-BOOK")).not.toBeInTheDocument();
     expect(screen.getByText("฿389")).toBeInTheDocument();
     expect(screen.getByText("฿549")).toHaveClass("line-through");
   });
 
-  it("uses an accessible placeholder when the product has no image", () => {
+  it.each([
+    ["course", "Course"],
+    ["file", "File"],
+    ["key", "File"],
+  ] as const)("derives the %s badge from delivery, ignoring a stale category", (deliveryType, label) => {
+    render(<ProductCard shopSlug="demo-shop" product={{ ...product, category: "OTHER", deliveryType }} />);
+    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.queryByText("OTHER")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["file", "ไฟล์ดิจิทัล"],
+    ["course", "คอร์สเรียน"],
+    ["key", "คีย์สินค้า"],
+  ] as const)("uses an accessible %s illustration when the product has no image", (deliveryType, label) => {
     render(
       <ProductCard
         shopSlug="demo-shop"
-        product={{ ...product, thumbnailUrl: null }}
+        product={{ ...product, thumbnailUrl: null, deliveryType }}
       />,
     );
 
     expect(
-      screen.getByRole("img", { name: "ยังไม่มีรูปสำหรับ E-Book + Audio Book" }),
+      screen.getByRole("img", { name: `ภาพประกอบ${label}สำหรับ E-Book + Audio Book` }),
     ).toBeInTheDocument();
   });
 

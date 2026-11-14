@@ -1,0 +1,40 @@
+{
+  "deployment": "dpl_CVXVADCpVgDhiWHWwSEwA6FkYvDs",
+  "date": "2026-11-12",
+  "region": "sin1",
+  "method": "CUA reload to real content heading visible; includes tool overhead; authenticated seller/owner preview",
+  "samples": {
+    "products": [
+      1017,
+      949,
+      915
+    ],
+    "dashboard": [
+      940,
+      1102,
+      993
+    ],
+    "course": [
+      951,
+      823,
+      659
+    ]
+  },
+  "verification": {
+    "tests": 320,
+    "test_files": 83,
+    "build": "passed",
+    "lint": "passed",
+    "video": "playback reached 20 seconds; switching lesson removes player; returning shows unopened player",
+    "document": "Browser download event timed out; actual newly downloaded worksheet (2).txt verified on disk with expected dummy content",
+    "guest_dashboard": 307,
+    "guest_course": 307,
+    "guest_document": 401,
+    "existing_test_receipt": 200
+  },
+  "limitations": [
+    "Three warm reloads per page from one computer with browser automation overhead, not LCP or TTFB",
+    "Classroom measured using authenticated owner preview, not paid learner account",
+    "Download event tooling did not report the completed file download"
+  ]
+}

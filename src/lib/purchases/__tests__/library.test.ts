@@ -1,0 +1,101 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({ context: vi.fn(), admin: vi.fn(), rpc: vi.fn() }));
+vi.mock("@/lib/supabase/seller-context", () => ({ getSellerContext: mocks.context }));
+vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mocks.admin }));
+import { getPurchaseLibrary } from "../library";
+
+const receipt = "pp_12345678-1234-1234-1234-123456789012";
+const user = { id: "buyer", email: "buyer@example.com", email_confirmed_at: "2026-01-01", app_metadata: { provider: "google" } };
+const order = (extra = {}) => ({ id: "order", product_id: "product", buyer_user_id: "buyer", buyer_email: "buyer@example.com", course_purchase: false, course_expires_at: null, status: "paid", paid_at: "2026-01-01", created_at: "2026-01-01", price_cents: 12900, stripe_checkout_session_id: receipt, products: { name: "Guide", delivery_type: "file" }, shops: { name: "Shop" }, ...extra });
+function query(data: unknown[], error: unknown = null) {
+  const builder = { select: vi.fn(), eq: vi.fn(), is: vi.fn(), order: vi.fn(), range: vi.fn() };
+  builder.select.mockReturnValue(builder); builder.eq.mockReturnValue(builder); builder.is.mockReturnValue(builder); builder.order.mockReturnValue(builder);
+  builder.range.mockResolvedValue({ data, error });
+  return builder;
+}
+function database(linked = [order()], legacy: ReturnType<typeof order>[] = []) {
+  const queries = [query(linked), query(legacy)];
+  const from = vi.fn().mockReturnValueOnce(queries[0]).mockReturnValueOnce(queries[1]);
+  mocks.admin.mockReturnValue({ from });
+  return { queries, from };
+}
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.context.mockResolvedValue({ user, supabase: { rpc: mocks.rpc } });
+  mocks.rpc.mockResolvedValue({ data: { allowed: true, reason: "active", expires_at: null }, error: null });
+});
+
+describe("purchase library authorization", () => {
+  it("requires authoritative authentication before constructing the admin client", async () => {
+    mocks.context.mockRejectedValue(new Error("redirect:/login"));
+    await expect(getPurchaseLibrary()).rejects.toThrow("redirect:/login");
+    expect(mocks.admin).not.toHaveBeenCalled();
+  });
+  it("scopes owner and legacy reads separately without a raw PostgREST expression", async () => {
+    const { queries } = database();
+    await getPurchaseLibrary();
+    expect(queries[0].eq).toHaveBeenCalledWith("buyer_user_id", "buyer");
+    expect(queries[1].is).toHaveBeenCalledWith("buyer_user_id", null);
+    expect(queries[1].eq).toHaveBeenCalledWith("course_purchase", false);
+    expect(queries[1].eq).toHaveBeenCalledWith("buyer_email", "buyer@example.com");
+  });
+  it("never uses unconfirmed or editable profile email for legacy access", async () => {
+    mocks.context.mockResolvedValue({ user: { ...user, email_confirmed_at: null, user_metadata: { email: "victim@example.com", email_verified: true } }, supabase: { rpc: mocks.rpc } });
+    const { from } = database();
+    await getPurchaseLibrary();
+    expect(from).toHaveBeenCalledTimes(1);
+  });
+  it("treats filter punctuation as an exact email value", async () => {
+    const email = "buyer+(),*@example.com";
+    mocks.context.mockResolvedValue({ user: { ...user, email }, supabase: { rpc: mocks.rpc } });
+    const { queries } = database();
+    await getPurchaseLibrary();
+    expect(queries[1].eq).toHaveBeenCalledWith("buyer_email", email);
+  });
+  it("normalizes the confirmed auth email to match checkout storage before exact comparison", async () => {
+    mocks.context.mockResolvedValue({ user: { ...user, email: " Buyer@Example.COM " }, supabase: { rpc: mocks.rpc } });
+    const { queries } = database([], [order({ buyer_user_id: null })]);
+    const purchases = await getPurchaseLibrary();
+    expect(queries[1].eq).toHaveBeenCalledWith("buyer_email", "buyer@example.com");
+    expect(purchases).toHaveLength(1);
+    expect(purchases[0].href).toBe(`/checkout/success?session_id=${receipt}`);
+  });
+  it("rejects another user's orders, email mismatches and email-matched courses", async () => {
+    database([order({ buyer_user_id: "other" })], [order({ id: "other", buyer_user_id: null, buyer_email: "other@example.com" }), order({ id: "course", buyer_user_id: null, course_purchase: true })]);
+    expect(await getPurchaseLibrary()).toEqual([]);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it("projects display data and paid receipt links without private fields", async () => {
+    database([], [order({ buyer_user_id: null, private_file_path: "secret", key_value: "secret", delivery_token: "secret" })]);
+    const list = await getPurchaseLibrary();
+    expect(list[0]).toEqual({ id: "order", name: "Guide", shopName: "Shop", kind: "file", priceCents: 12900, purchasedAt: "2026-01-01", status: "paid", expiresAt: null, href: `/checkout/success?session_id=${receipt}` });
+    expect(JSON.stringify(list)).not.toContain("secret");
+    expect(JSON.stringify(list)).not.toContain("buyer@example.com");
+  });
+  it("checks course entitlement with the user client before offering a classroom link", async () => {
+    database([order({ course_purchase: true, products: { name: "Course", delivery_type: "course" } })]);
+    expect((await getPurchaseLibrary())[0].href).toBe("/learn/product");
+    expect(mocks.rpc).toHaveBeenCalledWith("course_access", { p_product_id: "product" });
+  });
+  it("keeps refunded and expired history without content links, including repurchases", async () => {
+    database([order({ id: "refund", status: "refunded" }), order({ id: "expiry", course_purchase: true, course_expires_at: "2020-01-01", products: { name: "Course", delivery_type: "course" } })]);
+    const list = await getPurchaseLibrary();
+    expect(list.map(item => item.href)).toEqual([null, null]);
+    expect(list.map(item => item.status)).toEqual(["refunded", "expired"]);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it("does not grant a denied course or a pending order", async () => {
+    database([order({ course_purchase: true, products: { name: "Course", delivery_type: "course" } }), order({ id: "pending", status: "pending" })]);
+    mocks.rpc.mockResolvedValue({ data: { allowed: false, reason: "not_purchased" }, error: null });
+    expect((await getPurchaseLibrary()).every(item => item.href === null)).toBe(true);
+  });
+  it("fails closed on order lookup or entitlement errors", async () => {
+    const { queries } = database();
+    queries[1].range.mockResolvedValue({ data: null, error: new Error("offline") });
+    await expect(getPurchaseLibrary()).rejects.toThrow("โหลดรายการที่สั่งซื้อไม่สำเร็จ");
+    database([order({ course_purchase: true, products: { name: "Course", delivery_type: "course" } })]);
+    mocks.rpc.mockResolvedValue({ data: null, error: new Error("offline") });
+    await expect(getPurchaseLibrary()).rejects.toThrow("ตรวจสอบสิทธิ์เข้าเรียนไม่สำเร็จ");
+  });
+});

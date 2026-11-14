@@ -6,7 +6,7 @@ describe("ProductsLoading", () => {
   it("announces the loading state and reserves product-row space", () => {
     render(<ProductsLoading />);
 
-    expect(screen.getByRole("status")).toHaveTextContent("กำลังโหลดสินค้า");
+    expect(screen.getByRole("status")).toHaveTextContent("กำลังโหลดร้านค้าของฉัน");
     expect(screen.getAllByTestId("product-row-skeleton")).toHaveLength(3);
   });
 });

@@ -1,0 +1,24 @@
+{
+  "deployment_id": "dpl_7ewwkU1Brn8pj4m5U2H9c1VrsJ4m",
+  "url": "https://buykub.com",
+  "deployment_url": "https://buykub-9gml6qkbu-phawitbs-projects.vercel.app",
+  "region": "sin1",
+  "tests": {
+    "files": 94,
+    "passed": 430,
+    "sql_suites": 5
+  },
+  "lint": "passed",
+  "local_webpack_build": "passed",
+  "vercel_build": "ready",
+  "production_database_migration": "20261112102000_google_checkout.sql",
+  "live_checks": {
+    "store": 200,
+    "anonymous_checkout": 401,
+    "anonymous_workspace": 307,
+    "authenticated_storefront_render": "verified",
+    "post_deploy_clicks": "automation blocked while Mac locked"
+  },
+  "payment_test": "Authenticated Google checkout generated Stripe Test Mode QR; no payment made",
+  "screenshot_file": null
+}

@@ -18,7 +18,7 @@ export type ProductUploadRecord = {
   mimeType: string;
 };
 
-export type ProductDeliveryType = "file" | "key";
+export type ProductDeliveryType = "file" | "key" | "course";
 
 export type ProductKeyInventorySummary = {
   available: number;
@@ -36,6 +36,7 @@ export type ProductKeyRecord = {
 
 export type ProductEditorValue = {
   deliveryType: ProductDeliveryType;
+  courseAccessDays?: string;
   keyInput: string;
   keyInventory: ProductKeyInventorySummary;
   name: string;
@@ -51,7 +52,7 @@ export type ProductEditorValue = {
 };
 
 export type ProductFieldErrors = Partial<
-  Record<"name" | "price" | "comparePrice" | "productFile" | "productKeys", string>
+  Record<"name" | "price" | "comparePrice" | "productFile" | "productKeys" | "courseAccessDays", string>
 >;
 
 export type ProductImageValidationError = {

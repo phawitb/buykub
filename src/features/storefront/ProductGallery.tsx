@@ -1,14 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import type { ProductImage } from "@/features/products/model";
+import { ProductPlaceholder } from "./ProductPlaceholder";
+import type { ProductDeliveryType, ProductImage } from "@/features/products/model";
 
 export function ProductGallery({
   images,
   productName,
+  deliveryType,
 }: {
   images: ProductImage[];
   productName: string;
+  deliveryType?: ProductDeliveryType;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const active = images[activeIndex];
@@ -24,14 +27,7 @@ export function ProductGallery({
             className="h-full w-full object-cover"
           />
         ) : (
-          <div
-            role="img"
-            aria-label={`ยังไม่มีรูปสำหรับ ${productName}`}
-            className="flex h-full w-full flex-col items-center justify-center bg-[linear-gradient(145deg,var(--color-paper-dim),var(--color-accent-soft))] text-muted"
-          >
-            <span className="text-6xl">◇</span>
-            <span className="mt-3 text-sm">ยังไม่มีรูปสินค้า</span>
-          </div>
+          <ProductPlaceholder productName={productName} deliveryType={deliveryType} />
         )}
       </div>
 
