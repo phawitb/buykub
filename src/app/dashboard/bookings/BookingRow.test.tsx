@@ -52,7 +52,7 @@ describe("BookingRow", () => {
     );
 
     expect(screen.getByText("อยู่ใน Google Calendar แล้ว")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "เปิด Google Meet ↗" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "เปิด Google Meet" })).toHaveAttribute(
       "href",
       "https://meet.google.com/abc-defg-hij",
     );

@@ -1,3 +1,7 @@
+import { productCategoryLabel } from "@/features/products/category";
+import { cache } from "react";
+import { connection } from "next/server";
+import { getPublicShop, getPublicProduct } from "@/lib/storefront/catalog";
 import type { Metadata } from "next";
 import DOMPurify from "isomorphic-dompurify";
 import Link from "next/link";
@@ -7,33 +11,21 @@ import type { ProductFAQ, ProductImage } from "@/features/products/model";
 import { ProductViewTracker } from "@/features/analytics/ProductViewTracker";
 import { ProductGallery } from "@/features/storefront/ProductGallery";
 import { ProductDetailShell } from "@/features/storefront/ProductDetailShell";
-import { BRAND_NAME } from "@/lib/brand";
+import { BRAND_NAME, productUrl } from "@/lib/brand";
+import { ShareButton } from "../ShareButton";
 import { createPublicClient } from "@/lib/supabase/public";
 import { ProductPurchase } from "./ProductPurchase";
+import { ArrowRightIcon, CheckIcon } from "@/components/icons";
 
 type Params = Promise<{ slug: string; productSlug: string }>;
 
-async function loadProduct(params: Params) {
-  const { slug, productSlug } = await params;
-  const supabase = createPublicClient();
-  const { data: shop } = await supabase
-    .from("shops")
-    .select("id, slug, name, avatar_url, published")
-    .eq("slug", slug)
-    .eq("published", true)
-    .maybeSingle();
+const loadProduct = cache(async (slug: string, productSlug: string) => {
+  await connection();
+  const shop = await getPublicShop(slug);
   if (!shop) return null;
-
-  const { data: product } = await supabase
-    .from("products")
-    .select(
-      "id, shop_id, slug, name, description, description_html, category, price_cents, compare_price_cents, highlights, faq, images, images_v2, delivery_type, published",
-    )
-    .eq("shop_id", shop.id)
-    .eq("slug", productSlug)
-    .eq("published", true)
-    .maybeSingle();
+  const product = await getPublicProduct(shop.id, productSlug);
   if (!product) return null;
+  const supabase = createPublicClient();
 
   const { data: availableStock } =
     product.delivery_type === "key"
@@ -48,14 +40,15 @@ async function loadProduct(params: Params) {
     availableStock:
       product.delivery_type === "key" ? Number(availableStock ?? 0) : undefined,
   };
-}
+});
 
 export async function generateMetadata({
   params,
 }: {
   params: Params;
 }): Promise<Metadata> {
-  const result = await loadProduct(params);
+  const { slug, productSlug } = await params;
+  const result = await loadProduct(slug, productSlug);
   if (!result) return { title: `ไม่พบสินค้า — ${BRAND_NAME}` };
   return {
     title: `${result.product.name} — ${result.shop.name}`,
@@ -66,7 +59,8 @@ export async function generateMetadata({
 }
 
 export default async function ProductDetailPage({ params }: { params: Params }) {
-  const result = await loadProduct(params);
+  const { slug, productSlug } = await params;
+  const result = await loadProduct(slug, productSlug);
   if (!result) notFound();
   const { shop, product, availableStock } = result;
 
@@ -117,18 +111,21 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
   return (
     <ProductDetailShell>
       <ProductViewTracker productId={product.id} shopId={shop.id} />
-      <Link
+      <div className="absolute inset-x-4 top-4 z-10 flex items-start justify-between gap-3">
+        <Link
           href={`/${shop.slug}`}
-          className="absolute left-4 top-4 z-10 rounded-full bg-paper/90 px-4 py-2 text-xs font-semibold text-ink shadow-sm backdrop-blur transition hover:bg-paper"
+          className="min-w-0 truncate rounded-full bg-paper/90 px-4 py-2 text-xs font-semibold text-ink shadow-lift-1 backdrop-blur transition hover:bg-paper"
         >
           ‹ {shop.name}
-      </Link>
+        </Link>
+        <ShareButton url={productUrl(shop.slug, product.slug || productSlug)} title={product.name} label="แชร์สินค้า" />
+      </div>
 
-      <ProductGallery images={images} productName={product.name} />
+      <ProductGallery images={images} productName={product.name} deliveryType={product.delivery_type === "course" ? "course" : product.delivery_type === "key" ? "key" : "file"} />
 
       <div className="px-[22px] pb-14 pt-6">
           <span className="inline-flex rounded-full bg-ink px-3 py-1.5 text-[10px] font-semibold text-paper">
-            {product.category}
+            {productCategoryLabel(product.delivery_type)}
           </span>
           <h1 className="mt-4 text-2xl font-bold leading-tight text-ink sm:text-3xl">
             {product.name}
@@ -157,12 +154,13 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
                 name: product.name,
                 priceCents: product.price_cents,
                 deliveryType:
-                  product.delivery_type === "key" ? "key" : "file",
+                  product.delivery_type === "course" ? "course" : product.delivery_type === "key" ? "key" : "file",
+                courseAccessDays: product.course_access_days,
                 availableStock,
               }}
             />
             <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-muted">
-              <span>PromptPay · บัตรเครดิต</span>
+              <span>ชำระเงินปลอดภัยผ่าน Stripe</span>
               <span aria-hidden="true">·</span>
               <span>คืนเงินได้ภายใน 7 วัน</span>
             </div>
@@ -186,7 +184,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
               <ul className="mt-4 space-y-3">
                 {product.highlights.map((highlight: string) => (
                   <li key={highlight} className="flex gap-3 text-sm text-ink-soft">
-                    <span className="text-accent">✓</span>
+                    <CheckIcon className="mt-0.5 size-4 shrink-0 text-accent" />
                     <span>{highlight}</span>
                   </li>
                 ))}
@@ -237,7 +235,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
               href={`/${shop.slug}`}
               className="text-xs font-semibold text-ink underline underline-offset-4"
             >
-              ดูสินค้าทั้งหมด →
+              ดูสินค้าทั้งหมด<ArrowRightIcon className="ml-1.5 inline size-4 align-[-0.2em] transition-transform duration-[200ms] ease-out group-hover:translate-x-0.5" />
             </Link>
           </footer>
       </div>

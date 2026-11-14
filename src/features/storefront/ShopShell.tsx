@@ -1,9 +1,9 @@
 export function ShopShell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-[#faf9f7] py-0">
+    <main className="min-h-screen bg-background py-0">
       <div
         data-testid="shop-canvas"
-        className="mx-auto min-h-screen max-w-[640px] overflow-hidden bg-paper"
+        className="min-h-screen w-full overflow-hidden bg-paper"
       >
         {children}
       </div>

@@ -1,12 +1,18 @@
 "use client";
 
+import Link from "next/link";
+import { ShopIcon, shopIconButton } from "./ShopIcon";
+import { invalidatePublicCatalog, CATALOG_REFRESH_WARNING } from "@/lib/storefront/invalidate";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProductAsset } from "@/features/products/asset-cleanup";
 import { createClient } from "@/lib/supabase/client";
 import { deleteShopAsset, type UploadDestination } from "@/lib/supabase/upload";
 
+const COURSE_NOT_READY_MESSAGE = "เพิ่มบทเรียนที่เผยแพร่อย่างน้อย 1 บทก่อนเปิดขายคอร์ส";
+
 type Props = {
+  compact?: boolean;
   productId: string;
   shopId: string;
   productName: string;
@@ -17,6 +23,7 @@ type Props = {
 };
 
 export function ProductActions({
+  compact = false,
   productId,
   shopId,
   productName,
@@ -40,10 +47,13 @@ export function ProductActions({
       .eq("id", productId)
       .eq("shop_id", shopId);
     if (updateError) {
-      setError(`เปลี่ยนสถานะไม่สำเร็จ: ${updateError.message}`);
+      setError(updateError.message.includes("course_not_ready")
+        ? COURSE_NOT_READY_MESSAGE
+        : `เปลี่ยนสถานะไม่สำเร็จ: ${updateError.message}`);
       setBusy(null);
       return;
     }
+    if (!(await invalidatePublicCatalog())) setError(CATALOG_REFRESH_WARNING);
     setBusy(null);
     router.refresh();
   }
@@ -76,6 +86,7 @@ export function ProductActions({
       assets.map((asset) => deleteAsset(asset.destination, asset.path)),
     );
     setConfirmingDelete(false);
+    if (!(await invalidatePublicCatalog())) setError(CATALOG_REFRESH_WARNING);
     setBusy(null);
     router.refresh();
   }
@@ -86,10 +97,12 @@ export function ProductActions({
         type="button"
         disabled={busy !== null}
         onClick={() => void togglePublished()}
-        className="small-button"
+        className={compact ? shopIconButton : "small-button"}
+        title={published ? "ยกเลิกเผยแพร่" : "เผยแพร่สินค้า"}
+        aria-busy={busy === "publish"}
         aria-label={published ? "ยกเลิกเผยแพร่" : "เผยแพร่สินค้า"}
       >
-        {busy === "publish"
+        {compact ? <ShopIcon name={published ? "eye-off" : "eye"} /> : busy === "publish"
           ? "กำลังบันทึก..."
           : published
             ? "ยกเลิกเผยแพร่"
@@ -99,16 +112,18 @@ export function ProductActions({
         type="button"
         disabled={busy !== null}
         onClick={() => setConfirmingDelete(true)}
-        className="small-button text-red-600"
+        className={compact ? `${shopIconButton} text-red-600` : "small-button text-red-600"}
+        title="ลบสินค้า"
         aria-label="ลบสินค้า"
       >
-        ลบ
+        {compact ? <ShopIcon name="trash" /> : "ลบ"}
       </button>
 
       {error && (
-        <p className="basis-full text-right text-xs text-red-600" role="alert">
-          {error}
-        </p>
+        <div className="basis-full text-right text-xs text-red-600" role="alert">
+          <p>{error}</p>
+          {error === COURSE_NOT_READY_MESSAGE && <Link href={`/dashboard/products/${productId}/lessons`} className="mt-2 inline-block font-semibold underline">จัดการบทเรียน</Link>}
+        </div>
       )}
 
       {confirmingDelete && (
@@ -118,7 +133,7 @@ export function ProductActions({
           aria-labelledby={`delete-title-${productId}`}
           className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 px-5"
         >
-          <div className="w-full max-w-sm rounded-2xl bg-paper p-6 shadow-2xl">
+          <div className="w-full max-w-sm rounded-2xl bg-paper p-6 shadow-lift-4">
             <h2
               id={`delete-title-${productId}`}
               className="text-lg font-bold text-ink"

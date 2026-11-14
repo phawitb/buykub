@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { formatTHB } from "@/features/products/format";
-import { createPublicClient } from "@/lib/supabase/public";
 
 type Availability = {
   days?: number[];
@@ -17,10 +16,7 @@ export type BookingValue = {
   scheduledAt: string;
 };
 
-export type BookingResult = {
-  calendarSynced: boolean;
-  meetUrl: string | null;
-};
+export type BookingCheckout = { url: string };
 
 type Props = {
   serviceId: string;
@@ -29,7 +25,7 @@ type Props = {
   priceCents: number;
   durationMinutes: number;
   availability?: Availability | null;
-  createBooking?: (value: BookingValue) => Promise<BookingResult | void>;
+  startCheckout?: (value: BookingValue) => Promise<BookingCheckout>;
 };
 
 function localInputValue(date: Date) {
@@ -44,7 +40,7 @@ export function BookButton({
   priceCents,
   durationMinutes,
   availability,
-  createBooking,
+  startCheckout,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [buyerName, setBuyerName] = useState("");
@@ -52,8 +48,7 @@ export function BookButton({
   const [when, setWhen] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [state, setState] = useState<"idle" | "loading" | "done">("idle");
-  const [bookingResult, setBookingResult] = useState<BookingResult | null>(null);
+  const [state, setState] = useState<"idle" | "loading">("idle");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -122,34 +117,23 @@ export function BookButton({
     return { valid: Object.keys(nextErrors).length === 0, name, email };
   }
 
-  async function defaultCreateBooking(value: BookingValue) {
-    const supabase = createPublicClient();
-    const bookingId = crypto.randomUUID();
-    const { error } = await supabase.from("bookings").insert({
-      id: bookingId,
-      shop_id: shopId,
-      service_id: serviceId,
-      buyer_name: value.buyerName,
-      buyer_email: value.buyerEmail,
-      scheduled_at: value.scheduledAt,
-      price_cents: priceCents,
-      status: "confirmed",
+  async function defaultStartCheckout(value: BookingValue): Promise<BookingCheckout> {
+    const response = await fetch("/api/stripe/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: "service",
+        serviceId,
+        buyerName: value.buyerName,
+        buyerEmail: value.buyerEmail,
+        scheduledAt: value.scheduledAt,
+      }),
     });
-    if (error) throw new Error(error.message);
-
-    const { data, error: syncError } = await supabase.functions.invoke(
-      "sync-booking-calendar",
-      { body: { bookingId } },
-    );
-
-    if (syncError || !data?.calendarSynced) {
-      return { calendarSynced: false, meetUrl: null };
+    const payload = (await response.json()) as { url?: string; error?: string };
+    if (!response.ok || !payload.url) {
+      throw new Error(payload.error || "เปิดหน้าชำระเงินไม่สำเร็จ");
     }
-
-    return {
-      calendarSynced: true,
-      meetUrl: typeof data.meetUrl === "string" ? data.meetUrl : null,
-    };
+    return { url: payload.url };
   }
 
   async function submit(event: React.FormEvent) {
@@ -160,13 +144,12 @@ export function BookButton({
     setState("loading");
     setSubmitError(null);
     try {
-      const result = await (createBooking ?? defaultCreateBooking)({
+      const result = await (startCheckout ?? defaultStartCheckout)({
         buyerName: name,
         buyerEmail: email,
         scheduledAt: new Date(when).toISOString(),
       });
-      setBookingResult(result ?? { calendarSynced: false, meetUrl: null });
-      setState("done");
+      window.location.assign(result.url);
     } catch (error) {
       setSubmitError(
         `จองบริการไม่สำเร็จ: ${error instanceof Error ? error.message : "กรุณาลองอีกครั้ง"}`,
@@ -199,34 +182,9 @@ export function BookButton({
             aria-modal="true"
             aria-labelledby={`booking-title-${serviceId}`}
             onKeyDown={trapFocus}
-            className="max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-paper p-6 shadow-2xl sm:max-w-md sm:rounded-3xl"
+            className="max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-paper p-6 shadow-lift-4 sm:max-w-md sm:rounded-3xl"
           >
-            {state === "done" ? (
-              <div className="py-6 text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-2xl text-emerald-700">✓</div>
-                <h2 id={`booking-title-${serviceId}`} className="mt-5 text-xl font-bold text-ink">ยืนยันการจองแล้ว</h2>
-                <p className="mt-2 text-sm leading-6 text-muted">รายการทดลองถูกส่งเข้าหน้าการจองของร้านเรียบร้อย</p>
-                {bookingResult?.calendarSynced && (
-                  <div className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3">
-                    <p className="text-sm font-semibold text-emerald-800">
-                      เพิ่มนัดลง Google Calendar แล้ว
-                    </p>
-                    {bookingResult.meetUrl && (
-                      <a
-                        href={bookingResult.meetUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-2 inline-block text-sm font-semibold text-emerald-800 underline underline-offset-4"
-                      >
-                        เปิด Google Meet
-                      </a>
-                    )}
-                  </div>
-                )}
-                <button type="button" onClick={close} className="primary-button mt-6">กลับไปหน้าร้าน</button>
-              </div>
-            ) : (
-              <>
+            <>
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold text-accent">BOOKING</p>
@@ -241,7 +199,7 @@ export function BookButton({
                     <span className="font-bold text-ink">{formatTHB(priceCents)}</span>
                   </div>
                 </div>
-                <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-xs font-semibold text-amber-900">ระบบชำระเงินเป็น mockup — ไม่มีการตัดเงินจริง</p>
+                <p className="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-center text-xs font-semibold text-sky-900">ชำระเงินอย่างปลอดภัยผ่าน Stripe</p>
                 <form onSubmit={submit} noValidate className="mt-5 space-y-4">
                   <label className="field-label">ชื่อผู้จอง
                     <input value={buyerName} onChange={(e) => setBuyerName(e.target.value)} className="field-input mt-2" autoComplete="name" />
@@ -260,11 +218,10 @@ export function BookButton({
                   </label>
                   {submitError && <p role="alert" className="text-sm text-red-600">{submitError}</p>}
                   <button type="submit" disabled={state === "loading"} className="primary-button w-full">
-                    {state === "loading" ? "กำลังยืนยันการจอง..." : `ยืนยันการจอง ${formatTHB(priceCents)}`}
+                    {state === "loading" ? "กำลังเปิดหน้า Stripe..." : `ไปชำระเงิน ${formatTHB(priceCents)}`}
                   </button>
                 </form>
               </>
-            )}
           </div>
         </div>
       )}

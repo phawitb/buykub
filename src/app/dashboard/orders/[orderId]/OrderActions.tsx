@@ -3,48 +3,44 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { CheckIcon } from "@/components/icons";
 
 export function OrderActions({
   orderId,
-  status,
-  updateStatus,
   assignedKey,
   emailStatus,
-  emailToken,
+  canRetryEmail = false,
   sendEmail,
 }: {
   orderId: string;
-  status: "paid" | "refunded";
-  updateStatus?: (status: "paid" | "refunded") => Promise<void>;
   assignedKey?: string | null;
   emailStatus?: "pending" | "sent" | "failed" | null;
-  emailToken?: string | null;
-  sendEmail?: (orderId: string, emailToken: string) => Promise<void>;
+  canRetryEmail?: boolean;
+  sendEmail?: (orderId: string) => Promise<void>;
 }) {
   const router = useRouter();
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [emailBusy, setEmailBusy] = useState(false);
   const [emailMessage, setEmailMessage] = useState<string | null>(null);
 
   async function retryEmail() {
-    if (!emailToken || emailBusy) return;
+    if (!canRetryEmail || emailBusy) return;
     setEmailBusy(true);
     setError(null);
     setEmailMessage(null);
     try {
       if (sendEmail) {
-        await sendEmail(orderId, emailToken);
+        await sendEmail(orderId);
       } else {
         const supabase = createClient();
         const { error: invokeError } = await supabase.functions.invoke(
           "send-product-key",
-          { body: { orderId, emailToken } },
+          { body: { orderId } },
         );
         if (invokeError) throw invokeError;
       }
-      setEmailMessage("ส่ง Product Key ทางอีเมลเรียบร้อยแล้ว");
+      setEmailMessage("ส่งอีเมลเรียบร้อยแล้ว");
       router.refresh();
     } catch (sendError) {
       setError(
@@ -57,46 +53,13 @@ export function OrderActions({
     }
   }
 
-  async function toggle() {
-    const next = status === "paid" ? "refunded" : "paid";
-    if (
-      next === "refunded" &&
-      !window.confirm("ยืนยันการคืนเงินแบบ mock สำหรับออเดอร์นี้?")
-    ) {
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      if (updateStatus) {
-        await updateStatus(next);
-      } else {
-        const supabase = createClient();
-        const { error: updateError } = await supabase
-          .from("orders")
-          .update({ status: next })
-          .eq("id", orderId);
-        if (updateError) throw updateError;
-      }
-      router.refresh();
-    } catch (updateError) {
-      setError(
-        `อัปเดตออเดอร์ไม่สำเร็จ: ${
-          updateError instanceof Error ? updateError.message : "กรุณาลองอีกครั้ง"
-        }`,
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="space-y-4">
-      {assignedKey && (
+      {(assignedKey || emailStatus) && (
         <section className="rounded-2xl border border-line p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold text-ink">Product Key ที่ส่งมอบ</h2>
+              <h2 className="text-sm font-semibold text-ink">{assignedKey ? "Product Key ที่ส่งมอบ" : "อีเมลคำสั่งซื้อ"}</h2>
               <p className="mt-1 text-xs text-muted">
                 {emailStatus === "sent"
                   ? "ส่งอีเมลแล้ว"
@@ -121,11 +84,11 @@ export function OrderActions({
                   : "กำลังส่ง"}
             </span>
           </div>
-          <code className="mt-4 block break-all rounded-xl bg-paper-dim px-4 py-3 text-sm font-bold text-ink">
+          {assignedKey && <code className="mt-4 block break-all rounded-xl bg-paper-dim px-4 py-3 text-sm font-bold text-ink">
             {assignedKey}
-          </code>
+          </code>}
           <div className="mt-3 flex flex-wrap gap-2">
-            <button
+            {assignedKey && <button
               type="button"
               onClick={async () => {
                 await navigator.clipboard.writeText(assignedKey);
@@ -133,9 +96,9 @@ export function OrderActions({
               }}
               className="secondary-button"
             >
-              {copied ? "คัดลอกแล้ว ✓" : "คัดลอก Key"}
-            </button>
-            {emailStatus !== "sent" && emailToken && (
+              {copied ? <span className="inline-flex items-center gap-1.5"><CheckIcon className="size-3.5" />คัดลอกแล้ว</span> : "คัดลอก Key"}
+            </button>}
+            {emailStatus !== "sent" && canRetryEmail && (
               <button
                 type="button"
                 disabled={emailBusy}
@@ -148,18 +111,6 @@ export function OrderActions({
           </div>
         </section>
       )}
-      <button
-          type="button"
-          disabled={busy}
-          onClick={toggle}
-          className={status === "paid" ? "secondary-button" : "primary-button"}
-        >
-          {busy
-            ? "กำลังอัปเดต..."
-            : status === "paid"
-              ? "คืนเงิน (Mock)"
-              : "คืนสถานะเป็นชำระแล้ว"}
-        </button>
       {emailMessage && <p role="status" className="text-xs text-emerald-700">{emailMessage}</p>}
       {error && <p role="alert" className="mt-3 text-xs text-red-600">{error}</p>}
     </div>

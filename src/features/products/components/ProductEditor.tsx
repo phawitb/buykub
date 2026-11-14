@@ -1,5 +1,10 @@
 "use client";
 
+import { invalidatePublicCatalog, CATALOG_REFRESH_WARNING } from "@/lib/storefront/invalidate";
+
+import Link from "next/link";
+import { useWorkspaceDialog } from "./WorkspaceDialog";
+import { productDraftKey, useProductDrafts } from "./ProductDraftProvider";
 import DOMPurify from "isomorphic-dompurify";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -24,23 +29,18 @@ import {
   slugifyProductName,
   uniqueProductSlug,
 } from "@/features/products/slug";
+import { productCategory } from "@/features/products/category";
 import { validateProductEditor } from "@/features/products/validation";
 import { parseProductKeys } from "@/features/products/product-keys";
 import { createClient } from "@/lib/supabase/client";
 import { deleteShopAsset } from "@/lib/supabase/upload";
 import type { UploadDestination } from "@/lib/supabase/upload";
+import { ArrowRightIcon } from "@/components/icons";
 
-const CATEGORIES = [
-  "PROMPT PACK",
-  "E-BOOK",
-  "TEMPLATE",
-  "COURSE",
-  "PRESET",
-  "GRAPHIC",
-  "FONT",
-  "MUSIC",
-  "OTHER",
-];
+const PRODUCT_TYPES = [
+  { value: "course", title: "Course", description: "คอร์สเรียน พร้อมบทเรียน วิดีโอ และเอกสาร" },
+  { value: "file", title: "File", description: "ไฟล์ดาวน์โหลด เช่น PDF, ZIP หรือวิดีโอ" },
+] as const;
 
 export type ProductEditorProps = {
   mode: "create" | "edit";
@@ -71,7 +71,11 @@ function errorMessage(error: unknown) {
   return "กรุณาลองอีกครั้ง";
 }
 
-export function ProductEditor({
+export function ProductEditor(props: ProductEditorProps) {
+  return <ProductEditorSession key={productDraftKey(props.userId, props.shopId, props.productId)} {...props} />;
+}
+
+function ProductEditorSession({
   mode,
   shopId,
   userId,
@@ -83,16 +87,21 @@ export function ProductEditor({
   deleteAsset = deleteShopAsset,
 }: ProductEditorProps) {
   const router = useRouter();
-  const [value, setValue] = useState(initialValue);
+  const workspaceDialog = useWorkspaceDialog();
+  const draftStore = useProductDrafts();
+  const draftKey = productDraftKey(userId, shopId, productId);
+  const [restoredDraft] = useState(() => draftStore?.read(draftKey));
+  const draftActive = useRef(true);
+  const [value, setValue] = useState(restoredDraft?.value ?? initialValue);
   const [errors, setErrors] = useState<ProductFieldErrors>({});
   const [fileUploading, setFileUploading] = useState(false);
   const [imagesUploading, setImagesUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
-  const [dirty, setDirty] = useState(false);
-  const [keyRecords, setKeyRecords] = useState(initialKeyRecords);
-  const persistedValue = useRef(initialValue);
+  const [dirty, setDirty] = useState(Boolean(restoredDraft));
+  const [keyRecords, setKeyRecords] = useState(restoredDraft?.keyRecords ?? initialKeyRecords);
+  const persistedValue = useRef(restoredDraft?.baseline ?? initialValue);
   const draftStorageKey = `framelink-product-draft-assets:${userId}`;
 
   const currentErrors = useMemo(() => validateProductEditor(value), [value]);
@@ -121,21 +130,22 @@ export function ProductEditor({
         path: string;
       }>;
       void Promise.allSettled(
-        assets.map((asset) => deleteAsset(asset.destination, asset.path)),
+        assets.filter((asset) => !draftStore?.assets(userId).some((retained) => retained.destination === asset.destination && retained.path === asset.path))
+          .map((asset) => deleteAsset(asset.destination, asset.path)),
       );
     } catch {
       // Ignore a corrupt local draft record; it never contains file contents.
     }
-  }, [deleteAsset, draftStorageKey]);
+  }, [deleteAsset, draftStorageKey, draftStore, userId]);
 
   useEffect(() => {
-    const assets = findNewProductAssets(persistedValue.current, value);
-    if (assets.length) {
-      window.localStorage.setItem(draftStorageKey, JSON.stringify(assets));
-    } else {
-      window.localStorage.removeItem(draftStorageKey);
-    }
-  }, [draftStorageKey, value]);
+    if (!draftActive.current) return;
+    if (dirty) draftStore?.save(draftKey, { userId, value, baseline: persistedValue.current, keyRecords });
+    else draftStore?.clear(draftKey);
+    const assets = draftStore?.assets(userId) ?? findNewProductAssets(persistedValue.current, value);
+    if (assets.length) window.localStorage.setItem(draftStorageKey, JSON.stringify(assets));
+    else window.localStorage.removeItem(draftStorageKey);
+  }, [draftStorageKey, value, dirty, keyRecords, draftStore, draftKey, userId]);
 
   useEffect(() => {
     const interceptNavigation = (event: MouseEvent) => {
@@ -165,8 +175,17 @@ export function ProductEditor({
   });
 
   function update(patch: Partial<ProductEditorValue>) {
+    draftActive.current = true;
     setValue((current) => ({ ...current, ...patch }));
     setDirty(true);
+  }
+
+  function clearDraft() {
+    draftActive.current = false;
+    draftStore?.clear(draftKey);
+    const retainedAssets = draftStore?.assets(userId) ?? [];
+    if (retainedAssets.length) window.localStorage.setItem(draftStorageKey, JSON.stringify(retainedAssets));
+    else window.localStorage.removeItem(draftStorageKey);
   }
 
   async function cleanupDraftAssets() {
@@ -175,7 +194,7 @@ export function ProductEditor({
         deleteAsset(asset.destination, asset.path),
       ),
     );
-    window.localStorage.removeItem(draftStorageKey);
+    clearDraft();
   }
 
   async function changeKeyStatus(
@@ -224,6 +243,14 @@ export function ProductEditor({
     router.push("/dashboard/products");
   }
 
+  useEffect(() => {
+    if (!workspaceDialog) return;
+    workspaceDialog.current = () => {
+      if (!saving && !fileUploading && !imagesUploading) void leaveEditor();
+    };
+    return () => { workspaceDialog.current = null; };
+  });
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     const nextErrors = validateProductEditor(value);
@@ -242,7 +269,7 @@ export function ProductEditor({
       name: value.name.trim(),
       description: visibleText(sanitizedHtml),
       description_html: sanitizedHtml,
-      category: value.category,
+      category: productCategory(value.deliveryType),
       price_cents: Math.round(Number(value.price) * 100),
       compare_price_cents: value.comparePrice
         ? Math.round(Number(value.comparePrice) * 100)
@@ -258,17 +285,19 @@ export function ProductEditor({
       images: value.images.map((image) => image.publicUrl),
       images_v2: value.images,
       delivery_type: value.deliveryType,
+      course_access_days: value.deliveryType === "course" && value.courseAccessDays ? Number(value.courseAccessDays) : null,
       file_path: value.deliveryType === "file" ? value.productFile?.path : null,
       file_name:
         value.deliveryType === "file" ? value.productFile?.fileName : null,
       file_size: value.deliveryType === "file" ? value.productFile?.size : null,
       file_mime_type:
         value.deliveryType === "file" ? value.productFile?.mimeType : null,
-      published: value.published,
+      published: mode === "create" && value.deliveryType === "course" ? false : value.published,
       updated_at: new Date().toISOString(),
     };
 
     if (mode === "create") {
+      let createdId: string | undefined;
       const slug = uniqueProductSlug(
         slugifyProductName(value.name),
         existingSlugs,
@@ -291,6 +320,7 @@ export function ProductEditor({
             .select("id")
             .single();
           if (error) throw error;
+          createdId = createdProduct.id;
           if (value.deliveryType === "key") {
             const { error: keyError } = await supabase.rpc(
               "import_product_keys",
@@ -314,14 +344,16 @@ export function ProductEditor({
         setSaving(false);
         return;
       }
+      await invalidatePublicCatalog();
       setDirty(false);
-      window.localStorage.removeItem(draftStorageKey);
-      router.push("/dashboard/products");
+      clearDraft();
+      router.push(value.deliveryType === "course" && createdId ? `/dashboard/products/${createdId}/lessons` : "/dashboard/products");
       router.refresh();
       return;
     }
 
     let insertedKeyCount = 0;
+    let refreshed = true;
     try {
       if (saveProduct) {
         insertedKeyCount =
@@ -343,6 +375,7 @@ export function ProductEditor({
           .eq("id", productId!)
           .eq("shop_id", shopId);
         if (error) throw error;
+        refreshed = await invalidatePublicCatalog();
         if (value.deliveryType === "key") {
           const { data: keyResult, error: keyError } = await supabase.rpc(
             "import_product_keys",
@@ -383,10 +416,12 @@ export function ProductEditor({
         : value;
     persistedValue.current = savedValue;
     setValue(savedValue);
-    window.localStorage.removeItem(draftStorageKey);
+    clearDraft();
     setDirty(false);
     setSaving(false);
-    setSavedMessage("บันทึกสินค้าเรียบร้อยแล้ว");
+    if (saveProduct) refreshed = await invalidatePublicCatalog();
+    setSavedMessage(refreshed ? "บันทึกสินค้าเรียบร้อยแล้ว" : CATALOG_REFRESH_WARNING);
+    if (workspaceDialog && refreshed) router.push("/dashboard/products");
     router.refresh();
   }
 
@@ -408,6 +443,47 @@ export function ProductEditor({
           {mode === "create" ? "สร้างสินค้าใหม่" : "แก้ไขสินค้า"}
         </h1>
       </div>
+
+      <section className="product-section">
+        <h2 className="product-section-title" id="product-type-title">ประเภทสินค้า</h2>
+        {value.deliveryType === "key" ? (
+          <div className="mt-4 rounded-2xl border border-line bg-paper-dim p-4">
+            <p className="text-sm font-semibold text-ink">File · Product Key</p>
+            <p className="mt-1 text-xs leading-5 text-muted">สินค้านี้ส่ง Product Key ให้ลูกค้า จัดการ Key และจำนวนคงเหลือได้ด้านล่าง</p>
+          </div>
+        ) : (
+          <fieldset aria-labelledby="product-type-title">
+            <p className="product-help">เลือกสิ่งที่ลูกค้าจะได้รับหลังชำระเงิน</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {PRODUCT_TYPES.map((option) => (
+                <label
+                  key={option.value}
+                  className={`cursor-pointer rounded-2xl border p-4 transition ${
+                    value.deliveryType === option.value
+                      ? "border-accent bg-accent-soft"
+                      : "border-line hover:border-ink/30"
+                  }`}
+                >
+                  <span className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      name="delivery-type"
+                      value={option.value}
+                      checked={value.deliveryType === option.value}
+                      onChange={() => update({ deliveryType: option.value, category: productCategory(option.value) })}
+                      className="mt-1"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-ink">{option.title}</span>
+                      <span className="mt-1 block text-xs leading-5 text-muted">{option.description}</span>
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
+      </section>
 
       <section className="product-section">
         <h2 className="product-section-title">ข้อมูลสินค้า</h2>
@@ -469,25 +545,6 @@ export function ProductEditor({
             </label>
           </div>
 
-          <fieldset>
-            <legend className="field-label">หมวดหมู่</legend>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {CATEGORIES.map((category) => (
-                <button
-                  key={category}
-                  type="button"
-                  aria-pressed={value.category === category}
-                  onClick={() => update({ category })}
-                  className={`category-chip ${
-                    value.category === category ? "category-chip-active" : ""
-                  }`}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
           <div>
             <p className="field-label mb-2">รายละเอียด</p>
             <RichTextEditor
@@ -495,55 +552,6 @@ export function ProductEditor({
               onChange={(descriptionHtml) => update({ descriptionHtml })}
             />
           </div>
-        </div>
-      </section>
-
-      <section className="product-section">
-        <h2 className="product-section-title">รูปแบบการส่งมอบ</h2>
-        <p className="product-help">
-          เลือกสิ่งที่ลูกค้าจะได้รับทันทีหลังชำระเงิน
-        </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {[
-            {
-              value: "file" as const,
-              title: "ไฟล์ดาวน์โหลด",
-              description: "PDF, ZIP, วิดีโอ หรือไฟล์ดิจิทัล",
-            },
-            {
-              value: "key" as const,
-              title: "Product Key",
-              description: "จ่าย Key ไม่ซ้ำหนึ่งรายการต่อออเดอร์",
-            },
-          ].map((option) => (
-            <label
-              key={option.value}
-              className={`cursor-pointer rounded-2xl border p-4 transition ${
-                value.deliveryType === option.value
-                  ? "border-accent bg-accent-soft"
-                  : "border-line hover:border-ink/30"
-              }`}
-            >
-              <span className="flex items-start gap-3">
-                <input
-                  type="radio"
-                  name="delivery-type"
-                  value={option.value}
-                  checked={value.deliveryType === option.value}
-                  onChange={() => update({ deliveryType: option.value })}
-                  className="mt-1"
-                />
-                <span>
-                  <span className="block text-sm font-semibold text-ink">
-                    {option.title}
-                  </span>
-                  <span className="mt-1 block text-xs leading-5 text-muted">
-                    {option.description}
-                  </span>
-                </span>
-              </span>
-            </label>
-          ))}
         </div>
       </section>
 
@@ -559,7 +567,7 @@ export function ProductEditor({
             <p className="-mt-8 text-xs text-red-600">{errors.productFile}</p>
           )}
         </>
-      ) : (
+      ) : value.deliveryType === "key" ? (
         <ProductKeyInventory
           value={value.keyInput}
           onChange={(keyInput) => update({ keyInput })}
@@ -568,6 +576,19 @@ export function ProductEditor({
           error={errors.productKeys}
           onStatusChange={mode === "edit" ? changeKeyStatus : undefined}
         />
+      ) : (
+        <section className="product-section">
+          <h2 className="product-section-title">สิทธิ์เข้าเรียน</h2>
+          <p className="product-help">ชำระครั้งเดียว เริ่มนับจากเวลาชำระสำเร็จ การแก้ไขระยะเวลามีผลเฉพาะออเดอร์ใหม่</p>
+          <label className="field-label mt-4">ระยะเวลาเข้าเรียน
+            <select className="field-input mt-2" value={value.courseAccessDays ? "days" : "lifetime"} onChange={e => update({courseAccessDays:e.target.value === "days" ? "365" : ""})}>
+              <option value="lifetime">ตลอดชีพ</option><option value="days">กำหนดจำนวนวัน</option>
+            </select>
+          </label>
+          {value.courseAccessDays && <label className="field-label mt-4">จำนวนวัน<input type="number" min="1" max="36500" step="1" className="field-input mt-2" value={value.courseAccessDays} onChange={e => update({courseAccessDays:e.target.value})}/></label>}
+          {errors.courseAccessDays && <p role="alert" className="field-error">{errors.courseAccessDays}</p>}
+          {mode === "create" ? <p className="mt-4 text-sm text-muted">คอร์สจะถูกสร้างเป็นแบบร่าง จากนั้นเพิ่มบทเรียนและเผยแพร่เมื่อพร้อม</p> : <Link className="secondary-button group mt-5 inline-flex items-center gap-1.5" href={`/dashboard/products/${productId}/lessons`}>จัดการบทเรียน<ArrowRightIcon className="size-4 transition-transform duration-[200ms] ease-out group-hover:translate-x-0.5" /></Link>}
+        </section>
       )}
 
       <ProductImageUploader
@@ -609,7 +630,7 @@ export function ProductEditor({
           {saving
             ? "กำลังบันทึก..."
             : mode === "create"
-              ? "สร้างสินค้า"
+              ? value.deliveryType === "course" ? "สร้างคอร์สและเพิ่มบทเรียน" : "สร้างสินค้า"
               : "บันทึกการเปลี่ยนแปลง"}
         </button>
       </div>

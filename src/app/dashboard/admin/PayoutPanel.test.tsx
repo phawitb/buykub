@@ -1,0 +1,135 @@
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, expect, it, vi } from 'vitest';
+import { PayoutPanel } from './PayoutPanel';
+import type { PayoutDashboard } from '@/lib/payouts/model';
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+const data: PayoutDashboard = { mode: 'manual', scheduleEnabled: false, providerReady: false, providerReason: 'ยังไม่ได้เชื่อมต่อผู้ให้บริการโอนเงิน', scheduleLabel: 'ทุกวันจันทร์ 10:00 น.', lastReconciledAt: null, eligibleCents: 95000, eligibleOrderCount: 1, blockedOrderCount: 0, blockedReasons: [], batches: [{ id: 'batch-1', shopId: 'shop-1', shopName: 'ร้านทดสอบ', amountCents: 95000, orderCount: 1, status: 'ready', recipientName: 'สมชาย ใจดี', destinationMasked: '***1234', createdAt: '2026-11-01T00:00:00Z', paidAt: null, transferReference: null, hasSlip: true }] };
+beforeEach(() => vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) })));
+it('blocks automatic transfer and never exposes full bank details before a deliberate request', () => {
+  render(<PayoutPanel data={data} />);
+  expect(screen.queryByRole('button', { name: 'โอนอัตโนมัติ' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'เปิดการเตรียมตามเวลา' })).not.toBeInTheDocument();
+  expect(screen.getByText('***1234')).toBeInTheDocument();
+  expect(fetch).not.toHaveBeenCalled();
+  expect(screen.queryByLabelText('เลขอ้างอิงการโอนจากธนาคาร')).not.toBeInTheDocument();
+});
+it('preparation needs confirmation and sends a reusable unique request id, never completing a transfer', async () => {
+  const user = userEvent.setup(); render(<PayoutPanel data={data} />);
+  await user.click(screen.getByRole('button', { name: 'เตรียมรายการจ่ายเงิน' }));
+  expect(fetch).not.toHaveBeenCalled();
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'ยืนยันการเตรียมรายการ' }));
+  expect(fetch).toHaveBeenCalledWith('/api/admin/payout-prepare', expect.objectContaining({ body: expect.stringMatching(/"requestId":"[a-f0-9-]{36}"/) }));
+  expect(await screen.findByRole('status')).toHaveTextContent('ยังไม่ได้โอนเงิน');
+});
+it('keeps the same preparation request id after a network failure', async () => {
+  const user = userEvent.setup();
+  vi.mocked(fetch).mockRejectedValueOnce(new Error('เครือข่ายขัดข้อง'));
+  render(<PayoutPanel data={data} />);
+  await user.click(screen.getByRole('button', { name: 'เตรียมรายการจ่ายเงิน' }));
+  await user.click(screen.getByRole('button', { name: 'ยืนยันการเตรียมรายการ' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('เครือข่ายขัดข้อง');
+  const firstBody = vi.mocked(fetch).mock.calls[0][1]?.body;
+  await user.click(screen.getByRole('button', { name: 'ยืนยันการเตรียมรายการ' }));
+  expect(vi.mocked(fetch).mock.calls[1][1]?.body).toBe(firstBody);
+});
+it('does not expose transfer forms when the private instructions request is denied', async () => {
+  const user = userEvent.setup();
+  vi.mocked(fetch).mockResolvedValue({ ok: false, json: async () => ({ error: 'ไม่มีสิทธิ์เข้าถึง' }) } as Response);
+  render(<PayoutPanel data={data} />);
+  await user.click(screen.getByRole('button', { name: 'บันทึกการโอนที่ทำแล้ว' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('ไม่มีสิทธิ์เข้าถึง');
+  expect(screen.queryByRole('button', { name: 'ดาวน์โหลดข้อมูลสำหรับโอน' })).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('เลขอ้างอิงการโอนจากธนาคาร')).not.toBeInTheDocument();
+});
+it('attaches a private slip separately and never marks the batch paid by uploading', async () => {
+  const user = userEvent.setup();
+  render(<PayoutPanel data={{ ...data, batches: [{ ...data.batches[0], hasSlip: false }] }} />);
+  const file = new File(['receipt'], 'receipt.pdf', { type: 'application/pdf' });
+  await user.upload(screen.getByLabelText('เลือกสลิปสำหรับ ร้านทดสอบ'), file);
+  expect(fetch).not.toHaveBeenCalled();
+  await user.click(screen.getByRole('button', { name: 'แนบสลิป' }));
+  expect(fetch).toHaveBeenCalledTimes(1);
+  const [url, options] = vi.mocked(fetch).mock.calls[0];
+  expect(url).toBe('/api/admin/payout-slip');
+  expect((options?.body as FormData).get('batchId')).toBe('batch-1');
+  expect((options?.body as FormData).get('file')).toBeInstanceOf(File);
+  expect(await screen.findByText('แนบสลิปแล้ว · ยังต้องยืนยันการโอนจริง')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'ยกเลิกรายการ' })).not.toBeInTheDocument();
+});
+it('rejects oversized slips before uploading and requests private slip links only on demand', async () => {
+  const user = userEvent.setup(); render(<PayoutPanel data={data} />);
+  await user.upload(screen.getByLabelText('เลือกสลิปสำหรับ ร้านทดสอบ'), new File([new Uint8Array(4 * 1024 * 1024 + 1)], 'large.png', { type: 'image/png' }));
+  await user.click(screen.getByRole('button', { name: 'แทนที่สลิป' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('ไม่เกิน 4 MB');
+  expect(fetch).not.toHaveBeenCalled();
+  vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ url: 'https://storage.example.com/private-slip?token=short-lived' }) } as Response);
+  await user.click(screen.getByRole('button', { name: 'ดูสลิป' }));
+  expect(await screen.findByRole('link', { name: 'เปิดไฟล์สลิป' })).toHaveAttribute('rel', 'noopener noreferrer');
+  expect(fetch).toHaveBeenCalledWith('/api/admin/payout-slip?batchId=batch-1', expect.objectContaining({ cache: 'no-store' }));
+});
+it('requires a no-transfer acknowledgement before cancellation', async () => {
+  const user = userEvent.setup(); render(<PayoutPanel data={{ ...data, batches: [{ ...data.batches[0], hasSlip: false }] }} />);
+  await user.click(screen.getByRole('button', { name: 'ยกเลิกรายการ' }));
+  expect(screen.getByRole('button', { name: 'ยืนยันการเปลี่ยนแปลง' })).toBeDisabled();
+  expect(fetch).not.toHaveBeenCalled();
+  await user.click(screen.getByLabelText('ฉันยังไม่ได้โอนเงินจริงและยังไม่มีสลิปของรายการนี้'));
+  await user.click(screen.getByRole('button', { name: 'ยืนยันการเปลี่ยนแปลง' }));
+  expect(fetch).toHaveBeenCalledWith('/api/admin/payout-cancel', expect.objectContaining({ body: JSON.stringify({ batchId: 'batch-1', confirmedNotTransferred: true }) }));
+});
+it('allows an unsent review-required batch to be cancelled after explicit confirmation', async () => {
+  const user = userEvent.setup(); render(<PayoutPanel data={{ ...data, batches: [{ ...data.batches[0], status: 'review_required', hasSlip: false }] }} />);
+  await user.click(screen.getByRole('button', { name: /ต้องตรวจสอบ \(1\)/ }));
+  await user.click(screen.getByRole('button', { name: 'ยกเลิกรายการ' }));
+  expect(fetch).not.toHaveBeenCalled();
+  await user.click(screen.getByLabelText('ฉันยังไม่ได้โอนเงินจริงและยังไม่มีสลิปของรายการนี้'));
+  await user.click(screen.getByRole('button', { name: 'ยืนยันการเปลี่ยนแปลง' }));
+  expect(fetch).toHaveBeenCalledWith('/api/admin/payout-cancel', expect.objectContaining({ body: JSON.stringify({ batchId: 'batch-1', confirmedNotTransferred: true }) }));
+});
+it('offers review-required batches only a record-existing-transfer flow', async () => {
+  const user = userEvent.setup();
+  vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ instructions: { batchId: 'batch-1', shopName: 'ร้านทดสอบ', amountCents: 95000, recipientName: 'สมชาย ใจดี', method: 'bank', bankCode: 'kbank', accountNumber: '1234567890', promptpayId: null, warning: 'ข้อมูลเดิมสำหรับบันทึกเท่านั้น ห้ามโอนซ้ำ' } }) } as Response);
+  render(<PayoutPanel data={{ ...data, batches: [{ ...data.batches[0], status: 'review_required' }] }} />);
+  await user.click(screen.getByRole('button', { name: /ต้องตรวจสอบ \(1\)/ }));
+  expect(screen.queryByRole('button', { name: 'ยกเลิกรายการ' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'ดูข้อมูลสำหรับโอน' })).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'บันทึกการโอนที่ทำแล้ว' }));
+  expect(await screen.findByText('ข้อมูลเดิมสำหรับบันทึกเท่านั้น ห้ามโอนซ้ำ')).toBeInTheDocument();
+  expect(fetch).toHaveBeenCalledWith('/api/admin/payout-record', expect.objectContaining({ body: JSON.stringify({ batchId: 'batch-1' }) }));
+  expect(screen.queryByRole('button', { name: 'ดาวน์โหลดข้อมูลสำหรับโอน' })).not.toBeInTheDocument();
+});
+it('requires an attached slip before recording transfer evidence', async () => {
+  const user = userEvent.setup();
+  vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ instructions: { batchId: 'batch-1', shopName: 'ร้านทดสอบ', amountCents: 95000, recipientName: 'สมชาย ใจดี', method: 'bank', bankCode: 'kbank', accountNumber: '1234567890', promptpayId: null, warning: 'ตรวจสอบชื่อบัญชีก่อนโอน' } }) } as Response);
+  render(<PayoutPanel data={{ ...data, batches: [{ ...data.batches[0], hasSlip: false }] }} />);
+  await user.click(screen.getByRole('button', { name: 'ดูข้อมูลสำหรับโอน' }));
+  expect(await screen.findByText('แนบสลิปในรายการด้านบนก่อนบันทึกการโอนจริง')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'ตรวจสอบหลักฐานการโอน' })).toBeDisabled();
+});
+it('separates awaiting and paid batches and searches recipients without changing records', async () => {
+  const user = userEvent.setup();
+  render(<PayoutPanel data={{ ...data, batches: [...data.batches, { ...data.batches[0], id: 'batch-paid', shopName: 'ร้านที่จ่ายแล้ว', status: 'completed', transferReference: 'REF', paidAt: '2026-11-01T00:00:00Z' }] }} />);
+  expect(screen.queryByText('ร้านที่จ่ายแล้ว')).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: /จ่ายแล้ว \(1\)/ }));
+  expect(screen.getByText('ร้านที่จ่ายแล้ว')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'บันทึกการโอนที่ทำแล้ว' })).not.toBeInTheDocument();
+  await user.type(screen.getByRole('searchbox', { name: 'ค้นหาร้านหรือผู้รับเงิน' }), 'ไม่ตรง');
+  expect(screen.queryByText('ร้านที่จ่ายแล้ว')).not.toBeInTheDocument();
+  expect(fetch).not.toHaveBeenCalled();
+});
+it('only records an actual transfer after reviewed instructions, reference, timestamp, and explicit confirmation', async () => {
+  const user = userEvent.setup();
+  vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ instructions: { batchId: 'batch-1', shopName: 'ร้านทดสอบ', amountCents: 95000, recipientName: 'สมชาย ใจดี', method: 'bank', bankCode: 'KBANK', accountNumber: '1234567890', promptpayId: null, warning: 'ตรวจสอบชื่อบัญชีก่อนโอน' } }) } as Response);
+  render(<PayoutPanel data={data} />);
+  await user.click(screen.getByRole('button', { name: 'บันทึกการโอนที่ทำแล้ว' }));
+  expect(await screen.findByText('1234567890')).toBeInTheDocument();
+  await user.type(screen.getByLabelText('เลขอ้างอิงการโอนจากธนาคาร'), 'BANK-REF-123');
+  await user.type(screen.getByLabelText('วันและเวลาที่โอนจริง (เวลาไทย)'), '2026-11-01T12:00');
+  await user.click(screen.getByLabelText('ฉันโอนเงินจริงครบตามยอดและผู้รับข้างต้นแล้ว'));
+  await user.click(screen.getByRole('button', { name: 'ตรวจสอบหลักฐานการโอน' }));
+  expect(fetch).toHaveBeenCalledTimes(1);
+  const dialog = within(screen.getByRole('dialog'));
+  expect(dialog.getByText('สมชาย ใจดี')).toBeInTheDocument();
+  await user.click(dialog.getByRole('button', { name: 'ยืนยันบันทึกการโอนจริง' }));
+  expect(fetch).toHaveBeenLastCalledWith('/api/admin/payout-complete', expect.objectContaining({ body: JSON.stringify({ batchId: 'batch-1', reference: 'BANK-REF-123', paidAt: '2026-11-01T05:00:00.000Z', amountCents: 95000, confirmed: true }) }));
+});

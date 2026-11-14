@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ProductFAQ } from "@/features/products/model";
+import { ArrowDownIcon, ArrowUpIcon } from "@/components/icons";
 
 function move<T>(items: T[], index: number, direction: -1 | 1): T[] {
   const target = index + direction;
@@ -60,7 +61,7 @@ export function HighlightFields({
               className="small-button disabled:opacity-30"
               onClick={() => onChange(move(value, index, -1))}
             >
-              ↑
+              <ArrowUpIcon className="size-3.5" />
             </button>
             <button
               type="button"
@@ -69,7 +70,7 @@ export function HighlightFields({
               className="small-button disabled:opacity-30"
               onClick={() => onChange(move(value, index, 1))}
             >
-              ↓
+              <ArrowDownIcon className="size-3.5" />
             </button>
             <button
               type="button"
@@ -166,7 +167,7 @@ export function FAQFields({
               className="small-button mt-2 disabled:opacity-30"
               onClick={() => onChange(move(value, index, -1))}
             >
-              ↑
+              <ArrowUpIcon className="size-3.5" />
             </button>
             <button
               type="button"
@@ -175,7 +176,7 @@ export function FAQFields({
               className="small-button mt-2 disabled:opacity-30"
               onClick={() => onChange(move(value, index, 1))}
             >
-              ↓
+              <ArrowDownIcon className="size-3.5" />
             </button>
             <button
               type="button"

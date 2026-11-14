@@ -21,7 +21,7 @@ export function BookingTabs({
           onClick={() => setTab("services")}
           className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
             tab === "services"
-              ? "bg-paper text-ink shadow-sm"
+              ? "bg-paper text-ink shadow-lift-1"
               : "text-muted hover:text-ink"
           }`}
         >
@@ -34,7 +34,7 @@ export function BookingTabs({
           onClick={() => setTab("incoming")}
           className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
             tab === "incoming"
-              ? "bg-paper text-ink shadow-sm"
+              ? "bg-paper text-ink shadow-lift-1"
               : "text-muted hover:text-ink"
           }`}
         >

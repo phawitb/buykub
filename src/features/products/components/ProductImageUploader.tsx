@@ -9,6 +9,7 @@ import {
   type UploadRequest,
   type UploadResult,
 } from "@/lib/supabase/upload";
+import { ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon } from "@/components/icons";
 
 type ImageTask = {
   id: string;
@@ -204,7 +205,7 @@ export function ProductImageUploader({
                 disabled={index === 0}
                 onClick={() => moveSaved(index, -1)}
               >
-                ←
+                <ArrowLeftIcon className="size-3.5" />
               </button>
               <button
                 type="button"
@@ -213,7 +214,7 @@ export function ProductImageUploader({
                 disabled={index === value.length - 1}
                 onClick={() => moveSaved(index, 1)}
               >
-                →
+                <ArrowRightIcon className="size-3.5" />
               </button>
               <button
                 type="button"
@@ -306,7 +307,7 @@ export function ProductImageUploader({
             }}
           >
             <span className="upload-icon" aria-hidden="true">
-              ↑
+              <ArrowUpIcon className="size-5" />
             </span>
             <span className="mt-2 text-center text-xs font-semibold text-ink">
               ลากไฟล์มาวางที่นี่ หรือ

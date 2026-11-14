@@ -1,4 +1,6 @@
+import { productCategoryLabel } from "@/features/products/category";
 import Link from "next/link";
+import { ProductPlaceholder } from "./ProductPlaceholder";
 import { formatTHB } from "@/features/products/format";
 
 export type StorefrontProductCard = {
@@ -8,10 +10,15 @@ export type StorefrontProductCard = {
   priceCents: number;
   comparePriceCents: number | null;
   thumbnailUrl: string | null;
-  deliveryType?: "file" | "key";
+  deliveryType?: "file" | "key" | "course";
   availableStock?: number;
 };
 
+/**
+ * A white card on the grey ground, after fastwork's service cards: the whole
+ * card is the link, the thumbnail sits inside the card rather than being the
+ * card, and the price is the last thing the eye lands on.
+ */
 export function ProductCard({
   shopSlug,
   product,
@@ -19,60 +26,58 @@ export function ProductCard({
   shopSlug: string;
   product: StorefrontProductCard;
 }) {
+  const stock = product.availableStock ?? 0;
+
   return (
     <Link
       href={`/${shopSlug}/${product.slug}`}
       aria-label={product.name}
-      className="group block min-w-0 focus-visible:rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+      className="group card lift-card flex min-w-0 flex-col overflow-hidden p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
-      <div className="relative aspect-square overflow-hidden rounded-2xl bg-paper-dim">
+      <div className="zoom-frame relative aspect-square rounded-element bg-paper-dim">
         {product.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={product.thumbnailUrl}
             alt={product.name}
-            className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+            className="size-full object-cover"
           />
         ) : (
-          <div
-            role="img"
-            aria-label={`ยังไม่มีรูปสำหรับ ${product.name}`}
-            className="flex h-full w-full flex-col items-center justify-center bg-[linear-gradient(145deg,var(--color-paper-dim),var(--color-accent-soft))] text-muted"
-          >
-            <span className="text-4xl">◇</span>
-            <span className="mt-2 text-xs">ยังไม่มีรูปสินค้า</span>
-          </div>
-        )}
-        <span className="absolute left-3 top-3 rounded-full bg-ink/85 px-3 py-1.5 text-[10px] font-semibold text-paper backdrop-blur">
-          {product.category}
-        </span>
-      </div>
-      <h3 className="mt-3 line-clamp-2 text-sm font-semibold leading-5 text-ink">
-        {product.name}
-      </h3>
-      <p className="mt-2 flex items-baseline gap-2 text-sm">
-        <span className="font-bold text-ink">{formatTHB(product.priceCents)}</span>
-        {product.comparePriceCents && (
-          <span className="text-xs text-muted line-through">
-            {formatTHB(product.comparePriceCents)}
+          <span data-zoom className="block size-full">
+            <ProductPlaceholder productName={product.name} deliveryType={product.deliveryType} />
           </span>
         )}
-      </p>
-      {product.deliveryType === "key" && (
-        <p
-          className={`mt-2 text-xs font-semibold ${
-            (product.availableStock ?? 0) > 0
-              ? (product.availableStock ?? 0) <= 5
-                ? "text-amber-700"
-                : "text-emerald-700"
-              : "text-red-600"
-          }`}
-        >
-          {(product.availableStock ?? 0) > 0
-            ? `เหลือ ${product.availableStock} รายการ`
-            : "สินค้าหมด"}
+        <span className="absolute left-2.5 top-2.5 rounded-full bg-paper/90 px-2.5 py-1 text-[10px] font-medium text-ink backdrop-blur">
+          {productCategoryLabel(product.deliveryType)}
+        </span>
+      </div>
+
+      <div className="flex flex-1 flex-col px-2 pb-1.5 pt-3">
+        <h3 className="line-clamp-2 text-sm font-medium leading-5 text-ink">
+          {product.name}
+        </h3>
+
+        <p className="mt-auto flex items-baseline gap-2 pt-3 text-sm">
+          <span className="font-semibold text-ink" data-numeric>
+            {formatTHB(product.priceCents)}
+          </span>
+          {product.comparePriceCents && (
+            <span className="text-xs text-muted line-through" data-numeric>
+              {formatTHB(product.comparePriceCents)}
+            </span>
+          )}
         </p>
-      )}
+
+        {product.deliveryType === "key" && (
+          <p
+            className={`mt-1.5 text-xs font-medium ${
+              stock > 0 ? (stock <= 5 ? "text-amber-700" : "text-success") : "text-error-solid"
+            }`}
+          >
+            {stock > 0 ? `เหลือ ${stock} รายการ` : "สินค้าหมด"}
+          </p>
+        )}
+      </div>
     </Link>
   );
 }

@@ -12,7 +12,7 @@ export function LegalPage({
 }) {
   return (
     <main className="min-h-screen bg-[#faf9f7] px-5 py-10 sm:py-16">
-      <article className="mx-auto max-w-3xl rounded-3xl border border-line bg-paper p-6 shadow-sm sm:p-10">
+      <article className="mx-auto max-w-3xl rounded-3xl border border-line bg-paper p-6 shadow-lift-1 sm:p-10">
         <Link href="/" className="text-ink">
           <BrandLogo className="text-sm" />
         </Link>

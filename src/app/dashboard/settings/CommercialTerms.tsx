@@ -1,8 +1,14 @@
+import { CheckIcon } from "@/components/icons";
+
+/**
+ * Mirrors the published terms on the landing page. The payout line must stay
+ * truthful: a seven-day hold, then a transfer staff make by hand with a slip.
+ */
 const terms = [
   "ค่าธรรมเนียม 5% ต่อออเดอร์",
-  "สินค้าและบริการจองไม่จำกัด",
+  "ไฟล์และคอร์สเรียนไม่จำกัด",
   "ไม่มีลายน้ำ",
-  "โอนเงินทุกวันจันทร์",
+  "โอนเข้าบัญชีพร้อมสลิปยืนยัน",
 ];
 
 export function CommercialTerms() {
@@ -17,14 +23,16 @@ export function CommercialTerms() {
         </p>
         <ul className="mt-4 grid gap-3 text-sm text-ink-soft sm:grid-cols-2">
           {terms.map((term) => (
-            <li key={term} className="flex items-start gap-2">
-              <span className="text-accent" aria-hidden>
-                ✓
-              </span>
+            <li key={term} className="flex items-start gap-2.5">
+              <CheckIcon className="mt-0.5 size-4 shrink-0 text-accent" />
               <span>{term}</span>
             </li>
           ))}
         </ul>
+        <p className="mt-4 border-t border-line pt-4 text-xs leading-6 text-muted">
+          ยอดที่ชำระแล้วเข้ารอบจ่ายหลังพ้นระยะถือครอง 7 วัน
+          ทีมงานเป็นผู้โอนและแนบสลิปยืนยัน ยังไม่มีระบบโอนอัตโนมัติ
+        </p>
       </div>
     </section>
   );

@@ -6,6 +6,7 @@ import {
   type UploadRequest,
   type UploadResult,
 } from "@/lib/supabase/upload";
+import { ArrowUpIcon } from "@/components/icons";
 
 type Kind = "avatar" | "cover" | "service";
 type Upload = (request: UploadRequest) => Promise<UploadResult>;
@@ -154,7 +155,7 @@ export function ShopImageUploader({
     if (inputRef.current) inputRef.current.value = "";
   }
 
-  const displayedUrl = previewUrl ?? value;
+  const displayedUrl = status === "success" ? value : previewUrl ?? value;
 
   return (
     <div>
@@ -200,7 +201,7 @@ export function ShopImageUploader({
               aria-hidden
               className="flex h-10 w-10 items-center justify-center rounded-full bg-paper-dim text-lg text-muted"
             >
-              ↑
+              <ArrowUpIcon className="size-4.5" />
             </span>
           )}
           <span className="text-xs font-medium text-ink-soft">

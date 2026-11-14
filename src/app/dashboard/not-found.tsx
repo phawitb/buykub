@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function DashboardNotFound() {
   return (
     <div className="flex min-h-[65vh] items-center justify-center px-2">
-      <div className="w-full max-w-md rounded-3xl border border-line bg-paper p-8 text-center shadow-sm sm:p-10">
+      <div className="w-full max-w-md rounded-3xl border border-line bg-paper p-8 text-center shadow-lift-1 sm:p-10">
         <div
           aria-hidden
           className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent-soft text-2xl text-accent"
@@ -27,7 +27,7 @@ export default function DashboardNotFound() {
             href="/dashboard/products"
             className="primary-button justify-center"
           >
-            ไปหน้าสินค้า
+            ไปร้านค้าของฉัน
           </Link>
         </div>
       </div>

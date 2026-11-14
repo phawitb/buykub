@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { formatBangkokDateTime } from "@/lib/bangkok-date";
+import { ExternalIcon } from "@/components/icons";
 
 type Booking = {
   id: string;
@@ -95,7 +96,7 @@ export function BookingRow({
                   rel="noreferrer"
                   className="font-semibold text-ink underline underline-offset-4"
                 >
-                  เปิด Google Meet ↗
+                  เปิด Google Meet<ExternalIcon className="ml-1.5 inline size-3.5 align-[-0.15em]" />
                 </a>
               )}
             </div>

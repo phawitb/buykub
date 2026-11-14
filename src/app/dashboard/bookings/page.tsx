@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { BookingTabs } from "./BookingTabs";
 import { BookingRow } from "./BookingRow";
 import { ServiceRow } from "./ServiceRow";
+import { PlusIcon } from "@/components/icons";
 
 const FREE_PLAN_LIMIT = 5;
 
@@ -61,7 +62,7 @@ export default async function BookingsPage() {
           href="/dashboard/bookings/new"
           className="shrink-0 whitespace-nowrap rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-paper hover:bg-accent-hover sm:rounded-full sm:px-5"
         >
-          <span aria-hidden className="mr-1.5">＋</span>
+          <PlusIcon className="mr-1.5 inline size-4 align-[-0.2em]" />
           สร้างบริการจอง
         </Link>
       </div>

@@ -13,6 +13,7 @@ import {
   type UploadRequest,
   type UploadResult,
 } from "@/lib/supabase/upload";
+import { ArrowUpIcon } from "@/components/icons";
 
 type Props = {
   userId: string;
@@ -140,7 +141,7 @@ export function ProductFileUploader({
     <section className="product-section">
       <h2 className="product-section-title">ไฟล์สินค้า *</h2>
       <p className="product-help">
-        อัปโหลดไฟล์ดิจิทัลที่ลูกค้าจะได้รับหลังซื้อ — 1 ไฟล์ ขนาดสูงสุด 500
+        อัปโหลดไฟล์ดิจิทัลที่ลูกค้าจะได้รับหลังซื้อ — 1 ไฟล์ ขนาดสูงสุด 50
         MB (PDF, ZIP, EPUB, MP4 หรือไฟล์ใดก็ได้)
       </p>
 
@@ -237,13 +238,13 @@ export function ProductFileUploader({
           }}
         >
           <span className="upload-icon" aria-hidden="true">
-            ↑
+            <ArrowUpIcon className="size-5" />
           </span>
           <span className="mt-3 text-sm font-semibold text-ink">
             ลากไฟล์มาวางที่นี่ หรือ{" "}
             <span className="text-accent">คลิกเพื่อเลือก</span>
           </span>
-          <span className="mt-1 text-xs text-muted">สูงสุด 500.0 MB</span>
+          <span className="mt-1 text-xs text-muted">สูงสุด 50.0 MB</span>
           <input
             type="file"
             aria-label="เลือกไฟล์สินค้า"

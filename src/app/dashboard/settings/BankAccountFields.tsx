@@ -9,6 +9,7 @@ import {
   type BankDetails,
   type ThaiBank,
 } from "./thai-banks";
+import { CheckIcon, ChevronRightIcon, WalletIcon } from "@/components/icons";
 
 export function BankAccountFields({
   value,
@@ -87,9 +88,9 @@ export function BankAccountFields({
             <>
               <span
                 aria-hidden
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-paper-dim text-lg text-muted"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-paper-dim text-muted"
               >
-                ▤
+                <WalletIcon className="size-5" />
               </span>
               <span className="flex-1 text-sm font-medium text-ink">
                 เลือกธนาคาร
@@ -169,7 +170,7 @@ export function BankAccountFields({
             role="dialog"
             aria-modal="true"
             aria-labelledby="bank-picker-title"
-            className="flex max-h-[88vh] w-full flex-col rounded-t-3xl bg-paper shadow-2xl sm:max-w-xl sm:rounded-3xl"
+            className="flex max-h-[88vh] w-full flex-col rounded-t-3xl bg-paper shadow-lift-4 sm:max-w-xl sm:rounded-3xl"
           >
             <div className="border-b border-line px-5 pb-4 pt-5 sm:px-6">
               <div className="flex items-center justify-between gap-4">
@@ -254,7 +255,7 @@ function BankGroup({
   if (banks.length === 0) return null;
   return (
     <section className="mb-4 last:mb-0">
-      <h3 className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+      <h3 className="px-3 pb-2 pt-1 text-xs font-semibold text-muted">
         {title}
       </h3>
       <div className="overflow-hidden rounded-2xl border border-line">
@@ -284,7 +285,7 @@ function BankGroup({
               aria-hidden
               className={selectedCode === bank.code ? "text-accent" : "text-muted"}
             >
-              {selectedCode === bank.code ? "✓" : "›"}
+              {selectedCode === bank.code ? <CheckIcon className="size-4" /> : <ChevronRightIcon className="size-4" />}
             </span>
           </button>
         ))}

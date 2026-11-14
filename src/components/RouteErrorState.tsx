@@ -17,7 +17,7 @@ export function RouteErrorState({
     <main className="flex min-h-[70vh] items-center justify-center bg-[#faf9f7] px-5 py-16">
       <div
         role="alert"
-        className="w-full max-w-md rounded-3xl border border-line bg-paper p-8 text-center shadow-sm sm:p-10"
+        className="w-full max-w-md rounded-3xl border border-line bg-paper p-8 text-center shadow-lift-1 sm:p-10"
       >
         <div
           aria-hidden="true"

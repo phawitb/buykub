@@ -4,7 +4,7 @@ import { ConversionFunnel } from "./ConversionFunnel";
 
 describe("ConversionFunnel", () => {
   it("shows the conversion percentage between each funnel step", () => {
-    render(
+    const { container } = render(
       <ConversionFunnel
         steps={[
           { label: "ดูสินค้า", value: 100 },
@@ -18,6 +18,7 @@ describe("ConversionFunnel", () => {
     expect(screen.getByText("40.0%")).toBeInTheDocument();
     expect(screen.getByText("50.0%")).toBeInTheDocument();
     expect(screen.getByText("25.0%")).toBeInTheDocument();
-    expect(screen.getAllByText("↓")).toHaveLength(3);
+    // The step connector is a drawn icon now, not a "↓" character.
+    expect(container.querySelectorAll("svg")).toHaveLength(3);
   });
 });

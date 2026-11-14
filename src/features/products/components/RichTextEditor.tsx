@@ -1,21 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Youtube from "@tiptap/extension-youtube";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { normalizeLinkUrl, normalizeYoutubeUrl } from "./rich-text-urls";
+import { PlayIcon } from "@/components/icons";
 
 type Props = {
   value: string;
   onChange: (html: string) => void;
   maxCharacters?: number;
+  allowVideo?: boolean;
+  label?: string;
+  disabled?: boolean;
 };
 
 export function RichTextEditor({
   value,
   onChange,
   maxCharacters = 5000,
+  allowVideo = true,
+  label = "รายละเอียดสินค้า",
+  disabled = false,
 }: Props) {
   const [popover, setPopover] = useState<"link" | "video" | null>(null);
   const [urlValue, setUrlValue] = useState("");
@@ -27,6 +34,7 @@ export function RichTextEditor({
   } | null>(null);
   const editor = useEditor({
     immediatelyRender: false,
+    editable: !disabled,
     extensions: [
       StarterKit.configure({ link: { openOnClick: false } }),
       Youtube.configure({ controls: true, nocookie: true }),
@@ -36,10 +44,11 @@ export function RichTextEditor({
       attributes: {
         class:
           "min-h-64 px-4 py-4 text-sm leading-7 text-ink outline-none sm:min-h-72",
-        "aria-label": "รายละเอียดสินค้า",
+        "aria-label": label,
       },
     },
     onUpdate({ editor: currentEditor }) {
+      if (disabled) return;
       if (currentEditor.getText().length > maxCharacters) {
         currentEditor.commands.undo();
         return;
@@ -64,6 +73,11 @@ export function RichTextEditor({
           }
         : null,
   });
+
+  useEffect(() => {
+    // Native fieldset disabling does not apply to ProseMirror's contenteditable.
+    editor?.setEditable(!disabled, false);
+  }, [editor, disabled]);
 
   if (!editor) return <div className="rich-editor min-h-72 animate-pulse" />;
   const activeEditor = editor;
@@ -206,7 +220,7 @@ export function RichTextEditor({
 
   return (
     <>
-      <div className="rich-editor">
+      <fieldset disabled={disabled} className="rich-editor min-w-0">
         <div className="flex flex-wrap border-b border-line px-2 py-2">
           {toolbar.map((item) => (
             <button
@@ -229,15 +243,15 @@ export function RichTextEditor({
           >
             🔗
           </button>
-          <button
+          {allowVideo && <button
             type="button"
             aria-label="เพิ่มวิดีโอ"
             aria-pressed={popover === "video"}
             onClick={openVideoPopover}
             className={`editor-button ${popover === "video" ? "bg-paper-dim text-ink" : ""}`}
           >
-            ▷
-          </button>
+            <PlayIcon className="size-3.5" />
+          </button>}
         </div>
         {popover === "link" && (
           <div
@@ -363,7 +377,7 @@ export function RichTextEditor({
           </div>
         )}
         <EditorContent editor={activeEditor} />
-      </div>
+      </fieldset>
       <div className="mt-2 flex items-center justify-between text-[11px] text-muted">
         <span>เคล็ดลับ: ใช้ heading + bullet list ทำให้อ่านง่ายขึ้น</span>
         <span>

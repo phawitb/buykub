@@ -1,3 +1,5 @@
+import { ArrowDownIcon } from "@/components/icons";
+
 type FunnelStep = {
   label: string;
   value: number;
@@ -34,7 +36,7 @@ export function ConversionFunnel({ steps }: { steps: FunnelStep[] }) {
 
             {next && (
               <div className="flex items-center justify-center gap-2 py-2 text-[11px] text-muted">
-                <span aria-hidden="true">↓</span>
+                <ArrowDownIcon className="size-3.5" />
                 <span>{stepConversion.toFixed(1)}%</span>
               </div>
             )}

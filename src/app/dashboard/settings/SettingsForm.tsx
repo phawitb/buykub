@@ -1,376 +1,122 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BRAND_DOMAIN } from "@/lib/brand";
 import { createClient } from "@/lib/supabase/client";
-import { CalendarConnection } from "./CalendarConnection";
-import { ShopImageUploader } from "./ShopImageUploader";
 import { BankAccountFields } from "./BankAccountFields";
-import {
-  clearSettingsDraft,
-  readSettingsDraft,
-  writeSettingsDraft,
-  type SettingsDraft,
-} from "./settings-draft";
-import {
-  parseBankDetails,
-  serializeBankDetails,
-  validateBankAccount,
-  type BankAccountErrors,
-  type BankDetails,
-} from "./thai-banks";
+import { parseBankDetails, serializeBankDetails, validateBankAccount, type BankAccountErrors, type BankDetails } from "./thai-banks";
 
-type Shop = {
-  id: string | null;
-  slug: string;
-  name: string;
-  bio: string | null;
-  avatar_url: string | null;
-  cover_url: string | null;
-  accent_color: string;
-  payout_method: "promptpay" | "bank";
-  promptpay_id: string | null;
-  bank_details: string | null;
-};
+import { emptyPayoutIdentity, normalizePayoutName, validatePayoutIdentity, type PayoutIdentity, type PayoutIdentityErrors, type PayoutProfile } from "./payout-profile";
+import { WalletIcon } from "@/components/icons";
 
-type SettingsPayload = Omit<Shop, "id"> & {
-  id?: string;
-  owner_id: string;
-};
-
-const ACCENT_PRESETS = [
-  { name: "Tangerine", value: "#f97316" },
-  { name: "Violet", value: "#7c3aed" },
-  { name: "Rose", value: "#e11d48" },
-  { name: "Blue", value: "#2563eb" },
-  { name: "Emerald", value: "#059669" },
-  { name: "Amber", value: "#d97706" },
-  { name: "Pink", value: "#db2777" },
-  { name: "Cyan", value: "#0891b2" },
-];
-
-export function SettingsForm({
-  initial,
-  userId,
-  calendarConnected = false,
-  connectedEmail = null,
-  saveSettings,
-}: {
-  initial: Shop;
+export function SettingsForm({ initial, userId, saveSettings }: {
+  initial: Pick<PayoutProfile, "payout_method" | "promptpay_id" | "bank_details"> & Partial<PayoutIdentity> & { id: string };
   userId: string;
-  calendarConnected?: boolean;
-  connectedEmail?: string | null;
-  saveSettings?: (payload: SettingsPayload) => Promise<void>;
+  saveSettings?: (payload: PayoutProfile) => Promise<void>;
 }) {
   const router = useRouter();
-  const initialBankAccount = parseBankDetails(initial.bank_details);
-  const serverDraft: SettingsDraft = {
-    slug: initial.slug,
-    name: initial.name,
-    bio: initial.bio ?? "",
-    avatarUrl: initial.avatar_url,
-    coverUrl: initial.cover_url,
-    accentColor: initial.accent_color,
-    payoutMethod: initial.payout_method,
-    promptpayId: initial.promptpay_id ?? "",
-    bankCode: initialBankAccount.bankCode,
-    bankAccountNumber: initialBankAccount.accountNumber,
-    bankAccountName: initialBankAccount.accountName,
-    bankLegacy: initialBankAccount.legacy,
-  };
-  const savedDraft = useRef(serverDraft);
-  const draftHydrated = useRef(false);
-  const skipNextDraftPersistence = useRef(false);
-  const [slug, setSlug] = useState(serverDraft.slug);
-  const [name, setName] = useState(serverDraft.name);
-  const [bio, setBio] = useState(serverDraft.bio);
-  const [avatarUrl, setAvatarUrl] = useState(serverDraft.avatarUrl);
-  const [coverUrl, setCoverUrl] = useState(serverDraft.coverUrl);
-  const [accentColor, setAccentColor] = useState(serverDraft.accentColor);
-  const [payoutMethod, setPayoutMethod] = useState(serverDraft.payoutMethod);
-  const [promptpayId, setPromptpayId] = useState(serverDraft.promptpayId);
-  const [bankAccount, setBankAccount] = useState<BankDetails>({
-    bankCode: serverDraft.bankCode,
-    accountNumber: serverDraft.bankAccountNumber,
-    accountName: serverDraft.bankAccountName,
-    legacy: serverDraft.bankLegacy,
-  });
+  const [payoutMethod, setPayoutMethod] = useState(initial.payout_method);
+  const [promptpayId, setPromptpayId] = useState(initial.promptpay_id ?? "");
+  const [bankAccount, setBankAccount] = useState<BankDetails>(() => parseBankDetails(initial.bank_details));
   const [bankErrors, setBankErrors] = useState<BankAccountErrors>({});
-  const [avatarUploading, setAvatarUploading] = useState(false);
-  const [coverUploading, setCoverUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [identity, setIdentity] = useState<PayoutIdentity>(() => Object.fromEntries(
+    Object.keys(emptyPayoutIdentity).map((key) => [key, initial[key as keyof PayoutIdentity] ?? ""]),
+  ) as PayoutIdentity);
+  const [identityErrors, setIdentityErrors] = useState<PayoutIdentityErrors>({});
+  const [showNationalId, setShowNationalId] = useState(false);
 
   useEffect(() => {
-    const restoredDraft = readSettingsDraft(userId);
-    if (restoredDraft) {
-      skipNextDraftPersistence.current = true;
-      const restoreTimer = window.setTimeout(() => {
-        draftHydrated.current = true;
-        setSlug(restoredDraft.slug);
-        setName(restoredDraft.name);
-        setBio(restoredDraft.bio);
-        setAvatarUrl(restoredDraft.avatarUrl);
-        setCoverUrl(restoredDraft.coverUrl);
-        setAccentColor(restoredDraft.accentColor);
-        setPayoutMethod(restoredDraft.payoutMethod);
-        setPromptpayId(restoredDraft.promptpayId);
-        setBankAccount({
-          bankCode: restoredDraft.bankCode,
-          accountNumber: restoredDraft.bankAccountNumber,
-          accountName: restoredDraft.bankAccountName,
-          legacy: restoredDraft.bankLegacy,
-        });
-      }, 0);
-      return () => window.clearTimeout(restoreTimer);
+    // Remove old sensitive drafts, including drafts for previously signed-in users.
+    for (const storageName of ["sessionStorage", "localStorage"] as const) {
+      try {
+        const storage = window[storageName];
+        for (let index = storage.length - 1; index >= 0; index--) {
+          const key = storage.key(index);
+          if (key?.startsWith("buykub:payout-draft:") || key?.startsWith("framelink:settings-draft:")) storage.removeItem(key);
+        }
+      } catch { /* The form remains usable when browser storage is disabled. */ }
     }
-    draftHydrated.current = true;
-  }, [userId]);
+  }, [userId, initial.id]);
 
-  useEffect(() => {
-    if (!draftHydrated.current) return;
-    if (skipNextDraftPersistence.current) {
-      skipNextDraftPersistence.current = false;
-      return;
-    }
-    const currentDraft: SettingsDraft = {
-      slug,
-      name,
-      bio,
-      avatarUrl,
-      coverUrl,
-      accentColor,
-      payoutMethod,
-      promptpayId,
-      bankCode: bankAccount.bankCode,
-      bankAccountNumber: bankAccount.accountNumber,
-      bankAccountName: bankAccount.accountName,
-      bankLegacy: bankAccount.legacy,
-    };
-    if (JSON.stringify(currentDraft) === JSON.stringify(savedDraft.current)) {
-      clearSettingsDraft(userId);
-      return;
-    }
-    writeSettingsDraft(userId, currentDraft);
-  }, [
-    accentColor,
-    avatarUrl,
-    bankAccount,
-    bio,
-    coverUrl,
-    name,
-    payoutMethod,
-    promptpayId,
-    slug,
-    userId,
-  ]);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSaved(false);
-
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setError(null); setSaved(false);
     const normalizedPromptPay = promptpayId.replace(/\D/g, "");
-    if (
-      payoutMethod === "promptpay" &&
-      !/^(?:\d{10}|\d{13})$/.test(normalizedPromptPay)
-    ) {
-      setError("กรอกเบอร์โทร 10 หลัก หรือเลขบัตรประชาชน 13 หลัก");
-      return;
+    if (payoutMethod === "promptpay" && !/^(?:\d{10}|\d{13})$/.test(normalizedPromptPay)) {
+      setError("กรอกเบอร์โทร 10 หลัก หรือเลขบัตรประชาชน 13 หลัก"); return;
     }
     if (payoutMethod === "bank") {
-      const nextBankErrors = validateBankAccount(bankAccount);
-      setBankErrors(nextBankErrors);
-      if (Object.keys(nextBankErrors).length > 0) return;
-    } else {
-      setBankErrors({});
-    }
-
-    const payload: SettingsPayload = {
-      id: initial.id ?? undefined,
-      owner_id: userId,
-      slug,
-      name,
-      bio,
-      avatar_url: avatarUrl,
-      cover_url: coverUrl,
-      accent_color: accentColor,
-      payout_method: payoutMethod,
-      promptpay_id:
-        payoutMethod === "promptpay" ? normalizedPromptPay : null,
-      bank_details:
-        payoutMethod === "bank" ? serializeBankDetails(bankAccount) : null,
-    };
-
-    setSaving(true);
-    try {
-      if (saveSettings) {
-        await saveSettings(payload);
-      } else {
-        const supabase = createClient();
-        const { error: dbError } = await supabase
-          .from("shops")
-          .upsert(payload, { onConflict: "id" });
-        if (dbError) throw dbError;
-      }
-    } catch (saveError) {
-      const message =
-        saveError instanceof Error ? saveError.message : "กรุณาลองอีกครั้ง";
-      setError(message.includes("duplicate") ? "ลิงก์นี้ถูกใช้แล้ว" : message);
-      setSaving(false);
+      const errors = validateBankAccount(bankAccount);
+      setBankErrors(errors);
+      if (Object.keys(errors).length) return;
+    } else setBankErrors({});
+    const normalizedIdentity = Object.fromEntries(Object.entries(identity).map(([key, value]) => [key, value.trim()])) as PayoutIdentity;
+    normalizedIdentity.full_name_th = normalizePayoutName(normalizedIdentity.full_name_th);
+    const nextIdentityErrors = validatePayoutIdentity(normalizedIdentity);
+    setIdentityErrors(nextIdentityErrors);
+    if (Object.keys(nextIdentityErrors).length) return;
+    const normalizedAccountName = normalizePayoutName(bankAccount.accountName);
+    if (payoutMethod === "bank" && normalizedAccountName !== normalizedIdentity.full_name_th) {
+      setBankErrors({ accountName: "ชื่อบัญชีต้องเป็นชื่อเดียวกับข้อมูลที่ให้ไว้ข้างต้นเท่านั้น" });
       return;
     }
-    setSaving(false);
-    savedDraft.current = {
-      slug,
-      name,
-      bio,
-      avatarUrl,
-      coverUrl,
-      accentColor,
-      payoutMethod,
-      promptpayId:
-        payoutMethod === "promptpay" ? normalizedPromptPay : promptpayId,
-      bankCode: bankAccount.bankCode,
-      bankAccountNumber: bankAccount.accountNumber,
-      bankAccountName: bankAccount.accountName,
-      bankLegacy: bankAccount.legacy,
+    const payload: PayoutProfile = {
+      ...normalizedIdentity,
+      payout_method: payoutMethod,
+      promptpay_id: payoutMethod === "promptpay" ? normalizedPromptPay : null,
+      bank_details: payoutMethod === "bank" ? serializeBankDetails({ ...bankAccount, accountName: normalizedAccountName }) : null,
     };
-    clearSettingsDraft(userId);
-    setSaved(true);
-    setTimeout(() => {
-      setSaved(false);
+    setSaving(true);
+    try {
+      if (saveSettings) await saveSettings(payload);
+      else {
+        const { error: dbError } = await createClient().from("seller_payout_profiles")
+          .upsert({ shop_id: initial.id, ...payload }, { onConflict: "shop_id" }).select("shop_id").single();
+        if (dbError) throw dbError;
+      }
+      setPromptpayId(normalizedPromptPay);
+      setShowNationalId(false);
+      setSaved(true);
       router.refresh();
-    }, 2000);
+    } catch {
+      // Database errors can include the rejected row and sensitive identity data.
+      setError("บันทึกไม่สำเร็จ กรุณาตรวจสอบข้อมูลและลองอีกครั้ง");
+    } finally { setSaving(false); }
   }
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-8">
-      <section className="border-b border-line pb-8">
-        <h2 className="text-sm font-semibold text-ink">ข้อมูลร้าน</h2>
-
-        <div className="mt-4 space-y-4">
-          <div>
-            <label
-              htmlFor="shop-name"
-              className="mb-1.5 block text-xs font-medium text-ink-soft"
-            >
-              ชื่อร้าน
-            </label>
-            <input
-              id="shop-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              placeholder="ชื่อร้านของคุณ"
-              className="w-full rounded-lg border border-line bg-paper px-3.5 py-2.5 text-sm text-ink outline-none focus:border-ink"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="shop-slug"
-              className="mb-1.5 block text-xs font-medium text-ink-soft"
-            >
-              URL ร้าน
-            </label>
-            <div className="flex items-center rounded-lg border border-line bg-paper px-3.5 transition focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20">
-              <span className="text-sm text-muted">{BRAND_DOMAIN}/</span>
-              <input
-                id="shop-slug"
-                data-composite-input
-                value={slug}
-                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                required
-                placeholder="your-store"
-                className="flex-1 bg-transparent py-2.5 text-sm text-ink outline-none focus-visible:outline-none"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="shop-bio"
-              className="mb-1.5 block text-xs font-medium text-ink-soft"
-            >
-              แนะนำร้าน
-            </label>
-            <textarea
-              id="shop-bio"
-              value={bio}
-              onChange={(e) => setBio(e.target.value.slice(0, 160))}
-              maxLength={160}
-              rows={3}
-              placeholder="บอกลูกค้าเกี่ยวกับร้านของคุณ..."
-              className="w-full rounded-lg border border-line bg-paper px-3.5 py-2.5 text-sm text-ink outline-none focus:border-ink"
-            />
-            <p className="mt-1 text-right text-xs text-muted">{bio.length}/160</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="border-b border-line pb-8">
-        <h2 className="text-sm font-semibold text-ink">รูปร้าน</h2>
-
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <ShopImageUploader
-            kind="avatar"
-            userId={userId}
-            value={avatarUrl}
-            onUploaded={setAvatarUrl}
-            onBusyChange={setAvatarUploading}
-          />
-          <ShopImageUploader
-            kind="cover"
-            userId={userId}
-            value={coverUrl}
-            onUploaded={setCoverUrl}
-            onBusyChange={setCoverUploading}
-          />
-        </div>
-
-        <div className="mt-4">
-          <label className="mb-1.5 block text-xs font-medium text-ink-soft">สี accent</label>
-          <div className="flex flex-wrap gap-2">
-            {ACCENT_PRESETS.map((preset) => (
-              <button
-                key={preset.name}
-                type="button"
-                aria-label={preset.name}
-                aria-pressed={accentColor === preset.value}
-                onClick={() => setAccentColor(preset.value)}
-                className={`h-9 w-9 rounded-full border-2 p-1 transition ${
-                  accentColor === preset.value
-                    ? "border-ink"
-                    : "border-transparent hover:border-line"
-                }`}
-              >
-                <span
-                  className="block h-full w-full rounded-full"
-                  style={{ backgroundColor: preset.value }}
-                />
-              </button>
-            ))}
-          </div>
-          <input
-            type="color"
-            aria-label="ค่าสี accent"
-            value={accentColor}
-            onChange={(e) => setAccentColor(e.target.value)}
-            className="sr-only"
-          />
-        </div>
-      </section>
-
-      <CalendarConnection
-        connected={calendarConnected}
-        connectedEmail={connectedEmail}
-      />
-
+  return <form noValidate autoComplete="off" onSubmit={handleSubmit} className="space-y-8">
       <section className="border-b border-line pb-8">
         <h2 className="text-sm font-semibold text-ink">ข้อมูลรับเงิน</h2>
+
+        <p className="mt-2 text-sm text-muted">กรอกข้อมูลผู้รับเงินให้ครบทุกช่อง เพื่อใช้ระบุผู้รับเงิน ติดต่อ และดำเนินการจ่ายรายได้ ข้อมูลนี้ไม่แสดงในหน้าร้านสาธารณะ</p>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          {([
+            ["full_name_th", "ชื่อ–นามสกุล (ภาษาไทยเท่านั้น)", 200],
+            ["contact_phone", "เบอร์โทรติดต่อ", 10],
+            ["national_id", "เลขบัตรประชาชน 13 หลัก", 13],
+            ["address_line", "ที่อยู่ตามบัตรประชาชน (บ้านเลขที่ หมู่ ซอย ถนน)", 500],
+            ["subdistrict", "ตำบล / แขวง", 100],
+            ["district", "อำเภอ / เขต", 100],
+            ["province", "จังหวัด", 100],
+            ["postal_code", "รหัสไปรษณีย์", 5],
+          ] as const).map(([field, label, maxLength]) => <div key={field} className={field === "address_line" ? "sm:col-span-2" : ""}>
+            <label htmlFor={`payout-${field}`} className="mb-1.5 block text-xs font-medium text-ink-soft">{label} <span aria-hidden="true">*</span></label>
+            <div className="flex gap-2">
+              <input id={`payout-${field}`} required maxLength={maxLength}
+                type={field === "national_id" && !showNationalId ? "password" : field === "contact_phone" ? "tel" : "text"}
+                inputMode={["national_id", "contact_phone", "postal_code"].includes(field) ? "numeric" : "text"}
+                autoComplete="off" value={identity[field]}
+                aria-invalid={!!identityErrors[field]} aria-describedby={identityErrors[field] ? `error-${field}` : undefined}
+                onChange={(event) => setIdentity({ ...identity, [field]: event.target.value })}
+                className="min-w-0 w-full rounded-lg border border-line bg-paper px-3.5 py-2.5 text-sm text-ink outline-none focus:border-ink" />
+              {field === "national_id" && <button type="button" aria-label={showNationalId ? "ซ่อนเลขบัตรประชาชน" : "แสดงเลขบัตรประชาชน"} aria-pressed={showNationalId} onClick={() => setShowNationalId(!showNationalId)} className="shrink-0 text-xs text-muted">{showNationalId ? "ซ่อน" : "แสดง"}</button>}
+            </div>
+            {identityErrors[field] && <p id={`error-${field}`} role="alert" className="mt-1 text-xs text-red-600">{identityErrors[field]}</p>}
+          </div>)}
+        </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label
@@ -422,7 +168,7 @@ export function SettingsForm({
               aria-hidden
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-paper text-sm text-accent"
             >
-              ▤
+              <WalletIcon className="size-4.5" />
             </span>
             <span>
               <span className="block text-sm font-semibold text-ink">
@@ -438,10 +184,11 @@ export function SettingsForm({
         <div className="mt-4">
           {payoutMethod === "promptpay" ? (
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-ink-soft">
+              <label htmlFor="promptpay-id" className="mb-1.5 block text-xs font-medium text-ink-soft">
                 เลข PromptPay (เบอร์โทร/บัตรประชาชน)
               </label>
               <input
+                id="promptpay-id"
                 value={promptpayId}
                 onChange={(e) =>
                   setPromptpayId(e.target.value.replace(/\D/g, "").slice(0, 13))
@@ -466,32 +213,14 @@ export function SettingsForm({
         </div>
 
         <p className="mt-4 text-xs text-muted">
-          ระบบจะโอนรายได้เข้าช่องทางนี้ทุกวันจันทร์ — แต่ละยอดขายเข้ารอบโอนหลังพ้นระยะรับประกันคืนเงิน 7 วัน
-          (เวอร์ชันนี้เป็นข้อมูลสำหรับแสดงผลเท่านั้น ยังไม่เชื่อมระบบโอนเงินจริง)
+          ชื่อบัญชีต้องเป็นชื่อเดียวกับข้อมูลที่ให้ไว้ข้างต้นเท่านั้น
         </p>
       </section>
 
-      {error && (
-        <p role="alert" className="text-xs text-red-600">
-          {error}
-        </p>
-      )}
-
-      <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={saving || avatarUploading || coverUploading}
-          className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-paper transition hover:bg-accent-hover disabled:opacity-60"
-        >
-          {saving ? "กำลังบันทึก..." : "บันทึก"}
-        </button>
-
-        {saved && (
-          <span className="flex items-center gap-1.5 text-sm font-medium text-ink-soft">
-            <span aria-hidden>✓</span> บันทึกสำเร็จ
-          </span>
-        )}
-      </div>
-    </form>
-  );
+    {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
+    <div className="flex items-center gap-3">
+      <button type="submit" disabled={saving} className="primary-button disabled:opacity-60">{saving ? "กำลังบันทึก..." : "บันทึก"}</button>
+      {saved && <span role="status" className="text-sm text-emerald-700">บันทึกสำเร็จ</span>}
+    </div>
+  </form>;
 }
