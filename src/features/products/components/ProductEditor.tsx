@@ -15,6 +15,14 @@ import {
 import { ProductFileUploader } from "@/features/products/components/ProductFileUploader";
 import { ProductImageUploader } from "@/features/products/components/ProductImageUploader";
 import { ProductKeyInventory } from "@/features/products/components/ProductKeyInventory";
+import {
+  ProductPdfIntake,
+  type PdfIntakeResult,
+} from "@/features/products/components/ProductPdfIntake";
+import {
+  DEFAULT_PDF_PREVIEW_PREFERENCES,
+  type PdfPreviewPreferences,
+} from "@/features/products/pdf/preferences";
 import { RichTextEditor } from "@/features/products/components/RichTextEditor";
 import {
   FAQFields,
@@ -30,7 +38,7 @@ import {
   uniqueProductSlug,
 } from "@/features/products/slug";
 import { productCategory } from "@/features/products/category";
-import { validateProductEditor } from "@/features/products/validation";
+import { isBlankProductValue, validateProductEditor } from "@/features/products/validation";
 import { parseProductKeys } from "@/features/products/product-keys";
 import { createClient } from "@/lib/supabase/client";
 import { deleteShopAsset } from "@/lib/supabase/upload";
@@ -50,6 +58,8 @@ export type ProductEditorProps = {
   initialValue: ProductEditorValue;
   productId?: string;
   initialKeyRecords?: ProductKeyRecord[];
+  shopName?: string | null;
+  pdfPreferences?: PdfPreviewPreferences;
   saveProduct?: (payload: Record<string, unknown>) => Promise<void>;
   deleteAsset?: (destination: UploadDestination, path: string) => Promise<void>;
 };
@@ -83,6 +93,8 @@ function ProductEditorSession({
   initialValue,
   productId,
   initialKeyRecords = [],
+  shopName = null,
+  pdfPreferences = DEFAULT_PDF_PREVIEW_PREFERENCES,
   saveProduct,
   deleteAsset = deleteShopAsset,
 }: ProductEditorProps) {
@@ -101,6 +113,11 @@ function ProductEditorSession({
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [dirty, setDirty] = useState(Boolean(restoredDraft));
   const [keyRecords, setKeyRecords] = useState(restoredDraft?.keyRecords ?? initialKeyRecords);
+  // A blank new product starts at the PDF step; a restored draft, or a value
+  // that already carries content, goes straight to the form.
+  const [intakeOpen, setIntakeOpen] = useState(
+    mode === "create" && !restoredDraft && isBlankProductValue(initialValue),
+  );
   const persistedValue = useRef(restoredDraft?.baseline ?? initialValue);
   const draftStorageKey = `framelink-product-draft-assets:${userId}`;
 
@@ -178,6 +195,22 @@ function ProductEditorSession({
     draftActive.current = true;
     setValue((current) => ({ ...current, ...patch }));
     setDirty(true);
+  }
+
+  /** Writes only the fields the seller ticked on the PDF review step. */
+  function applyIntake({ draft, applied, productFile, images }: PdfIntakeResult) {
+    const patch: Partial<ProductEditorValue> = { deliveryType: "file", productFile };
+    if (applied.name && draft.name) patch.name = draft.name;
+    if (applied.price && draft.price) {
+      patch.price = draft.price;
+      patch.comparePrice = draft.comparePrice;
+    }
+    if (applied.description && draft.descriptionHtml) patch.descriptionHtml = draft.descriptionHtml;
+    if (applied.highlights && draft.highlights.length) patch.highlights = draft.highlights;
+    if (applied.faq && draft.faq.length) patch.faq = draft.faq;
+    if (applied.images && images.length) patch.images = images;
+    update(patch);
+    setIntakeOpen(false);
   }
 
   function clearDraft() {
@@ -425,24 +458,43 @@ function ProductEditorSession({
     router.refresh();
   }
 
+  const heading = (
+    <div>
+      <p className="text-sm text-muted">
+        <button
+          type="button"
+          onClick={() => void leaveEditor()}
+          className="hover:text-ink"
+        >
+          สินค้า
+        </button>{" "}
+        <span className="mx-1">/</span>{" "}
+        {mode === "create" ? "สร้างสินค้าใหม่" : "แก้ไขสินค้า"}
+      </p>
+      <h1 className="mt-5 text-2xl font-bold text-ink sm:text-3xl">
+        {mode === "create" ? "สร้างสินค้าใหม่" : "แก้ไขสินค้า"}
+      </h1>
+    </div>
+  );
+
+  if (intakeOpen) {
+    return (
+      <div className="product-editor">
+        {heading}
+        <ProductPdfIntake
+          userId={userId}
+          shopName={shopName}
+          preferences={pdfPreferences}
+          onApply={applyIntake}
+          onSkip={() => setIntakeOpen(false)}
+        />
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={submit} className="product-editor">
-      <div>
-        <p className="text-sm text-muted">
-          <button
-            type="button"
-            onClick={() => void leaveEditor()}
-            className="hover:text-ink"
-          >
-            สินค้า
-          </button>{" "}
-          <span className="mx-1">/</span>{" "}
-          {mode === "create" ? "สร้างสินค้าใหม่" : "แก้ไขสินค้า"}
-        </p>
-        <h1 className="mt-5 text-2xl font-bold text-ink sm:text-3xl">
-          {mode === "create" ? "สร้างสินค้าใหม่" : "แก้ไขสินค้า"}
-        </h1>
-      </div>
+      {heading}
 
       <section className="product-section">
         <h2 className="product-section-title" id="product-type-title">ประเภทสินค้า</h2>

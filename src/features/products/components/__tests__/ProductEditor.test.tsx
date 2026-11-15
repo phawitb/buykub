@@ -59,6 +59,12 @@ function selectContents(element: HTMLElement) {
   selection?.addRange(range);
 }
 
+async function skipPdfIntake() {
+  await userEvent.click(
+    screen.getByRole("button", { name: "ข้าม แล้วกรอกข้อมูลเอง" }),
+  );
+}
+
 describe("ProductEditor", () => {
   it("creates courses as drafts with a duration snapshot setting and no download file", async () => {
     const saveProduct = vi.fn().mockResolvedValue(undefined);
@@ -98,7 +104,7 @@ describe("ProductEditor", () => {
     ).toBeNull();
   });
 
-  it("renders the PIXZA product sequence without AI Builder", () => {
+  it("renders the PIXZA product sequence without AI Builder", async () => {
     render(
       <ProductEditor
         mode="create"
@@ -112,6 +118,8 @@ describe("ProductEditor", () => {
     expect(
       screen.getByRole("heading", { name: "สร้างสินค้าใหม่" }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "เริ่มจากไฟล์ PDF" })).toBeInTheDocument();
+    await skipPdfIntake();
     expect(screen.queryByText("AI Builder")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "ข้อมูลสินค้า" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "ไฟล์สินค้า *" })).toBeInTheDocument();
@@ -125,6 +133,7 @@ describe("ProductEditor", () => {
 
   it("offers only Course and File without a second category picker", async () => {
     render(<ProductEditor mode="create" shopId="shop-123" userId="user-123" existingSlugs={[]} initialValue={emptyValue} />);
+    await skipPdfIntake();
 
     expect(screen.getAllByRole("radio")).toHaveLength(2);
     expect(screen.getByRole("radio", { name: /Course/ })).toBeInTheDocument();
@@ -199,6 +208,7 @@ describe("ProductEditor", () => {
       />,
     );
 
+    await skipPdfIntake();
     await user.click(screen.getByRole("button", { name: "เพิ่มลิงก์" }));
 
     expect(screen.getByRole("dialog", { name: "เพิ่มลิงก์" })).toBeInTheDocument();
@@ -218,6 +228,7 @@ describe("ProductEditor", () => {
       />,
     );
 
+    await skipPdfIntake();
     await user.type(screen.getByLabelText("ชื่อสินค้า *"), "Draft product");
     await user.click(screen.getByRole("button", { name: "ยกเลิก" }));
 

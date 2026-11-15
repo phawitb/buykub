@@ -47,6 +47,24 @@ export function validateProductEditor(
   return errors;
 }
 
+/**
+ * True when nothing has been filled in yet. A blank new product is what the
+ * PDF intake step offers to fill; anything already entered is left alone.
+ */
+export function isBlankProductValue(value: ProductEditorValue): boolean {
+  return (
+    !value.name.trim() &&
+    !value.price.trim() &&
+    !value.comparePrice.trim() &&
+    !value.descriptionHtml.replace(/<[^>]*>/g, "").trim() &&
+    !value.productFile &&
+    value.images.length === 0 &&
+    value.highlights.every((item) => !item.trim()) &&
+    value.faq.length === 0 &&
+    !value.keyInput.trim()
+  );
+}
+
 export function validateProductFile(file: File): string | null {
   if (file.size > MAX_PRODUCT_FILE_SIZE) {
     return "ไฟล์ต้องมีขนาดไม่เกิน 50 MB";

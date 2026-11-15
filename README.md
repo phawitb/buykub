@@ -684,3 +684,85 @@ three automation lines, the document title reads
 "BUYKUB — ลงสินค้าแล้ว รอรับเงินได้เลย", and no group-invite wording appears.
 Landing, login, example shop and terms return 200; `/dashboard/products`
 redirects and `POST /api/admin/hold` returns 403.
+
+## PDF-first product creation with a DeepSeek draft — 2026-11-15
+
+Migrated to `buykub-th` on 2026-11-15 and verified against it; not yet deployed, so the
+feature is live only on a local dev server pointed at the same database.
+
+- `/dashboard/products/new` opens on **เริ่มจากไฟล์ PDF** whenever the new product is
+  still blank. The PDF is read in the browser with `pdfjs-dist` in a module worker: the
+  first ten pages give their text, and the first pages are rendered as gallery images.
+  Page 1 becomes the main product image; later preview pages are blurred and stamped with
+  a repeated watermark. The uploaded PDF also becomes the product file.
+- The page text — never the file — is posted to `/api/agent/product-draft`, which checks
+  same-origin and a Google session, then calls DeepSeek `deepseek-flash` with
+  `effort: "low"` and `response_format: json_object`. The reply is parsed defensively:
+  markup is stripped from every field, a compare price at or below the sale price is
+  dropped, and lists are capped. **Nothing is written into the form until the seller
+  confirms**, and each group (ชื่อ, ราคา, รายละเอียด, จุดเด่น, FAQ, รูป) can be unticked
+  first. Assets upload only on confirmation, so a declined draft leaves nothing behind.
+- Sellers configure the previews in `/dashboard/settings` → **รูปตัวอย่างจากไฟล์ PDF**:
+  how many pages become images (1–5), whether to watermark and blur at all, the watermark
+  text (blank uses the shop name), blur 0–20px and watermark opacity 5–100%, with a live
+  canvas preview. Defaults are 3 pages, watermark on, 6px blur, 35% opacity.
+- Spend is metered per call from the token counts DeepSeek returns, priced from its
+  published table in `src/lib/agent/pricing.ts` and stored as micro-USD integers. Peak
+  (01:00–04:00 and 06:00–10:00 UTC, Mon–Fri) and off-peak rates are both applied; Chinese
+  public holidays are not modelled, so a holiday call is costed at the peak rate and never
+  under-counted. A measured ten-page draft cost 870 micro-USD (0.0009 USD).
+- `/dashboard/admin` → **ค่าใช้จ่าย AI** shows month and lifetime spend, calls, tokens, a
+  per-model split and a per-seller table with a usage bar against each ceiling. Limits are
+  monthly, in Asia/Bangkok months: a platform default (0.30 USD), or per seller —
+  a custom amount, unlimited, or zero to block the agent for that account. Every limit
+  change is written to the existing admin audit log. The ceiling is checked **before** the
+  paid call; two drafts started at the same moment can together overshoot it by one call.
+- Reaching a limit never blocks selling. The seller sees how much of the quota is used and
+  keeps the PDF, the preview images and the normal form.
+
+`20261115120000_agent_product_drafts.sql` was applied to the `buykub` schema after
+`20261114111000_seller_payout_ledger.sql`, through the Supabase SQL Editor. It adds
+`agent_usage_events`,
+`agent_user_limits`, `agent_settings` and `seller_pdf_preferences`, plus
+`agent_usage_status`, `agent_record_usage`, `agent_usage_dashboard`,
+`admin_set_agent_limit` and `admin_set_agent_default_limit`. The three agent tables are
+service-role only and force RLS; `seller_pdf_preferences` is the seller's own row under
+`auth.uid()`. The admin RPCs re-check the platform admin inside the database with the
+existing `assert_platform_admin`. Set `DEEPSEEK_API_KEY` on the server (it is read only
+in `src/lib/agent/deepseek.ts`, never exposed to the browser).
+
+Verification: 698 tests across 124 files, TypeScript, lint (0 errors, 2 pre-existing
+unused-variable warnings) and the production build pass. In a signed-in browser a 12-page
+PDF was read, reported as `12 หน้า · อ่าน 10 หน้าแรก`, and produced three 1200×1553
+previews with pages 2–3 blurred and watermarked with the shop name. The DeepSeek call was
+exercised with the project's own prompt and parser against the live API, returning a
+complete Thai draft with name, 390/590 prices, two description paragraphs, six highlights
+and five FAQ entries.
+
+The migration and `supabase/tests/agent_product_drafts.sql` were run together on a clean
+throwaway PostgreSQL 17 database with stand-ins for `auth.users`, `buykub.profiles`,
+`buykub.admin_audit_log` and `assert_platform_admin`, including Supabase's schema-level
+grants to `anon` and `authenticated` — without those grants the privilege checks would
+pass at the schema door and prove nothing. The suite asserts that spend and limits are
+unreachable from `anon` and `authenticated`, that a seller cannot raise their own limit
+or read platform spend, that unlimited/blocked/cleared limits behave, that last month's
+spend does not count against this month, that every limit change is audited, that the
+preference bounds hold in the database, and that RLS keeps one seller out of another's
+preferences row. It ends in `rollback`, so it is safe to run against the live database
+after the migration.
+
+Against the migrated database, a 12-page PDF was dropped on the create page: it reported
+`12 หน้า · อ่าน 10 หน้าแรก`, drafted a full Thai listing for 0.0012 USD, and on confirmation
+uploaded the PDF and three 1200×1553 previews to `product-files` and `product-images` and
+filled the form (name, 390/590, three description paragraphs, six highlights, five FAQ
+entries, 3/5 image slots). Leaving the editor deleted those test objects again — checked
+with a cache-busting request, since the storage CDN serves a deleted object from cache for
+a while. The admin panel then showed 0.0012 USD, 1 call, 2,955 tokens and the seller row
+at 0% of quota. Setting that seller to unlimited and back to the default both applied and
+appear in the audit log. The platform default was left at 0.30 USD and no per-seller
+override remains.
+
+**Not verified:** nothing is deployed — the production build at buykub.com still predates
+this work, so the step exists only for a dev server. No product created from a draft was
+actually saved and published, and `admin_set_agent_default_limit` was exercised only on
+the throwaway database, not against `buykub-th`.

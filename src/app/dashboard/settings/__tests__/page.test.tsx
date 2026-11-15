@@ -5,7 +5,7 @@ import SettingsPage from "../page";
 const mocks = vi.hoisted(() => ({ getSellerContext: vi.fn(), form: vi.fn() }));
 vi.mock("@/lib/supabase/seller-context", () => ({ getSellerContext: mocks.getSellerContext }));
 vi.mock("../SettingsForm", () => ({ SettingsForm: (props: unknown) => { mocks.form(props); return <div>Private payout form</div>; } }));
-vi.mock("next/navigation", () => ({ redirect: (path: string) => { throw new Error(`redirect:${path}`); } }));
+vi.mock("next/navigation", () => ({ redirect: (path: string) => { throw new Error(`redirect:${path}`); }, useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 beforeEach(() => vi.clearAllMocks());
 
 function fixture(data: object | null, error: Error | null = null) {
@@ -20,15 +20,18 @@ it("loads payout identity only from the owned private profile", async () => {
   const { from, query } = fixture({ payout_method: "bank", national_id: "1101700207030" });
   render(await SettingsPage({ searchParams: Promise.resolve({}) }));
   expect(screen.getByText("Private payout form")).toBeInTheDocument();
-  expect(from).toHaveBeenCalledExactlyOnceWith("seller_payout_profiles");
-  expect(query.eq).toHaveBeenCalledExactlyOnceWith("shop_id", "shop");
+  expect(from).toHaveBeenCalledWith("seller_payout_profiles");
+  // Payout identity never falls back to the public shops row.
+  expect(from).not.toHaveBeenCalledWith("shops");
+  expect(query.eq).toHaveBeenCalledWith("shop_id", "shop");
   expect(mocks.form).toHaveBeenCalledWith(expect.objectContaining({ initial: expect.objectContaining({ id: "shop", payout_method: "bank", national_id: "1101700207030" }) }));
 });
 
 it("allows the first profile to be created without falling back to public shop payout fields", async () => {
   const { from } = fixture(null);
   await SettingsPage({ searchParams: Promise.resolve({}) });
-  expect(from).toHaveBeenCalledExactlyOnceWith("seller_payout_profiles");
+  expect(from).toHaveBeenCalledWith("seller_payout_profiles");
+  expect(from).not.toHaveBeenCalledWith("shops");
 });
 
 it("does not render an empty form when the private profile query fails", async () => {

@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import NewProductModal from "../@modal/(.)new/page";
 import EditProductModal from "../@modal/(.)[id]/edit/page";
@@ -28,13 +29,22 @@ it("checks seller access before rendering the create dialog", async () => {
 });
 
 it("renders the same editor in a modal while the direct create URL stays standalone", async () => {
-  server.from.mockReturnValue({ select: () => ({ eq: async () => ({ data: [] }) }) });
+  // Slug list resolves from `.eq()`; PDF preferences continue to `.maybeSingle()`.
+  server.from.mockReturnValue({
+    select: () => {
+      const result = Promise.resolve({ data: [], error: null });
+      return { eq: () => Object.assign(result, { maybeSingle: async () => ({ data: null, error: null }) }) };
+    },
+  });
   const modal = render(await NewProductModal());
   expect(screen.getByRole("dialog", { name: "สร้างสินค้าใหม่" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "เริ่มจากไฟล์ PDF" })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "ข้าม แล้วกรอกข้อมูลเอง" }));
   expect(screen.getByLabelText("ชื่อสินค้า *")).toBeInTheDocument();
   modal.unmount();
   render(await NewProductPage());
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "ข้าม แล้วกรอกข้อมูลเอง" }));
   expect(screen.getByLabelText("ชื่อสินค้า *")).toBeInTheDocument();
 });
 
