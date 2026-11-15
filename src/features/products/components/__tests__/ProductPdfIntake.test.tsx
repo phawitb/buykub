@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ProductPdfIntake } from "@/features/products/components/ProductPdfIntake";
+import { ProductPdfIntake, readingLabel } from "@/features/products/components/ProductPdfIntake";
 import { DEFAULT_PDF_PREVIEW_PREFERENCES } from "@/features/products/pdf/preferences";
 import type { ProductDraftResponse } from "@/lib/agent/model";
 import type { UploadRequest } from "@/lib/supabase/upload";
@@ -16,6 +16,8 @@ function previewFile(name: string) {
 const extraction = {
   pageCount: 12,
   truncated: true,
+  textSource: "layer" as const,
+  textPagesRead: 10,
   pages: [
     { pageNumber: 1, text: "หน้าหนึ่ง" },
     { pageNumber: 2, text: "หน้าสอง" },
@@ -47,6 +49,7 @@ const draftResponse: ProductDraftResponse = {
   },
   allowance: { limitMicros: 300_000, usedMicros: 630, remainingMicros: 299_370 },
   pagesRead: 2,
+  textSource: "layer",
 };
 
 function setup(overrides: Partial<Parameters<typeof ProductPdfIntake>[0]> = {}) {
@@ -92,6 +95,7 @@ describe("ProductPdfIntake", () => {
     expect(await screen.findByText("ตรวจข้อมูลที่ AI ร่างไว้")).toBeInTheDocument();
     expect(requestDraft).toHaveBeenCalledWith({
       fileName: "guide.pdf",
+      textSource: "layer",
       pages: [
         { pageNumber: 1, text: "หน้าหนึ่ง" },
         { pageNumber: 2, text: "หน้าสอง" },
@@ -199,5 +203,62 @@ describe("ProductPdfIntake", () => {
     await userEvent.click(await screen.findByRole("button", { name: "ไม่ใช้ แล้วกรอกเอง" }));
     expect(onSkip).toHaveBeenCalledOnce();
     expect(onApply).not.toHaveBeenCalled();
+  });
+
+  it("warns the seller and tells the agent when the words came from a scan", async () => {
+    pdf.extractPdf.mockResolvedValue({
+      ...extraction,
+      textSource: "ocr",
+      textPagesRead: 3,
+      pages: [{ pageNumber: 1, text: "คนทีเพิงเริมอบขนมปัง" }],
+    });
+    const { requestDraft } = setup();
+    await choosePdf("scan.pdf");
+
+    expect(await screen.findByText("ตรวจข้อมูลที่ AI ร่างไว้")).toBeInTheDocument();
+    expect(requestDraft).toHaveBeenCalledWith({
+      fileName: "scan.pdf",
+      textSource: "ocr",
+      pages: [{ pageNumber: 1, text: "คนทีเพิงเริมอบขนมปัง" }],
+    });
+    // Recognized text misreads words, and a wrong price is the costly misread.
+    expect(screen.getByText(/กรุณาตรวจราคาและชื่อสินค้าให้ละเอียดก่อนยืนยัน/)).toBeInTheDocument();
+    expect(screen.getByText(/อ่านตัวอักษรจากรูปของ/)).toBeInTheDocument();
+    expect(screen.getByText(/อ่าน 3 หน้าแรก/)).toBeInTheDocument();
+  });
+
+  it("says nothing about scanning when the PDF had a text layer", async () => {
+    setup();
+    await choosePdf();
+
+    expect(await screen.findByText("ตรวจข้อมูลที่ AI ร่างไว้")).toBeInTheDocument();
+    expect(screen.queryByText(/กรุณาตรวจราคาและชื่อสินค้าให้ละเอียดก่อนยืนยัน/)).toBeNull();
+  });
+});
+
+describe("readingLabel", () => {
+  it("counts OCR pages from one, so the first page is not reported as zero", () => {
+    expect(readingLabel({ phase: "ocr", completed: 0, total: 3 })).toBe(
+      "กำลังอ่านตัวอักษรจากรูป (OCR) หน้า 1/3",
+    );
+    expect(readingLabel({ phase: "ocr", completed: 2, total: 3 })).toBe(
+      "กำลังอ่านตัวอักษรจากรูป (OCR) หน้า 3/3",
+    );
+  });
+
+  it("does not run past the last page once the pass finishes", () => {
+    expect(readingLabel({ phase: "ocr", completed: 3, total: 3 })).toBe(
+      "กำลังอ่านตัวอักษรจากรูป (OCR) หน้า 3/3",
+    );
+  });
+
+  it("names the other phases", () => {
+    expect(readingLabel({ phase: "rendering", completed: 1, total: 3 })).toContain(
+      "กำลังสร้างรูปตัวอย่าง 1/3",
+    );
+    expect(readingLabel({ phase: "reading", completed: 4, total: 10 })).toContain(
+      "กำลังอ่านไฟล์ 4/10 หน้า",
+    );
+    expect(readingLabel(null)).toContain("กำลังอ่านไฟล์ 0/10 หน้า");
   });
 });

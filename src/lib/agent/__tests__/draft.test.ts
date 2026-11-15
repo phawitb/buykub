@@ -6,6 +6,7 @@ import {
   MAX_DRAFT_PAGE_CHARS,
   MAX_DRAFT_PAGES,
   normalizeDraftPages,
+  normalizeDraftSource,
   parseProductDraft,
 } from "@/lib/agent/draft";
 
@@ -168,5 +169,48 @@ describe("buildDraftMessages", () => {
     expect(messages[1].content).toContain("--- หน้า 1 ---");
     expect(messages[1].content).toContain("หน้าสอง");
     expect(messages[1].content).toContain("จำนวนหน้าที่อ่าน: 2");
+  });
+});
+
+describe("normalizeDraftSource", () => {
+  it("only trusts an explicit ocr marker", () => {
+    expect(normalizeDraftSource("ocr")).toBe("ocr");
+  });
+
+  it("treats anything else as a real text layer", () => {
+    // A request that lies about this would get the wrong prompt and the wrong
+    // line on the admin page, so the default is the cheaper, stricter path.
+    expect(normalizeDraftSource("layer")).toBe("layer");
+    expect(normalizeDraftSource(undefined)).toBe("layer");
+    expect(normalizeDraftSource("OCR")).toBe("layer");
+    expect(normalizeDraftSource({ textSource: "ocr" })).toBe("layer");
+  });
+});
+
+describe("buildDraftMessages with recognized text", () => {
+  const pages = [{ pageNumber: 1, text: "คนทีเพิงเริมอบขนมปัง" }];
+
+  it("tells the model the words came out of a page image", () => {
+    const [system, user] = buildDraftMessages(pages, "scan.pdf", "ocr");
+    expect(system.content).toContain("OCR");
+    expect(user.content).toContain("วิธีอ่านข้อความ: OCR จากรูปภาพของหน้า");
+  });
+
+  it("asks for spelling to be repaired but never the numbers", () => {
+    const [system] = buildDraftMessages(pages, "scan.pdf", "ocr");
+    expect(system.content).toContain("ห้ามเปลี่ยนหรือเดาตัวเลข");
+    expect(system.content).toContain("เดารูปคำที่ถูกต้องจากบริบท");
+  });
+
+  it("keeps the OCR warning out of a normal draft", () => {
+    const [system, user] = buildDraftMessages(pages, "guide.pdf");
+    expect(system.content).not.toContain("OCR");
+    expect(user.content).toContain("วิธีอ่านข้อความ: ชั้นข้อความของ PDF");
+  });
+
+  it("still carries the same instructions either way", () => {
+    const plain = buildDraftMessages(pages, "guide.pdf", "layer")[0].content;
+    const scanned = buildDraftMessages(pages, "scan.pdf", "ocr")[0].content;
+    expect(scanned.startsWith(plain)).toBe(true);
   });
 });

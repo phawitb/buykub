@@ -7,6 +7,9 @@ export const MAX_DRAFT_FAQ = 5;
 
 export type DraftPage = { pageNumber: number; text: string };
 
+/** Whether the text came off the PDF's own text layer or out of a page image. */
+export type DraftTextSource = "layer" | "ocr";
+
 const SYSTEM_PROMPT = [
   "คุณช่วยผู้ขายชาวไทยลงสินค้าดิจิทัลบนร้านค้าออนไลน์",
   "ผู้ใช้จะส่งข้อความที่ดึงมาจากไฟล์ PDF ของสินค้า (อ่านได้สูงสุด 10 หน้าแรก)",
@@ -27,22 +30,52 @@ const SYSTEM_PROMPT = [
   "เขียนด้วยน้ำเสียงที่ขายได้แต่ไม่โอ้อวดเกินจริง ห้ามใส่แท็ก HTML ในทุกฟิลด์",
 ].join("\n");
 
-export function buildDraftMessages(pages: readonly DraftPage[], fileName: string) {
+/**
+ * Recognized text arrives with Thai tone marks missing and Latin words turned
+ * into unreadable Thai, which a reader repairs from context and the model can
+ * too. Numbers are the exception: a misread price is indistinguishable from a
+ * real one, so the model is told to pass them through or leave them out.
+ */
+const OCR_PROMPT = [
+  "สำคัญ: ข้อความด้านล่างไม่ได้มาจากชั้นข้อความของ PDF แต่มาจากการอ่านตัวอักษรจากรูปภาพ (OCR)",
+  "จึงมักมีวรรณยุกต์หรือสระหาย คำสะกดเพี้ยน และคำภาษาอังกฤษกลายเป็นตัวอักษรไทยที่อ่านไม่ได้",
+  "ให้คุณเดารูปคำที่ถูกต้องจากบริบทภาษาไทยแล้วเขียนใหม่ให้สะกดถูก",
+  "เช่น 'คนทีเพิงเริม' หมายถึง 'คนที่เพิ่งเริ่ม' และคำที่อ่านไม่ออกข้างคำว่า 'ไฟล์' มักหมายถึง 'PDF'",
+  "ห้ามคัดลอกคำที่สะกดผิดหรืออ่านไม่ออกไปใส่ในคำตอบ",
+  "แต่ห้ามเปลี่ยนหรือเดาตัวเลขที่เป็นราคา จำนวนหน้า หรือขนาด ให้ใช้ตามที่อ่านได้เท่านั้น",
+  "ถ้าตัวเลขใดดูไม่สมเหตุสมผล ให้เว้นเป็น null แล้วเตือนผู้ขายใน notes ว่าต้องตรวจเอง",
+].join("\n");
+
+export function buildDraftMessages(
+  pages: readonly DraftPage[],
+  fileName: string,
+  source: DraftTextSource = "layer",
+) {
   const document = pages
     .slice(0, MAX_DRAFT_PAGES)
     .map((page) => `--- หน้า ${page.pageNumber} ---\n${page.text}`)
     .join("\n\n");
 
   return [
-    { role: "system" as const, content: SYSTEM_PROMPT },
+    {
+      role: "system" as const,
+      content: source === "ocr" ? `${SYSTEM_PROMPT}\n\n${OCR_PROMPT}` : SYSTEM_PROMPT,
+    },
     {
       role: "user" as const,
       content: `ชื่อไฟล์: ${fileName}\nจำนวนหน้าที่อ่าน: ${Math.min(
         pages.length,
         MAX_DRAFT_PAGES,
-      )}\n\n${document}`,
+      )}\nวิธีอ่านข้อความ: ${
+        source === "ocr" ? "OCR จากรูปภาพของหน้า" : "ชั้นข้อความของ PDF"
+      }\n\n${document}`,
     },
   ];
+}
+
+/** Only a request that says so is treated as recognized text. */
+export function normalizeDraftSource(raw: unknown): DraftTextSource {
+  return raw === "ocr" ? "ocr" : "layer";
 }
 
 function escapeHtml(value: string): string {

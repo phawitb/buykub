@@ -779,3 +779,73 @@ without confirming, so it wrote nothing to storage.
 production, and `admin_set_agent_default_limit` has been exercised only on the throwaway
 database and not against `buykub-th`, so the platform default there is still its initial
 0.30 USD.
+
+## Reading scanned PDFs with in-browser OCR — 2026-11-15
+
+A seller's own PDF produced no draft: the file had no text layer, so `getTextContent()`
+returned nothing and the draft route answered 422. Scanned files and some Thai exports
+(embedded subset fonts without a ToUnicode map) both land there. The pages were already
+being rendered as images for the gallery, so the words are recovered from those images
+instead of from the file.
+
+- When the text layer yields under 200 characters across all pages, the browser renders
+  the first three pages at 300 dpi and recognizes them with `tesseract.js` and the Thai
+  model, then sends that text to the same endpoint and the same `deepseek-flash` model.
+  **The recognizer runs entirely in the seller's browser**, so the server receives the
+  plain text it always received and carries no extra load; doing this server-side would
+  have put a 2.7 MB WebAssembly cold start and about a second of CPU per page inside a
+  request that already waits on DeepSeek.
+- 300 dpi was measured, not guessed. Against a Thai product sheet rasterized to drop its
+  text layer, character accuracy was 91.5% at 150 dpi, **94.9% at 300 dpi** and 93.4% at
+  450 dpi — above 300 dpi the English model starts reading Thai words as Latin
+  (`สูตร`→`ans`, `หน้า`→`nin`). The `fast` model (1.0 MB) matched `best` (7.6 MB) to within
+  0.2 points, so `fast` ships.
+- Recognition errors are overwhelmingly missing tone marks and vowels — `ที่`→`ที`,
+  `ซื้อ`→`ซือ`, `ขึ้น`→`ขืน` — which a Thai reader repairs from context. The prompt asks the
+  model to do the same and to leave numbers alone: prices, page counts and sizes are used
+  exactly as read, or left null with a warning in `notes`. Only the Thai model is shipped;
+  Latin words come back as noise (`PDF`→`00กถี`) and the model restores them from context,
+  which was measured end to end and saved the 1.87 MB English model.
+- Because a misread price is indistinguishable from a real one, the review step carries an
+  amber warning naming the file as a probable scan and asking the seller to check the price
+  and name before confirming, and the progress line says `กำลังอ่านตัวอักษรจากรูป (OCR) หน้า n/N`
+  so a slow pass does not look like a stall.
+- Recognized drafts are recorded as `product-draft-ocr` rather than `product-draft`, and
+  `/dashboard/admin` → **ค่าใช้จ่าย AI** gains a **แยกตามงานที่ใช้** card. Both paths use the
+  same model, so the operation is the only thing that distinguishes them.
+- If the engine fails to load, the seller loses the draft, not the upload: the preview
+  images are still produced and the form stays fillable by hand.
+
+The engine is served from this origin, not a CDN. `scripts/copy-ocr-assets.mjs` runs from
+`predev` and `prebuild` and copies the three LSTM cores and the worker out of
+`node_modules` into `public/ocr`; `public/ocr/tha.traineddata` is committed because no
+package ships it. The copy step touches the network not at all, so a deploy cannot quietly
+lose OCR because GitHub was unreachable. The model is stored **uncompressed on purpose**: a
+pre-gzipped file invites a host to serve it with `Content-Encoding: gzip`, which the
+browser unwraps, leaving the engine to inflate bytes that are already plain. `next.config.ts`
+serves `/ocr/*` as immutable for a year. First use downloads about 2.3 MB — 1.39 MB of
+engine plus the model — and both are cached afterwards, in the HTTP cache and in IndexedDB.
+
+`20261115190000_agent_usage_by_operation.sql` replaces `agent_usage_dashboard` to add a
+`by_operation` breakdown. It changes no table and no privilege, and restates the grant so
+it does not depend on what the earlier migration left behind. **It has not been applied to
+`buykub-th` yet**; until it is, the new admin card stays hidden, because the reader treats
+a missing `by_operation` as an empty list.
+
+Verification: 732 tests across 125 files, TypeScript and lint (0 errors, 2 pre-existing
+warnings) pass. A two-page Thai PDF with **zero extractable characters** — rasterized from
+a rendered page so no text layer survives, confirmed with `pdftotext` — was fed to the
+create page in a signed-in browser. It was reported as a scan, recognized in about 14
+seconds including the cold engine download, and drafted a complete listing: the right name,
+฿390/฿590, three description paragraphs, six highlights and three FAQ entries, with every
+recognizer misspelling repaired and `PDF` restored, for 0.0010 USD. The run was repeated
+after clearing IndexedDB to prove the uncompressed model loads from a cold cache. The
+migration and the extended `supabase/tests/agent_product_drafts.sql` were run together on a
+throwaway PostgreSQL 17 database; the suite now also asserts that the two draft operations
+are reported separately with their own call counts and spend.
+
+**Not verified:** nothing has been deployed, so the OCR path has not run on
+buykub.com, and the `by_operation` card has not been seen against a real database. No
+product created from a scanned draft has been saved and published. Recognition speed was
+measured only on this Mac (about 1.1 s/page); a mid-range phone should be expected to take
+several times longer per page.

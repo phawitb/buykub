@@ -1,5 +1,6 @@
 "use client";
 
+import { needsOcr, ocrDocumentPages, ocrPagePlan } from "@/features/products/pdf/ocr";
 import {
   MAX_PDF_PAGE_CHARS,
   MAX_PDF_TEXT_PAGES,
@@ -12,6 +13,9 @@ export type PdfPageText = {
   pageNumber: number;
   text: string;
 };
+
+/** Where the draft text came from, which the seller and the model both need. */
+export type PdfTextSource = "layer" | "ocr" | "none";
 
 export type PdfPreviewImage = {
   pageNumber: number;
@@ -26,10 +30,13 @@ export type PdfExtraction = {
   previews: PdfPreviewImage[];
   /** True when the document is longer than the pages that were read. */
   truncated: boolean;
+  textSource: PdfTextSource;
+  /** How many pages the text actually came from; OCR reads fewer than the layer. */
+  textPagesRead: number;
 };
 
 export type PdfExtractProgress = {
-  phase: "reading" | "rendering";
+  phase: "reading" | "ocr" | "rendering";
   completed: number;
   total: number;
 };
@@ -120,7 +127,7 @@ export async function extractPdf(
     const pageCount = document.numPages;
     const textPageCount = Math.min(pageCount, MAX_PDF_TEXT_PAGES);
     const plan = pdfPreviewPlan(options.preferences, pageCount);
-    const pages: PdfPageText[] = [];
+    let pages: PdfPageText[] = [];
 
     for (let pageNumber = 1; pageNumber <= textPageCount; pageNumber += 1) {
       throwIfAborted(options.signal);
@@ -132,6 +139,36 @@ export async function extractPdf(
         if (text) pages.push({ pageNumber, text });
       } finally {
         page.cleanup();
+      }
+    }
+
+    // A scan, or a Thai export whose fonts carry no ToUnicode map, leaves the
+    // text layer empty or unreadable. Recognizing the rendered page recovers
+    // the words without the file leaving the browser.
+    let textSource: PdfTextSource = pages.length ? "layer" : "none";
+    let textPagesRead = textPageCount;
+    if (needsOcr(pages)) {
+      try {
+        const recognized = await ocrDocumentPages(document, {
+          pageCount,
+          signal: options.signal,
+          onProgress: ({ completed, total }) =>
+            options.onProgress?.({ phase: "ocr", completed, total }),
+        });
+        if (recognized.length) {
+          pages = recognized.map((page) => ({
+            pageNumber: page.pageNumber,
+            text: page.text.slice(0, MAX_PDF_PAGE_CHARS),
+          }));
+          textSource = "ocr";
+          textPagesRead = ocrPagePlan(pageCount).length;
+        }
+      } catch (ocrError) {
+        if (ocrError instanceof DOMException && ocrError.name === "AbortError") throw ocrError;
+        // The engine is a 2 MB download on first use. Losing it should cost the
+        // seller the draft, not the upload: the preview images still follow and
+        // the form stays fillable by hand.
+        textSource = pages.length ? "layer" : "none";
       }
     }
 
@@ -173,7 +210,14 @@ export async function extractPdf(
     }
 
     options.onProgress?.({ phase: "rendering", completed: plan.length, total: plan.length });
-    return { pageCount, pages, previews, truncated: pageCount > textPageCount };
+    return {
+      pageCount,
+      pages,
+      previews,
+      truncated: pageCount > textPagesRead,
+      textSource,
+      textPagesRead,
+    };
   } catch (error) {
     previews.forEach((preview) => URL.revokeObjectURL(preview.previewUrl));
     throw error;

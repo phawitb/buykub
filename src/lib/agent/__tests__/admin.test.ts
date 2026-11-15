@@ -7,6 +7,7 @@ import {
 import {
   limitLabel,
   microsToUsdInput,
+  operationLabel,
   usdInputToMicros,
 } from "@/app/dashboard/admin/AgentPanel";
 
@@ -99,5 +100,17 @@ describe("limit display helpers", () => {
     expect(usdInputToMicros("5000")).toBeNull();
     expect(usdInputToMicros("")).toBeNull();
     expect(usdInputToMicros("abc")).toBeNull();
+  });
+});
+
+describe("operationLabel", () => {
+  it("separates the two draft paths in plain words", () => {
+    // Both run on the same model, so the admin page has nothing else to go on.
+    expect(operationLabel("product-draft")).toBe("ร่างสินค้าจากข้อความใน PDF");
+    expect(operationLabel("product-draft-ocr")).toBe("ร่างสินค้าจาก PDF สแกน (OCR)");
+  });
+
+  it("shows an unknown operation rather than hiding the spend", () => {
+    expect(operationLabel("something-new")).toBe("something-new");
   });
 });

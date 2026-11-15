@@ -31,9 +31,12 @@ export type ProductDraftResponse = {
   usage: AgentCallUsage;
   allowance: AgentAllowance;
   pagesRead: number;
+  /** "ocr" when the words were read off page images rather than a text layer. */
+  textSource: "layer" | "ocr";
 };
 
-export const AGENT_OPERATIONS = ["product-draft"] as const;
+/** Recorded per call, so the admin page shows which path is spending the quota. */
+export const AGENT_OPERATIONS = ["product-draft", "product-draft-ocr"] as const;
 export type AgentOperation = (typeof AGENT_OPERATIONS)[number];
 
 /** Platform default when an admin has not set a per-seller limit. */

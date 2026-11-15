@@ -1,6 +1,11 @@
 import { isGoogleUser } from "@/lib/auth";
 import { AgentError, completeChat } from "@/lib/agent/deepseek";
-import { buildDraftMessages, normalizeDraftPages, parseProductDraft } from "@/lib/agent/draft";
+import {
+  buildDraftMessages,
+  normalizeDraftPages,
+  normalizeDraftSource,
+  parseProductDraft,
+} from "@/lib/agent/draft";
 import type { ProductDraftResponse } from "@/lib/agent/model";
 import { DEFAULT_AGENT_MODEL, usageCostMicros } from "@/lib/agent/pricing";
 import { hasAllowance, limitReachedMessage, readAllowance, recordUsage } from "@/lib/agent/usage";
@@ -91,9 +96,12 @@ export async function POST(request: Request) {
     if (!isGoogleUser(user)) throw new RequestError("Forbidden", 403);
 
     const pages = normalizeDraftPages(payload.pages);
+    const textSource = normalizeDraftSource(payload.textSource);
     if (!pages.length) {
+      // The browser already tried reading the text layer and then recognizing
+      // the page images, so there is nothing left for the agent to work from.
       throw new RequestError(
-        "อ่านข้อความจากไฟล์ PDF นี้ไม่ได้ (อาจเป็นไฟล์สแกนที่เป็นรูปภาพ) กรุณากรอกข้อมูลเอง",
+        "อ่านข้อความจากไฟล์ PDF นี้ไม่ได้ แม้จะลองอ่านตัวอักษรจากรูปแล้ว กรุณากรอกข้อมูลเอง",
         422,
       );
     }
@@ -113,7 +121,7 @@ export async function POST(request: Request) {
     const model = DEFAULT_AGENT_MODEL;
     const completion = await completeChat({
       model,
-      messages: buildDraftMessages(pages, fileName),
+      messages: buildDraftMessages(pages, fileName, textSource),
       maxTokens: MAX_COMPLETION_TOKENS,
       jsonObject: true,
     });
@@ -121,7 +129,7 @@ export async function POST(request: Request) {
     const costMicros = usageCostMicros(model, completion.usage, new Date());
     const nextAllowance = await recordUsage({
       userId: user.id,
-      operation: "product-draft",
+      operation: textSource === "ocr" ? "product-draft-ocr" : "product-draft",
       model,
       usage: completion.usage,
       costMicros,
@@ -139,6 +147,7 @@ export async function POST(request: Request) {
       },
       allowance: nextAllowance,
       pagesRead: pages.length,
+      textSource,
     };
     return Response.json(response, { headers: RESPONSE_HEADERS });
   } catch (error) {

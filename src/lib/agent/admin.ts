@@ -24,6 +24,15 @@ export type AgentSellerUsage = {
 
 export type AgentModelUsage = { model: string; calls: number; micros: number };
 
+/** Both draft paths use the same model, so operation is what separates them. */
+export type AgentOperationUsage = {
+  operation: string;
+  calls: number;
+  micros: number;
+  monthCalls: number;
+  monthMicros: number;
+};
+
 export type AgentLimitOverride = {
   userId: string;
   email: string | null;
@@ -38,6 +47,7 @@ export type AgentUsageDashboard = {
   month: AgentUsageTotals;
   total: AgentUsageTotals;
   byModel: AgentModelUsage[];
+  byOperation: AgentOperationUsage[];
   sellers: AgentSellerUsage[];
   overrides: AgentLimitOverride[];
 };
@@ -69,6 +79,7 @@ export const EMPTY_AGENT_DASHBOARD: AgentUsageDashboard = {
   month: { micros: 0, calls: 0, promptTokens: 0, completionTokens: 0 },
   total: { micros: 0, calls: 0, promptTokens: 0, completionTokens: 0 },
   byModel: [],
+  byOperation: [],
   sellers: [],
   overrides: [],
 };
@@ -93,6 +104,16 @@ export async function getAgentUsageDashboard(): Promise<AgentUsageDashboard> {
         model: text(row.model) ?? "unknown",
         calls: count(row.calls),
         micros: count(row.micros),
+      };
+    }),
+    byOperation: (Array.isArray(payload.by_operation) ? payload.by_operation : []).map((entry) => {
+      const row = (entry && typeof entry === "object" ? entry : {}) as Record<string, unknown>;
+      return {
+        operation: text(row.operation) ?? "unknown",
+        calls: count(row.calls),
+        micros: count(row.micros),
+        monthCalls: count(row.month_calls),
+        monthMicros: count(row.month_micros),
       };
     }),
     sellers: (Array.isArray(payload.sellers) ? payload.sellers : []).map((entry) => {

@@ -59,3 +59,8 @@ next-env.d.ts
 
 # Agent skill lockfile; the skills themselves are vendored and reinstallable
 /skills-lock.json
+
+# OCR runtime copied out of node_modules by scripts/copy-ocr-assets.mjs;
+# the Thai model beside it is committed because no package ships it.
+/public/ocr/*
+!/public/ocr/tha.traineddata

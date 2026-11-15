@@ -72,6 +72,16 @@ function usageBar(usedMicros: number, limitMicros: number) {
   );
 }
 
+/**
+ * Both draft paths run on the same model, so the operation name is the only
+ * thing that says whether scanned files are what is spending the quota.
+ */
+export function operationLabel(operation: string): string {
+  if (operation === "product-draft") return "ร่างสินค้าจากข้อความใน PDF";
+  if (operation === "product-draft-ocr") return "ร่างสินค้าจาก PDF สแกน (OCR)";
+  return operation;
+}
+
 export function AgentPanel({ data }: { data: AgentUsageDashboard }) {
   const action = useAdminAction();
   const [defaultUsd, setDefaultUsd] = useState(() => microsToUsdInput(data.defaultLimitMicros) || "0");
@@ -290,6 +300,36 @@ export function AgentPanel({ data }: { data: AgentUsageDashboard }) {
                 </span>
                 <span className="text-sm tabular-nums text-ink-soft">
                   {formatUsd(entry.micros)} · {entry.calls.toLocaleString("th-TH")} ครั้ง
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {data.byOperation.length > 0 && (
+        <div className={cardClass}>
+          <h3 className="text-sm font-semibold text-ink">แยกตามงานที่ใช้</h3>
+          <p className="mt-1 text-xs leading-5 text-muted">
+            ไฟล์สแกนต้องอ่านตัวอักษรจากรูปก่อน (OCR) ซึ่งทำในเบราว์เซอร์ของผู้ขาย ไม่คิดค่า API
+            เพิ่ม แต่ข้อความที่ได้อาจยาวหรือสั้นกว่าปกติ บรรทัดนี้บอกว่างานไหนใช้โควตาไปเท่าไหร่
+          </p>
+          <ul className="mt-4 divide-y divide-line">
+            {data.byOperation.map((entry) => (
+              <li
+                key={entry.operation}
+                className="flex flex-wrap items-center justify-between gap-3 py-3"
+              >
+                <span className="text-sm text-ink">
+                  {operationLabel(entry.operation)}
+                  <span className="ml-2 text-xs text-muted">{entry.operation}</span>
+                </span>
+                <span className="text-sm tabular-nums text-ink-soft">
+                  เดือนนี้ {formatUsd(entry.monthMicros)} ·{" "}
+                  {entry.monthCalls.toLocaleString("th-TH")} ครั้ง
+                  <span className="ml-2 text-xs text-muted">
+                    (รวม {formatUsd(entry.micros)} · {entry.calls.toLocaleString("th-TH")} ครั้ง)
+                  </span>
                 </span>
               </li>
             ))}

@@ -122,6 +122,24 @@ begin
   assert jsonb_array_length(report->'by_model') >= 1, 'spend is split by model';
 end $$;
 
+-- Drafting from a scan is one operation and the text layer another, which is
+-- the only thing that tells the admin which path spends the quota.
+do $$ declare report jsonb; layer jsonb; scanned jsonb;
+begin
+  perform buykub.agent_record_usage(current_setting('test.seller.id')::uuid,'product-draft-ocr','deepseek-flash',931,256,1312,1778);
+  report := buykub.agent_usage_dashboard(current_setting('test.admin.id')::uuid,50);
+  select value into layer from jsonb_array_elements(report->'by_operation') value
+    where value->>'operation' = 'product-draft';
+  select value into scanned from jsonb_array_elements(report->'by_operation') value
+    where value->>'operation' = 'product-draft-ocr';
+  assert layer is not null, 'the text-layer path is reported';
+  assert scanned is not null, 'the scanned path is reported';
+  assert (scanned->>'month_calls')::bigint = 1, 'the scanned draft is counted once';
+  assert (scanned->>'month_micros')::bigint = 1778, 'the scanned draft spend is reported';
+  assert (layer->>'month_calls')::bigint = 2, 'the text-layer drafts stay on their own line';
+  assert (layer->>'micros')::bigint = 501480, 'lifetime spend per operation includes earlier months';
+end $$;
+
 -- Every limit change is on the audit log.
 do $$ begin
   assert (select count(*) >= 5 from buykub.admin_audit_log

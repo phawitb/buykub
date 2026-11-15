@@ -8,6 +8,7 @@ import {
   releasePdfExtraction,
   type PdfExtraction,
   type PdfExtractProgress,
+  type PdfTextSource,
 } from "@/features/products/pdf/extract";
 import {
   MAX_PDF_TEXT_PAGES,
@@ -42,7 +43,7 @@ type Props = {
   preferences: PdfPreviewPreferences;
   onApply: (result: PdfIntakeResult) => void;
   onSkip: () => void;
-  requestDraft?: (body: { pages: { pageNumber: number; text: string }[]; fileName: string }) => Promise<ProductDraftResponse>;
+  requestDraft?: (body: DraftRequestBody) => Promise<ProductDraftResponse>;
   uploadAsset?: (request: UploadRequest) => Promise<UploadResult>;
 };
 
@@ -57,10 +58,13 @@ const EMPTY_DRAFT: ProductDraft = {
   notes: "",
 };
 
-async function postDraft(body: {
+type DraftRequestBody = {
   pages: { pageNumber: number; text: string }[];
   fileName: string;
-}): Promise<ProductDraftResponse> {
+  textSource: PdfTextSource;
+};
+
+async function postDraft(body: DraftRequestBody): Promise<ProductDraftResponse> {
   const response = await fetch("/api/agent/product-draft", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -88,6 +92,18 @@ function htmlToLines(html: string): string[] {
         .replace(/&quot;/g, '"')
         .replace(/&amp;/g, "&"),
     );
+}
+
+/** Named so the seller can tell a slow OCR pass from a stalled upload. */
+export function readingLabel(progress: PdfExtractProgress | null): string {
+  if (progress?.phase === "ocr") {
+    const page = Math.min(progress.completed + 1, progress.total);
+    return `กำลังอ่านตัวอักษรจากรูป (OCR) หน้า ${page}/${progress.total}`;
+  }
+  if (progress?.phase === "rendering") {
+    return `กำลังสร้างรูปตัวอย่าง ${progress.completed}/${progress.total}`;
+  }
+  return `กำลังอ่านไฟล์ ${progress?.completed ?? 0}/${progress?.total ?? MAX_PDF_TEXT_PAGES} หน้า`;
 }
 
 function defaultSelection(draft: ProductDraft, hasImages: boolean): DraftSelection {
@@ -200,6 +216,7 @@ export function ProductPdfIntake({
       const response = await requestDraft({
         pages: read.pages.map((page) => ({ pageNumber: page.pageNumber, text: page.text })),
         fileName: selected.name,
+        textSource: read.textSource,
       });
       if (abort.signal.aborted) return;
       setDraft(response.draft);
@@ -337,12 +354,14 @@ export function ProductPdfIntake({
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-ink">{file?.name}</p>
             <p className="mt-1 text-xs text-muted" role="status">
-              {stage === "reading"
-                ? progress?.phase === "rendering"
-                  ? `กำลังสร้างรูปตัวอย่าง ${progress.completed}/${progress.total}`
-                  : `กำลังอ่านไฟล์ ${progress?.completed ?? 0}/${progress?.total ?? MAX_PDF_TEXT_PAGES} หน้า`
-                : "กำลังให้ AI ร่างข้อมูลสินค้า..."}
+              {stage === "reading" ? readingLabel(progress) : "กำลังให้ AI ร่างข้อมูลสินค้า..."}
             </p>
+            {stage === "reading" && progress?.phase === "ocr" && (
+              <p className="mt-1 text-[11px] leading-4 text-muted">
+                ไฟล์นี้ไม่มีชั้นข้อความ ระบบจึงอ่านตัวอักษรจากรูปของแต่ละหน้าในเครื่องคุณเอง
+                ครั้งแรกจะดาวน์โหลดตัวอ่านประมาณ 2 MB แล้วเก็บไว้ใช้ครั้งต่อไป
+              </p>
+            )}
           </div>
           <button type="button" onClick={reset} className="small-button shrink-0">
             ยกเลิก
@@ -357,7 +376,7 @@ export function ProductPdfIntake({
               <p className="truncate text-sm font-semibold text-ink">{file?.name}</p>
               <p className="mt-1 text-xs text-muted">
                 {formatBytes(file?.size ?? 0)} · {extraction?.pageCount ?? 0} หน้า
-                {extraction?.truncated && ` · อ่าน ${MAX_PDF_TEXT_PAGES} หน้าแรก`}
+                {extraction?.truncated && ` · อ่าน ${extraction.textPagesRead} หน้าแรก`}
               </p>
             </div>
             <button
@@ -369,6 +388,17 @@ export function ProductPdfIntake({
               เปลี่ยนไฟล์
             </button>
           </div>
+
+          {extraction?.textSource === "ocr" && (
+            <p
+              className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800"
+              role="status"
+            >
+              ไฟล์นี้ไม่มีชั้นข้อความ (น่าจะเป็นไฟล์สแกน) ระบบอ่านตัวอักษรจากรูปของ{" "}
+              {extraction.textPagesRead} หน้าแรกให้แล้ว การอ่านแบบนี้สะกดคำพลาดได้
+              <strong className="font-semibold"> กรุณาตรวจราคาและชื่อสินค้าให้ละเอียดก่อนยืนยัน</strong>
+            </p>
+          )}
 
           {draftError ? (
             <p
