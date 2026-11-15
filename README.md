@@ -687,8 +687,9 @@ redirects and `POST /api/admin/hold` returns 403.
 
 ## PDF-first product creation with a DeepSeek draft — 2026-11-15
 
-Migrated to `buykub-th` on 2026-11-15 and verified against it; not yet deployed, so the
-feature is live only on a local dev server pointed at the same database.
+Production deployment `dpl_DGovvijotPxwEWxde9fFcdMFLRZ6` is aliased to https://buykub.com
+(Singapore region), superseding `dpl_CH5CPbRU6ayL5d35nGs98ixBVjGT`. The migration was
+applied to `buykub-th` first and the deployment verified against it.
 
 - `/dashboard/products/new` opens on **เริ่มจากไฟล์ PDF** whenever the new product is
   still blank. The PDF is read in the browser with `pdfjs-dist` in a module worker: the
@@ -728,8 +729,11 @@ feature is live only on a local dev server pointed at the same database.
 `admin_set_agent_limit` and `admin_set_agent_default_limit`. The three agent tables are
 service-role only and force RLS; `seller_pdf_preferences` is the seller's own row under
 `auth.uid()`. The admin RPCs re-check the platform admin inside the database with the
-existing `assert_platform_admin`. Set `DEEPSEEK_API_KEY` on the server (it is read only
-in `src/lib/agent/deepseek.ts`, never exposed to the browser).
+existing `assert_platform_admin`. `DEEPSEEK_API_KEY` is set on Vercel as a Production
+sensitive variable; it is read only in `src/lib/agent/deepseek.ts` and never reaches the
+browser. **Rotate it before relying on it** — the key in use was pasted in plain text
+during development, so treat it as compromised. Changing it needs a redeploy, since the
+value is read at request time on the server.
 
 Verification: 698 tests across 124 files, TypeScript, lint (0 errors, 2 pre-existing
 unused-variable warnings) and the production build pass. In a signed-in browser a 12-page
@@ -762,7 +766,16 @@ at 0% of quota. Setting that seller to unlimited and back to the default both ap
 appear in the audit log. The platform default was left at 0.30 USD and no per-seller
 override remains.
 
-**Not verified:** nothing is deployed — the production build at buykub.com still predates
-this work, so the step exists only for a dev server. No product created from a draft was
-actually saved and published, and `admin_set_agent_default_limit` was exercised only on
-the throwaway database, not against `buykub-th`.
+Post-deployment checks on buykub.com: landing, login and terms return 200;
+`/dashboard/products/new` and `/dashboard/admin` redirect anonymous visitors to `/login`
+with their `next` target. `GET /api/agent/product-draft` returns 405; a POST with no
+`Origin` and a cross-site POST both return 403; a same-origin anonymous POST returns 401.
+Signed in on production, a four-page PDF built in the browser produced a complete Thai
+draft for 0.0004 USD, which proves the server picked the key up, and the admin panel then
+read 0.0016 USD over 2 calls and 4,135 tokens at 1% of quota. That draft was abandoned
+without confirming, so it wrote nothing to storage.
+
+**Not verified:** no product created from a draft has been saved and published on
+production, and `admin_set_agent_default_limit` has been exercised only on the throwaway
+database and not against `buykub-th`, so the platform default there is still its initial
+0.30 USD.
