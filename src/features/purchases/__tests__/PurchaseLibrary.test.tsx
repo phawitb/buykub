@@ -31,3 +31,26 @@ describe("purchase library", () => {
     expect(screen.getByRole("link", { name: "ลองอีกครั้ง" })).toHaveAttribute("href", "/learn");
   });
 });
+
+describe("products from the seller's own shop", () => {
+  it("opens each product the way a buyer would, without mixing it into purchases", () => {
+    render(<PurchaseLibrary purchases={[]} tryouts={[
+      { id: "c", name: "My course", kind: "course", published: true, href: "/learn/c", progress: { answered: 3, total: 10 } },
+      { id: "f", name: "My file", kind: "file", published: false, href: "/api/products/f/file" },
+      { id: "e", name: "Empty file", kind: "file", published: true, href: null },
+      { id: "k", name: "My key", kind: "key", published: true, href: "/dashboard/products/k/edit" },
+    ]} />);
+    const section = screen.getByRole("region", { name: "จากร้านค้าของฉัน" });
+    expect(within(section).getByRole("link", { name: "เข้าเรียน" })).toHaveAttribute("href", "/learn/c");
+    expect(within(section).getByRole("link", { name: "เปิดไฟล์" })).toHaveAttribute("href", "/api/products/f/file");
+    expect(within(section).getByRole("link", { name: "จัดการคีย์" })).toHaveAttribute("href", "/dashboard/products/k/edit");
+    expect(within(section).getByText("ยังไม่ได้อัปโหลดไฟล์ของสินค้านี้")).toBeInTheDocument();
+    expect(within(section).getByText("ยังไม่เผยแพร่")).toBeInTheDocument();
+    expect(within(section).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "3");
+    expect(screen.getByText("ยังไม่มีรายการที่สั่งซื้อ")).toBeInTheDocument();
+  });
+  it("is absent for buyers without a shop", () => {
+    render(<PurchaseLibrary purchases={[]} />);
+    expect(screen.queryByText("จากร้านค้าของฉัน")).not.toBeInTheDocument();
+  });
+});

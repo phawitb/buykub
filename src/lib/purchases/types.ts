@@ -13,3 +13,14 @@ export type Purchase = {
 };
 
 export type PurchaseProgress = { answered: number; total: number };
+
+/** A product of the signed-in seller's own shop, opened the way a buyer would. */
+export type ShopTryout = {
+  id: string;
+  name: string;
+  kind: "course" | "file" | "key";
+  published: boolean;
+  /** null when there is nothing to open yet, such as a file product without its file. */
+  href: string | null;
+  progress?: PurchaseProgress | null;
+};

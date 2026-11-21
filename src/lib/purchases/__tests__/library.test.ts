@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ context: vi.fn(), admin: vi.fn(), rpc: vi.fn() }));
 vi.mock("@/lib/supabase/seller-context", () => ({ getSellerContext: mocks.context }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mocks.admin }));
-import { getPurchaseLibrary } from "../library";
+import { getPurchaseLibrary, getShopTryouts } from "../library";
 
 const receipt = "pp_12345678-1234-1234-1234-123456789012";
 const user = { id: "buyer", email: "buyer@example.com", email_confirmed_at: "2026-01-01", app_metadata: { provider: "google" } };
@@ -97,5 +97,34 @@ describe("purchase library authorization", () => {
     database([order({ course_purchase: true, products: { name: "Course", delivery_type: "course" } })]);
     mocks.rpc.mockResolvedValue({ data: null, error: new Error("offline") });
     await expect(getPurchaseLibrary()).rejects.toThrow("ตรวจสอบสิทธิ์เข้าเรียนไม่สำเร็จ");
+  });
+});
+
+describe("products from the seller's own shop", () => {
+  function shopQuery(data: unknown[], error: unknown = null) {
+    const builder = { select: vi.fn(), eq: vi.fn(), order: vi.fn() } as Record<string, ReturnType<typeof vi.fn>> & { then?: unknown };
+    for (const key of ["select", "eq", "order"]) builder[key].mockReturnValue(builder);
+    builder.then = (resolve: (value: unknown) => unknown) => resolve({ data, error });
+    return builder;
+  }
+  it("is empty for buyers without a shop", async () => {
+    mocks.context.mockResolvedValue({ user, supabase: {}, shop: null });
+    expect(await getShopTryouts()).toEqual([]);
+  });
+  it("opens courses through the classroom, files through the owner route and keys in the dashboard, never exposing file paths", async () => {
+    const products = shopQuery([
+      { id: "c", name: "Course", delivery_type: "course", file_path: null, published: true },
+      { id: "f", name: "File", delivery_type: "file", file_path: "buyer/secret.pdf", published: false },
+      { id: "e", name: "Empty", delivery_type: "file", file_path: null, published: true },
+      { id: "k", name: "Key", delivery_type: "key", file_path: null, published: true },
+    ]);
+    mocks.context.mockResolvedValue({ user, supabase: { from: vi.fn(() => products) }, shop: { id: "shop" } });
+    mocks.admin.mockReturnValue({ from: vi.fn(() => ({ select: () => ({ in: async () => ({ data: [], error: null }), eq: () => ({ in: async () => ({ data: [], error: null }) }) }) })) });
+    const tryouts = await getShopTryouts();
+    expect(products.eq).toHaveBeenCalledWith("shop_id", "shop");
+    expect(tryouts.map(t => [t.id, t.kind, t.href, t.published])).toEqual([
+      ["c", "course", "/learn/c", true], ["f", "file", "/api/products/f/file", false], ["e", "file", null, true], ["k", "key", "/dashboard/products/k/edit", true],
+    ]);
+    expect(JSON.stringify(tryouts)).not.toContain("secret.pdf");
   });
 });

@@ -1,0 +1,16 @@
+import { beforeEach, expect, it, vi } from "vitest";
+const {getUser,maybeSingle,createSignedUrl}=vi.hoisted(()=>({getUser:vi.fn(),maybeSingle:vi.fn(),createSignedUrl:vi.fn()}));
+vi.mock("@/lib/supabase/server",()=>({createClient:async()=>({auth:{getUser},from:()=>({select:()=>({eq:()=>({maybeSingle})})}),storage:{from:()=>{throw new Error("signing goes through the checked admin path");}}})}));
+vi.mock("@/lib/supabase/admin",()=>({createAdminClient:()=>({storage:{from:()=>({createSignedUrl})}})}));
+import { GET } from "./route";
+const productId="12345678-1234-4123-8123-123456789abc";
+const request=(id=productId)=>GET(new Request("https://buykub.com/api/products/test/file"),{params:Promise.resolve({productId:id})});
+const product=(extra={})=>({data:{file_path:"seller/guide.pdf",file_name:"Guide.pdf",delivery_type:"file",shops:{owner_id:"seller"},...extra},error:null});
+beforeEach(()=>{vi.clearAllMocks();getUser.mockResolvedValue({data:{user:{id:"seller",app_metadata:{provider:"google"}}}});maybeSingle.mockResolvedValue(product());createSignedUrl.mockResolvedValue({data:{signedUrl:"https://storage.example/guide?token=private"},error:null});});
+it("requires Google login",async()=>{getUser.mockResolvedValue({data:{user:null}});expect((await request()).status).toBe(401);expect(createSignedUrl).not.toHaveBeenCalled();});
+it("rejects ids that are not product ids",async()=>{expect((await request("../x")).status).toBe(404);expect(maybeSingle).not.toHaveBeenCalled();});
+it("lets the shop owner open their file for five minutes, uncached",async()=>{const response=await request();expect(response.status).toBe(303);expect(response.headers.get("location")).toBe("https://storage.example/guide?token=private");expect(response.headers.get("cache-control")).toBe("private, no-store");expect(createSignedUrl).toHaveBeenCalledWith("seller/guide.pdf",300,{download:"Guide.pdf"});});
+it("refuses a published product of another shop",async()=>{maybeSingle.mockResolvedValue(product({shops:{owner_id:"someone-else"}}));expect((await request()).status).toBe(403);expect(createSignedUrl).not.toHaveBeenCalled();});
+it("refuses a product it cannot read",async()=>{maybeSingle.mockResolvedValue({data:null,error:null});expect((await request()).status).toBe(403);});
+it.each(["other/guide.pdf","seller/../other/guide.pdf","seller//guide.pdf","seller/guide.pdf?x","seller/%2e%2e/x"])("never signs %s",async(file_path)=>{maybeSingle.mockResolvedValue(product({file_path}));expect((await request()).status).toBe(404);expect(createSignedUrl).not.toHaveBeenCalled();});
+it("has nothing to open for a key product or a missing file",async()=>{maybeSingle.mockResolvedValue(product({delivery_type:"key"}));expect((await request()).status).toBe(404);maybeSingle.mockResolvedValue(product({file_path:null}));expect((await request()).status).toBe(404);expect(createSignedUrl).not.toHaveBeenCalled();});
