@@ -12,6 +12,13 @@ const product = {
 };
 
 describe("ProductCard", () => {
+  it("shows the whole cover in its own shape instead of cropping it square", () => {
+    render(<ProductCard shopSlug="demo-shop" product={product} />);
+    const cover = screen.getByRole("img", { name: "E-Book + Audio Book" });
+    expect(cover).not.toHaveClass("object-cover");
+    expect(cover.parentElement).not.toHaveClass("aspect-square");
+  });
+
   it("makes the complete product card a detail-page link", () => {
     render(<ProductCard shopSlug="demo-shop" product={product} />);
 
