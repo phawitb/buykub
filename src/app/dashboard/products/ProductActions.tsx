@@ -11,6 +11,17 @@ import { deleteShopAsset, type UploadDestination } from "@/lib/supabase/upload";
 
 const COURSE_NOT_READY_MESSAGE = "เพิ่มเนื้อหาก่อนเปิดขายคอร์ส: บทเรียนที่เผยแพร่อย่างน้อย 1 บท หรือแพ็กคอร์สติวสอบ";
 
+// orders.product_id is ON DELETE RESTRICT: buyers keep their order history and downloads.
+function deleteErrorMessage(error: unknown, published: boolean) {
+  const { code, message } = (error ?? {}) as { code?: string; message?: unknown };
+  if (code === "23503") {
+    return `ลบสินค้าไม่ได้ เพราะมีคำสั่งซื้อแล้ว ต้องเก็บไว้ให้ผู้ซื้อดาวน์โหลดและดูประวัติได้${
+      published ? " · กดปุ่มรูปตาเพื่อยกเลิกเผยแพร่ สินค้าจะหายจากหน้าร้านแทน" : " · สินค้านี้ไม่แสดงบนหน้าร้านแล้ว"
+    }`;
+  }
+  return `ลบสินค้าไม่สำเร็จ: ${typeof message === "string" && message ? message : "กรุณาลองอีกครั้ง"}`;
+}
+
 type Props = {
   compact?: boolean;
   productId: string;
@@ -74,11 +85,8 @@ export function ProductActions({
         if (deleteError) throw deleteError;
       }
     } catch (deleteError) {
-      setError(
-        `ลบสินค้าไม่สำเร็จ: ${
-          deleteError instanceof Error ? deleteError.message : "กรุณาลองอีกครั้ง"
-        }`,
-      );
+      setError(deleteErrorMessage(deleteError, published));
+      setConfirmingDelete(false);
       setBusy(null);
       return;
     }
