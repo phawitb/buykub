@@ -17,6 +17,7 @@ import { ShareButton } from "../ShareButton";
 import { createPublicClient } from "@/lib/supabase/public";
 import { ProductPurchase } from "./ProductPurchase";
 import { getPublicExamSummary } from "@/lib/storefront/exam-summary";
+import { getCourseHasPdf } from "@/lib/storefront/course-pdf";
 import { getPublicPreviewImages } from "@/lib/storefront/previews";
 import { ProductPreviewGallery } from "@/features/storefront/ProductPreviewGallery";
 import { ExamCourseOverview } from "@/features/storefront/ExamCourseOverview";
@@ -39,9 +40,10 @@ const loadProduct = cache(async (slug: string, productSlug: string) => {
         })
       : { data: null };
 
-  const [examSummary, previews] = await Promise.all([
+  const [examSummary, previews, hasPdf] = await Promise.all([
     product.delivery_type === "course" ? getPublicExamSummary(product.id) : null,
     getPublicPreviewImages(product.id),
+    product.delivery_type === "course" ? getCourseHasPdf(product.id).catch(() => false) : false,
   ]);
 
   return {
@@ -49,6 +51,7 @@ const loadProduct = cache(async (slug: string, productSlug: string) => {
     product,
     examSummary,
     previews,
+    hasPdf,
     availableStock:
       product.delivery_type === "key" ? Number(availableStock ?? 0) : undefined,
   };
@@ -74,7 +77,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
   const { slug, productSlug } = await params;
   const result = await loadProduct(slug, productSlug);
   if (!result) notFound();
-  const { shop, product, examSummary, previews, availableStock } = result;
+  const { shop, product, examSummary, previews, hasPdf, availableStock } = result;
 
   const imagesV2 = Array.isArray(product.images_v2)
     ? (product.images_v2 as ProductImage[])
@@ -143,7 +146,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
         filePageCount={product.delivery_type === "file" ? product.file_page_count ?? null : null}
       />
 
-      <div className="px-[22px] pb-14 pt-6">
+      <div className="px-[22px] pb-40 pt-6">
           <span className="inline-flex rounded-full bg-ink px-3 py-1.5 text-[10px] font-semibold text-paper">
             {productCategoryLabel(product.delivery_type)}
           </span>
@@ -177,9 +180,9 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
                   product.delivery_type === "course" ? "course" : product.delivery_type === "key" ? "key" : "file",
                 courseAccessDays: product.course_access_days,
                 availableStock,
+                hasPdf,
               }}
             />
-            <p className="mt-3 text-center text-[11px] text-muted">ชำระเงินปลอดภัยผ่าน Stripe</p>
           </div>
 
           {examSummary && (

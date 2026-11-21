@@ -36,6 +36,22 @@ describe("ProductPurchase", () => {
     expect(screen.queryByRole("button", { name: /ซื้อเลย/ })).not.toBeInTheDocument();
   });
 
+  it("tells a buyer they own the course and offers its PDF next to the learn link", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: "user-123", app_metadata: { provider: "google" } } }, error: null });
+    rpc.mockResolvedValue({ data: { allowed: true, reason: "active", expires_at: "2026-12-21T10:00:00Z" }, error: null });
+    render(<ProductPurchase product={{ ...product, hasPdf: true }} />);
+    expect(await screen.findByText(/คุณมีสิทธิ์เข้าเรียนคอร์สนี้แล้ว · ถึง 21 ธ\.ค\./)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "ดาวน์โหลด PDF ประกอบคอร์ส" })).toHaveAttribute("href", "/api/courses/course-123/pdf");
+  });
+
+  it("leaves out the PDF button for a course without a PDF", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: "user-123", app_metadata: { provider: "google" } } }, error: null });
+    rpc.mockResolvedValue({ data: { allowed: true, reason: "owner", expires_at: null }, error: null });
+    render(<ProductPurchase product={product} />);
+    expect(await screen.findByText("คอร์สของร้านคุณ เข้าดูได้ทุกเมื่อ")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "ดาวน์โหลด PDF ประกอบคอร์ส" })).toBeNull();
+  });
+
   it("offers purchase when a verified Google customer has no course access", async () => {
     getUser.mockResolvedValue({ data: { user: { id: "user-123", app_metadata: { provider: "google" } } }, error: null });
     rpc.mockResolvedValue({ data: { allowed: false }, error: null });

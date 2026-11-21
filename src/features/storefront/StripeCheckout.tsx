@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useRef, useState, type MouseEvent } from "react";
 import { trackStorefrontEvent } from "@/features/analytics/tracking";
 import { formatTHB } from "@/features/products/format";
 import { safeAuthRedirect } from "@/lib/auth";
@@ -29,20 +29,7 @@ export function StripeCheckout({
   const [error, setError] = useState<string | null>(null);
   const [loginReturnTo, setLoginReturnTo] = useState<string | null>(null);
   const purchaseTrigger = useRef<HTMLButtonElement | null>(null);
-  const [showStickyPurchase, setShowStickyPurchase] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
   const soldOut = product.deliveryType === "key" && (product.availableStock ?? 0) <= 0;
-
-  useEffect(() => {
-    const trigger = triggerRef.current;
-    if (!trigger || typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setShowStickyPurchase(!entry.isIntersecting),
-      { threshold: 0.1 },
-    );
-    observer.observe(trigger);
-    return () => observer.disconnect();
-  }, []);
 
   function closeLogin() {
     setLoginReturnTo(null);
@@ -100,30 +87,15 @@ export function StripeCheckout({
         </p>
       )}
       <button
-        ref={triggerRef}
         type="button"
         onClick={startCheckout}
         disabled={starting || soldOut}
-        className="w-full rounded-2xl bg-accent px-6 py-4 text-base font-bold text-paper shadow-[0_10px_25px_color-mix(in_srgb,var(--accent)_22%,transparent)] transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full rounded-2xl bg-accent px-6 py-3.5 text-base font-bold text-paper shadow-[0_10px_25px_color-mix(in_srgb,var(--accent)_22%,transparent)] transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
       >
         {soldOut ? "สินค้าหมด" : starting ? "กำลังเปิด QR PromptPay..." : `ซื้อเลย ${formatTHB(product.priceCents)}`}
       </button>
       {error && <p role="alert" className="mt-3 text-center text-sm text-red-600">{error}</p>}
       {loginReturnTo && <GoogleLoginDialog next={loginReturnTo} onClose={closeLogin} returnFocus={purchaseTrigger} />}
-
-      {showStickyPurchase && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper/95 px-4 py-3 shadow-[0_-10px_30px_rgba(24,24,27,0.08)] backdrop-blur">
-          <div className="mx-auto flex max-w-2xl items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-medium text-ink">{product.name}</p>
-              <p className="mt-0.5 text-sm font-bold text-ink">{formatTHB(product.priceCents)}</p>
-            </div>
-            <button type="button" onClick={startCheckout} disabled={starting || soldOut} className="shrink-0 rounded-xl bg-accent px-6 py-3 text-sm font-bold text-paper hover:bg-accent-hover disabled:opacity-60">
-              {soldOut ? "สินค้าหมด" : starting ? "กำลังเปิด..." : "ซื้อเลย"}
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 }
