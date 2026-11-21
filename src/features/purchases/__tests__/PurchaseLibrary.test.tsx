@@ -43,7 +43,8 @@ it("offers a course's PDF beside the classroom only while the course is open", (
     purchase({ id: "open", name: "Open course", kind: "course", href: "/learn/open", pdfHref: "/learn/open/pdf" }),
     purchase({ id: "gone", name: "Expired course", kind: "course", status: "expired", href: null, pdfHref: null }),
   ]} />);
-  expect(screen.getByRole("link", { name: "เปิด PDF ประกอบคอร์ส" })).toHaveAttribute("href", "/learn/open/pdf");
+  expect(screen.getByRole("link", { name: "เปิด PDF ประกอบคอร์ส" })).toHaveAttribute("href", "/learn/open/pdf")
+  expect(screen.getByRole("link", { name: "เปิด PDF ประกอบคอร์ส" })).toHaveAttribute("target", "_blank");
   expect(screen.getAllByRole("link", { name: /PDF/ })).toHaveLength(1);
 });
 

@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import type { CourseAccess } from "@/features/courses/model";
 import { createClient } from "@/lib/supabase/server";
 import { isGoogleUser } from "@/lib/auth";
-import { DownloadIcon, ExternalIcon, LibraryIcon } from "@/components/icons";
+import { PdfReader } from "@/features/courses/PdfReader";
+import { DownloadIcon, LibraryIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -23,15 +24,13 @@ export default async function CoursePdfPage({params}:{params:Promise<{productId:
   const {data:product} = await supabase.from("products").select("name").eq("id",productId).maybeSingle<{name:string}>();
   const file = `/api/courses/${encodeURIComponent(productId)}/pdf`;
   return (
-    <main className="flex h-dvh flex-col bg-paper-dim">
-      <header className="flex h-16 shrink-0 items-center gap-3 border-b border-line bg-paper px-4 lg:px-8">
+    <main className="min-h-screen bg-paper-dim">
+      <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line bg-paper/95 px-4 backdrop-blur lg:px-8">
         <Link href="/learn" className="shrink-0 text-sm font-semibold">‹ รายการที่สั่งซื้อ</Link>
         <span className="min-w-0 flex-1 truncate text-sm text-muted">{product?.name ?? "PDF ประกอบคอร์ส"}</span>
-        {/* Phones may show only the first page inside a frame, so the PDF can also open on its own. */}
-        <a href={`${file}?view=1`} target="_blank" rel="noopener" aria-label="เปิด PDF เต็มหน้าจอ" className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-line text-ink transition hover:bg-paper-dim"><ExternalIcon className="size-4" /></a>
         <a href={file} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-red-600 px-4 text-xs font-medium text-white transition hover:bg-red-700"><DownloadIcon className="size-4" />ดาวน์โหลด</a>
       </header>
-      <iframe src={`${file}?view=1`} title={`PDF ${product?.name ?? "ประกอบคอร์ส"}`} className="min-h-0 w-full flex-1 border-0 bg-paper-dim" />
+      <PdfReader src={`${file}?view=1`} />
     </main>
   );
 }
