@@ -69,9 +69,13 @@ describe("purchase library authorization", () => {
   it("projects display data and paid receipt links without private fields", async () => {
     database([], [order({ buyer_user_id: null, private_file_path: "secret", key_value: "secret", delivery_token: "secret" })]);
     const list = await getPurchaseLibrary();
-    expect(list[0]).toEqual({ id: "order", name: "Guide", shopName: "Shop", kind: "file", priceCents: 12900, purchasedAt: "2026-01-01", status: "paid", expiresAt: null, href: `/checkout/success?session_id=${receipt}` });
+    expect(list[0]).toEqual({ id: "order", name: "Guide", shopName: "Shop", kind: "file", priceCents: 12900, purchasedAt: "2026-01-01", status: "paid", expiresAt: null, href: `/checkout/success?session_id=${receipt}`, coverUrl: null });
     expect(JSON.stringify(list)).not.toContain("secret");
     expect(JSON.stringify(list)).not.toContain("buyer@example.com");
+  });
+  it("carries the product's first public image as the card cover", async () => {
+    database([order({ course_purchase: true, products: { name: "Course", delivery_type: "course", images_v2: [{ publicUrl: "https://cdn/cover.png" }] } })]);
+    expect((await getPurchaseLibrary())[0].coverUrl).toBe("https://cdn/cover.png");
   });
   it("checks course entitlement with the user client before offering a classroom link", async () => {
     database([order({ course_purchase: true, products: { name: "Course", delivery_type: "course" } })]);

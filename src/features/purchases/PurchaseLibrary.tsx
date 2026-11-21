@@ -82,7 +82,10 @@ export function PurchaseLibrary({ purchases, failed = false, tryouts = [] }: { p
           <p className="mb-4 text-xs text-muted">ประวัติการสั่งซื้อ {purchases.length} รายการ</p>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {purchases.map(purchase => (
-              <article key={purchase.id} className="flex flex-col rounded-2xl border border-line bg-paper p-6">
+              <article key={purchase.id} className="flex flex-col overflow-hidden rounded-2xl border border-line bg-paper">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {purchase.coverUrl && <img src={purchase.coverUrl} alt="" loading="lazy" className="block h-auto w-full border-b border-line bg-paper-dim" />}
+                <div className="flex flex-1 flex-col p-6">
                 <div className="flex items-center justify-between gap-3">
                   <span className="rounded-md bg-paper-dim px-2.5 py-1 text-[10px] font-medium text-muted">{kindLabels[purchase.kind]}</span>
                   <span className={`text-xs ${purchase.status === "paid" ? "text-emerald-700" : "text-muted"}`}>{statusLabels[purchase.status]}</span>
@@ -103,6 +106,7 @@ export function PurchaseLibrary({ purchases, failed = false, tryouts = [] }: { p
                 ) : (
                   <p className="mt-auto border-t border-line pt-4 text-xs leading-6 text-muted">{purchase.status === "refunded" ? "รายการนี้คืนเงินแล้ว สิทธิ์เข้าถึงสินค้าสิ้นสุดลง" : purchase.status === "expired" ? "สิทธิ์ของรายการนี้หมดอายุแล้ว" : "ยังไม่สามารถเปิดสินค้าจากรายการนี้ได้"}</p>
                 )}
+                </div>
               </article>
             ))}
           </div>

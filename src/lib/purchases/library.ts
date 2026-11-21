@@ -18,14 +18,21 @@ type PurchaseRow = {
   created_at: string;
   price_cents: number;
   stripe_checkout_session_id: string | null;
-  products: { name: string; delivery_type: string; file_path: string | null } | null;
+  products: { name: string; delivery_type: string; file_path: string | null; images: unknown; images_v2: unknown } | null;
   shops: { name: string } | null;
 };
 
 // Explicit projection excludes delivery tokens, credentials and payment details;
 // file_path only decides whether a PDF button exists and never leaves the server.
-const fields = "id, product_id, buyer_user_id, buyer_email, course_purchase, course_expires_at, status, paid_at, created_at, price_cents, stripe_checkout_session_id, products(name, delivery_type, file_path), shops(name)";
+const fields = "id, product_id, buyer_user_id, buyer_email, course_purchase, course_expires_at, status, paid_at, created_at, price_cents, stripe_checkout_session_id, products(name, delivery_type, file_path, images, images_v2), shops(name)";
 const pageSize = 1000;
+
+/** The first public product image, newest image list first. */
+function coverOf(product: { images: unknown; images_v2: unknown } | null | undefined) {
+  const imagesV2 = Array.isArray(product?.images_v2) ? product.images_v2 as Array<{ publicUrl?: string }> : [];
+  const legacy = Array.isArray(product?.images) ? product.images as string[] : [];
+  return imagesV2[0]?.publicUrl ?? legacy[0] ?? null;
+}
 
 /** Authentication comes from getUser inside the request-scoped seller context. */
 export async function getPurchaseLibrary(): Promise<Purchase[]> {
@@ -102,6 +109,7 @@ export async function getPurchaseLibrary(): Promise<Purchase[]> {
       status,
       expiresAt: kind === "course" ? row.course_expires_at : null,
       href,
+      coverUrl: coverOf(row.products),
       ...(kind === "course" ? { pdfHref: href && row.products?.file_path ? `/api/courses/${encodeURIComponent(row.product_id)}/pdf` : null } : {}),
       productId: row.product_id,
     };
@@ -129,9 +137,7 @@ export async function getShopTryouts(): Promise<ShopTryout[]> {
   if (error) throw new Error("โหลดสินค้าของร้านไม่สำเร็จ");
   const tryouts = (data ?? []).flatMap((row): ShopTryout[] => {
     const id = encodeURIComponent(row.id);
-    const imagesV2 = Array.isArray(row.images_v2) ? row.images_v2 as Array<{ publicUrl?: string }> : [];
-    const legacy = Array.isArray(row.images) ? row.images as string[] : [];
-    const base = { id: row.id as string, name: row.name as string, published: row.published === true, coverUrl: imagesV2[0]?.publicUrl ?? legacy[0] ?? null };
+    const base = { id: row.id as string, name: row.name as string, published: row.published === true, coverUrl: coverOf(row) };
     if (row.delivery_type === "course") return [{ ...base, kind: "course", href: `/learn/${id}`, pdfHref: row.file_path ? `/api/courses/${id}/pdf` : null }];
     if (row.delivery_type === "file") return [{ ...base, kind: "file", href: row.file_path ? `/api/products/${id}/file` : null }];
     if (row.delivery_type === "key") return [{ ...base, kind: "key", href: `/dashboard/products/${id}/edit` }];
