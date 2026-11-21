@@ -78,3 +78,18 @@ it("still accepts a PDF whose pages cannot be counted", async () => {
   );
   expect(screen.getByText("อัปโหลดสำเร็จ")).toBeInTheDocument();
 });
+
+it("takes only a PDF as a course's companion file", async () => {
+  const onChange = vi.fn();
+  const upload = uploadAsset();
+  render(<ProductFileUploader coursePdf userId="user-123" value={null} onChange={onChange} uploadAsset={upload} readPageCount={async () => 3} />);
+
+  expect(screen.getByRole("heading", { name: "ไฟล์ PDF ประกอบคอร์ส" })).toBeInTheDocument();
+  expect(screen.getByLabelText("เลือกไฟล์สินค้า")).toHaveAttribute("accept", ".pdf,application/pdf");
+  await userEvent.upload(screen.getByLabelText("เลือกไฟล์สินค้า"), new File(["zip"], "notes.zip", { type: "application/zip" }), { applyAccept: false });
+  expect(screen.getByRole("alert")).toHaveTextContent("รองรับเฉพาะไฟล์ PDF");
+  expect(upload).not.toHaveBeenCalled();
+
+  await attach(new File(["%PDF-1.7"], "course.pdf", { type: "application/pdf" }));
+  await waitFor(() => expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ fileName: "course.pdf", mimeType: "application/pdf", pageCount: 3 })));
+});

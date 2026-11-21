@@ -18,12 +18,13 @@ type PurchaseRow = {
   created_at: string;
   price_cents: number;
   stripe_checkout_session_id: string | null;
-  products: { name: string; delivery_type: string } | null;
+  products: { name: string; delivery_type: string; file_path: string | null } | null;
   shops: { name: string } | null;
 };
 
-// Explicit projection excludes delivery tokens, credentials, files and payment details.
-const fields = "id, product_id, buyer_user_id, buyer_email, course_purchase, course_expires_at, status, paid_at, created_at, price_cents, stripe_checkout_session_id, products(name, delivery_type), shops(name)";
+// Explicit projection excludes delivery tokens, credentials and payment details;
+// file_path only decides whether a PDF button exists and never leaves the server.
+const fields = "id, product_id, buyer_user_id, buyer_email, course_purchase, course_expires_at, status, paid_at, created_at, price_cents, stripe_checkout_session_id, products(name, delivery_type, file_path), shops(name)";
 const pageSize = 1000;
 
 /** Authentication comes from getUser inside the request-scoped seller context. */
@@ -101,6 +102,7 @@ export async function getPurchaseLibrary(): Promise<Purchase[]> {
       status,
       expiresAt: kind === "course" ? row.course_expires_at : null,
       href,
+      ...(kind === "course" ? { pdfHref: href && row.products?.file_path ? `/api/courses/${encodeURIComponent(row.product_id)}/pdf` : null } : {}),
       productId: row.product_id,
     };
   }));
@@ -130,7 +132,7 @@ export async function getShopTryouts(): Promise<ShopTryout[]> {
     const imagesV2 = Array.isArray(row.images_v2) ? row.images_v2 as Array<{ publicUrl?: string }> : [];
     const legacy = Array.isArray(row.images) ? row.images as string[] : [];
     const base = { id: row.id as string, name: row.name as string, published: row.published === true, coverUrl: imagesV2[0]?.publicUrl ?? legacy[0] ?? null };
-    if (row.delivery_type === "course") return [{ ...base, kind: "course", href: `/learn/${id}` }];
+    if (row.delivery_type === "course") return [{ ...base, kind: "course", href: `/learn/${id}`, pdfHref: row.file_path ? `/api/courses/${id}/pdf` : null }];
     if (row.delivery_type === "file") return [{ ...base, kind: "file", href: row.file_path ? `/api/products/${id}/file` : null }];
     if (row.delivery_type === "key") return [{ ...base, kind: "key", href: `/dashboard/products/${id}/edit` }];
     return [];

@@ -131,7 +131,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
         images={images}
         productName={product.name}
         deliveryType={product.delivery_type === "course" ? "course" : product.delivery_type === "key" ? "key" : "file"}
-        filePageCount={product.file_page_count ?? null}
+        filePageCount={product.delivery_type === "file" ? product.file_page_count ?? null : null}
       />
 
       <div className="px-[22px] pb-14 pt-6">

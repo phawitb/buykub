@@ -32,10 +32,19 @@ describe("purchase library", () => {
   });
 });
 
+it("offers a course's PDF beside the classroom only while the course is open", () => {
+  render(<PurchaseLibrary purchases={[
+    purchase({ id: "open", name: "Open course", kind: "course", href: "/learn/open", pdfHref: "/api/courses/open/pdf" }),
+    purchase({ id: "gone", name: "Expired course", kind: "course", status: "expired", href: null, pdfHref: null }),
+  ]} />);
+  expect(screen.getByRole("link", { name: "ดาวน์โหลด PDF ประกอบคอร์ส" })).toHaveAttribute("href", "/api/courses/open/pdf");
+  expect(screen.getAllByRole("link", { name: /PDF/ })).toHaveLength(1);
+});
+
 describe("products from the seller's own shop", () => {
   it("opens each product the way a buyer would, without mixing it into purchases", () => {
     render(<PurchaseLibrary purchases={[]} tryouts={[
-      { id: "c", name: "My course", kind: "course", published: true, coverUrl: "/cover.webp", href: "/learn/c", progress: { answered: 3, total: 10 } },
+      { id: "c", name: "My course", kind: "course", published: true, coverUrl: "/cover.webp", href: "/learn/c", pdfHref: "/api/courses/c/pdf", progress: { answered: 3, total: 10 } },
       { id: "f", name: "My file", kind: "file", published: false, coverUrl: null, href: "/api/products/f/file" },
       { id: "e", name: "Empty file", kind: "file", published: true, coverUrl: null, href: null },
       { id: "k", name: "My key", kind: "key", published: true, coverUrl: null, href: "/dashboard/products/k/edit" },
@@ -48,6 +57,8 @@ describe("products from the seller's own shop", () => {
     expect(within(section).getByText("ยังไม่เผยแพร่")).toBeInTheDocument();
     expect(within(section).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "3");
     expect(screen.getByText("ยังไม่มีรายการที่สั่งซื้อ")).toBeInTheDocument();
+    expect(within(section).getByRole("link", { name: "ดาวน์โหลด PDF ประกอบคอร์ส" })).toHaveAttribute("href", "/api/courses/c/pdf");
+    expect(within(section).getAllByRole("link", { name: /PDF/ })).toHaveLength(1);
     expect(section.querySelectorAll("img")).toHaveLength(1);
     expect(section.querySelector("img")).toHaveAttribute("src", "/cover.webp");
   });

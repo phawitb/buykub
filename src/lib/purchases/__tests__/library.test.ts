@@ -78,6 +78,15 @@ describe("purchase library authorization", () => {
     expect((await getPurchaseLibrary())[0].href).toBe("/learn/product");
     expect(mocks.rpc).toHaveBeenCalledWith("course_access", { p_product_id: "product" });
   });
+  it("offers a course's PDF only with an open classroom, never exposing its storage path", async () => {
+    database([
+      order({ id: "open", course_purchase: true, products: { name: "Course", delivery_type: "course", file_path: "seller/course.pdf" } }),
+      order({ id: "expired", course_purchase: true, course_expires_at: "2020-01-01", products: { name: "Course", delivery_type: "course", file_path: "seller/course.pdf" } }),
+    ]);
+    const list = await getPurchaseLibrary();
+    expect(list.map(item => item.pdfHref)).toEqual(["/api/courses/product/pdf", null]);
+    expect(JSON.stringify(list)).not.toContain("seller/course.pdf");
+  });
   it("keeps refunded and expired history without content links, including repurchases", async () => {
     database([order({ id: "refund", status: "refunded" }), order({ id: "expiry", course_purchase: true, course_expires_at: "2020-01-01", products: { name: "Course", delivery_type: "course" } })]);
     const list = await getPurchaseLibrary();
@@ -113,7 +122,7 @@ describe("products from the seller's own shop", () => {
   });
   it("opens courses through the classroom, files through the owner route and keys in the dashboard, never exposing file paths", async () => {
     const products = shopQuery([
-      { id: "c", name: "Course", delivery_type: "course", file_path: null, published: true, images_v2: [{ publicUrl: "https://cdn/c.webp" }] },
+      { id: "c", name: "Course", delivery_type: "course", file_path: "buyer/course.pdf", published: true, images_v2: [{ publicUrl: "https://cdn/c.webp" }] },
       { id: "f", name: "File", delivery_type: "file", file_path: "buyer/secret.pdf", published: false },
       { id: "e", name: "Empty", delivery_type: "file", file_path: null, published: true },
       { id: "k", name: "Key", delivery_type: "key", file_path: null, published: true, images: ["https://cdn/k.png"] },
@@ -125,7 +134,8 @@ describe("products from the seller's own shop", () => {
     expect(tryouts.map(t => [t.id, t.kind, t.href, t.published])).toEqual([
       ["c", "course", "/learn/c", true], ["f", "file", "/api/products/f/file", false], ["e", "file", null, true], ["k", "key", "/dashboard/products/k/edit", true],
     ]);
+    expect(tryouts[0].pdfHref).toBe("/api/courses/c/pdf");
     expect(tryouts.map(t => t.coverUrl)).toEqual(["https://cdn/c.webp", null, null, "https://cdn/k.png"]);
-    expect(JSON.stringify(tryouts)).not.toContain("secret.pdf");
+    expect(JSON.stringify(tryouts)).not.toMatch(/secret\.pdf|course\.pdf/);
   });
 });

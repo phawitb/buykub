@@ -23,7 +23,11 @@ type Props = {
   onUploadingChange?: (uploading: boolean) => void;
   uploadAsset?: (request: UploadRequest) => Promise<UploadResult>;
   readPageCount?: (file: File) => Promise<number | null>;
+  /** A course's companion PDF: optional, and only a PDF is accepted. */
+  coursePdf?: boolean;
 };
+
+const isPdf = (file: File) => file.type === "application/pdf" || /\.pdf$/i.test(file.name);
 
 export function ProductFileUploader({
   userId,
@@ -32,6 +36,7 @@ export function ProductFileUploader({
   onUploadingChange,
   uploadAsset = uploadShopAsset,
   readPageCount = readPdfPageCount,
+  coursePdf = false,
 }: Props) {
   const [task, setTask] = useState<ReturnType<typeof createUploadTask> | null>(
     null,
@@ -66,7 +71,7 @@ export function ProductFileUploader({
   }
 
   async function startUpload(file: File) {
-    const error = validateProductFile(file);
+    const error = coursePdf && !isPdf(file) ? "รองรับเฉพาะไฟล์ PDF" : validateProductFile(file);
     if (error) {
       setValidationError(error);
       return;
@@ -108,7 +113,7 @@ export function ProductFileUploader({
         path: result.path,
         fileName: file.name,
         size: file.size,
-        mimeType: file.type || "application/octet-stream",
+        mimeType: file.type || (isPdf(file) ? "application/pdf" : "application/octet-stream"),
         pageCount: await pageCount,
       });
     } catch (uploadError) {
@@ -159,11 +164,23 @@ export function ProductFileUploader({
 
   return (
     <section className="product-section">
-      <h2 className="product-section-title">ไฟล์สินค้า *</h2>
-      <p className="product-help">
-        อัปโหลดไฟล์ดิจิทัลที่ลูกค้าจะได้รับหลังซื้อ — 1 ไฟล์ ขนาดสูงสุด 50
-        MB (PDF, ZIP, EPUB, MP4 หรือไฟล์ใดก็ได้)
-      </p>
+      {coursePdf ? (
+        <>
+          <h2 className="product-section-title">ไฟล์ PDF ประกอบคอร์ส</h2>
+          <p className="product-help">
+            ไม่บังคับ — ผู้เรียนที่มีสิทธิ์เข้าเรียนจะดาวน์โหลดได้จากปุ่ม PDF ในรายการที่สั่งซื้อ
+            และหมดสิทธิ์พร้อมคอร์ส — PDF 1 ไฟล์ ขนาดสูงสุด 50 MB
+          </p>
+        </>
+      ) : (
+        <>
+          <h2 className="product-section-title">ไฟล์สินค้า *</h2>
+          <p className="product-help">
+            อัปโหลดไฟล์ดิจิทัลที่ลูกค้าจะได้รับหลังซื้อ — 1 ไฟล์ ขนาดสูงสุด 50
+            MB (PDF, ZIP, EPUB, MP4 หรือไฟล์ใดก็ได้)
+          </p>
+        </>
+      )}
 
       {displayedFile ? (
         <div className="upload-card mt-4">
@@ -226,6 +243,7 @@ export function ProductFileUploader({
                   เปลี่ยนไฟล์
                   <input
                     type="file"
+                    accept={coursePdf ? ".pdf,application/pdf" : undefined}
                     aria-label="เปลี่ยนไฟล์สินค้า"
                     className="sr-only"
                     onChange={(event) => {
@@ -267,6 +285,7 @@ export function ProductFileUploader({
           <span className="mt-1 text-xs text-muted">สูงสุด 50.0 MB</span>
           <input
             type="file"
+            accept={coursePdf ? ".pdf,application/pdf" : undefined}
             aria-label="เลือกไฟล์สินค้า"
             className="sr-only"
             onChange={(event) => {

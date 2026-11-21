@@ -185,6 +185,17 @@ describe("ProductEditor", () => {
     await vi.waitFor(() => expect(saveProduct).toHaveBeenCalledWith(expect.objectContaining({ category: "COURSE", delivery_type: "course", published: false, file_path: null })));
   });
 
+  it("saves a course's companion PDF with the course", async () => {
+    const saveProduct = vi.fn().mockResolvedValue(undefined);
+    const pdf = { path: "user-123/course.pdf", fileName: "Course.pdf", size: 2048, mimeType: "application/pdf", pageCount: 12 };
+    render(<ProductEditor mode="edit" shopId="shop-123" userId="user-123" productId="course-1" existingSlugs={[]} initialValue={{ ...validValue, deliveryType: "course", productFile: pdf }} saveProduct={saveProduct} />);
+
+    expect(screen.getByRole("heading", { name: "ไฟล์ PDF ประกอบคอร์ส" })).toBeInTheDocument();
+    expect(screen.getByText("Course.pdf")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "บันทึกการเปลี่ยนแปลง" }));
+    await vi.waitFor(() => expect(saveProduct).toHaveBeenCalledWith(expect.objectContaining({ delivery_type: "course", file_path: "user-123/course.pdf", file_name: "Course.pdf", file_mime_type: "application/pdf", file_page_count: 12 })));
+  });
+
   it("preserves legacy key delivery, stock controls, and key import while using the File category", async () => {
     const saveProduct = vi.fn().mockResolvedValue(undefined);
     render(<ProductEditor mode="edit" shopId="shop-123" userId="user-123" productId="key-product" existingSlugs={[]} initialValue={{ ...validValue, deliveryType: "key", productFile: null, keyInventory: { available: 2, assigned: 1, disabled: 0 } }} initialKeyRecords={[{ id: "key-1", keyValue: "TEST-KEY-1234", status: "available", assignedOrderId: null, createdAt: "2026-11-12" }]} saveProduct={saveProduct} />);
