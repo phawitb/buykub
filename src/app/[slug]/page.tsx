@@ -8,6 +8,7 @@ import { Storefront } from "@/features/storefront/Storefront";
 import { ShopShell } from "@/features/storefront/ShopShell";
 import { createPublicClient } from "@/lib/supabase/public";
 import { ShareButton } from "./ShareButton";
+import { DashboardShortcut } from "@/components/DashboardShortcut";
 import { shopUrl } from "@/lib/brand";
 
 export default async function ShopPage({
@@ -57,7 +58,7 @@ export default async function ShopPage({
   return (
     <ShopShell>
         <ShopViewTracker shopId={shop.id} />
-        <Storefront shop={shop} headerActions={<ShareButton url={shopUrl(shop.slug)} title={shop.name} />} productCount={productCards.length}>
+        <Storefront shop={shop} headerActions={<div className="flex items-center gap-2"><DashboardShortcut /><ShareButton url={shopUrl(shop.slug)} title={shop.name} /></div>} productCount={productCards.length}>
             {productCards.length ? (
               <ProductGrid>
                 {productCards.map((product) => (

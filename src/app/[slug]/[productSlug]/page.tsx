@@ -5,6 +5,7 @@ import { getPublicShop, getPublicProduct } from "@/lib/storefront/catalog";
 import type { Metadata } from "next";
 import DOMPurify from "isomorphic-dompurify";
 import Link from "next/link";
+import { DashboardShortcut } from "@/components/DashboardShortcut";
 import { notFound } from "next/navigation";
 import { discountPercent, formatTHB } from "@/features/products/format";
 import type { ProductFAQ, ProductImage } from "@/features/products/model";
@@ -124,7 +125,10 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
         >
           ‹ {shop.name}
         </Link>
-        <ShareButton url={productUrl(shop.slug, product.slug || productSlug)} title={product.name} label="แชร์สินค้า" />
+        <div className="flex shrink-0 items-start gap-2">
+          <DashboardShortcut />
+          <ShareButton url={productUrl(shop.slug, product.slug || productSlug)} title={product.name} label="แชร์สินค้า" />
+        </div>
       </div>
 
       <ProductGallery

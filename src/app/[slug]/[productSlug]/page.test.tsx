@@ -15,6 +15,7 @@ vi.mock("next/server", () => ({ connection: vi.fn(async () => undefined) }));
 vi.mock("@/lib/storefront/catalog", () => ({ getPublicShop: mocks.getPublicShop, getPublicProduct: mocks.getPublicProduct }));
 vi.mock("@/lib/storefront/exam-summary", () => ({ getPublicExamSummary: mocks.examSummary }));
 vi.mock("@/lib/supabase/public", () => ({ createPublicClient: () => ({ rpc: mocks.rpc }) }));
+vi.mock("@/components/DashboardShortcut", () => ({ DashboardShortcut: () => null }));
 vi.mock("@/features/analytics/ProductViewTracker", () => ({ ProductViewTracker: () => null }));
 vi.mock("@/features/storefront/ProductGallery", () => ({ ProductGallery: () => null }));
 vi.mock("@/features/storefront/ProductDetailShell", () => ({ ProductDetailShell: ({ children }: { children: ReactNode }) => <main>{children}</main> }));
