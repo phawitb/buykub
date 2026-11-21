@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MyShop } from "./MyShop";
 
 const database = vi.hoisted(() => {
@@ -243,4 +243,55 @@ it("retains a pending title across remount after saving an unchanged bio", async
   render(<MyShop userId="user-1" initial={shop} products={[]} saveAppearance={saveAppearance} />);
   await user.click(screen.getByRole("button", { name: "แก้ไขชื่อร้าน" }));
   await waitFor(() => expect(screen.getByLabelText("ชื่อร้าน")).toHaveValue("Pending title"));
+});
+
+describe("arranging products", () => {
+  const three = ["A", "B", "C"].map((name, i) => ({ ...products[0], id: `p-${name}`, name: `Guide ${name}`, slug: `guide-${name}`, published: i !== 1 }));
+  // jsdom lays nothing out; give each card a place in one row so dnd-kit can find neighbours.
+  let rectSpy: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => {
+    rectSpy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      const item = this.closest('[role="listitem"]');
+      const index = item ? Array.from(item.parentElement!.children).indexOf(item) : 0;
+      const left = index * 200;
+      return { x: left, y: 0, left, top: 0, right: left + 180, bottom: 300, width: 180, height: 300, toJSON: () => ({}) } as DOMRect;
+    });
+  });
+  afterEach(() => rectSpy.mockRestore());
+  const names = () => within(screen.getByRole("region", { name: "หน้าร้าน" })).getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
+
+  async function moveFirstRight(user: ReturnType<typeof userEvent.setup>) {
+    screen.getByRole("button", { name: "ย้ายตำแหน่ง Guide A" }).focus();
+    await user.keyboard("[Space]");
+    await user.keyboard("[ArrowRight]");
+    await user.keyboard("[Space]");
+  }
+
+  it("saves the whole new order, drafts included, and shows it in the customer preview", async () => {
+    const user = userEvent.setup();
+    const saveProductOrder = vi.fn<(ids: string[]) => Promise<void>>().mockResolvedValue(undefined);
+    render(<MyShop userId="user-1" initial={shop} products={three} saveProductOrder={saveProductOrder} />);
+    expect(screen.getByText("กดค้างที่สินค้าแล้วลากเพื่อเรียงลำดับบนหน้าร้าน")).toBeInTheDocument();
+    await moveFirstRight(user);
+    await waitFor(() => expect(saveProductOrder).toHaveBeenCalledOnce());
+    expect(saveProductOrder).toHaveBeenCalledWith(["p-B", "p-A", "p-C"]);
+    expect(names()).toEqual(["Guide B", "Guide A", "Guide C"]);
+    await user.click(screen.getByRole("button", { name: "มุมมองลูกค้า" }));
+    expect(names()).toEqual(["Guide A", "Guide C"]);
+    expect(screen.queryByRole("button", { name: /ย้ายตำแหน่ง/ })).not.toBeInTheDocument();
+  });
+
+  it("puts the products back and explains when the order cannot be saved", async () => {
+    const user = userEvent.setup();
+    const saveProductOrder = vi.fn<(ids: string[]) => Promise<void>>().mockRejectedValue({ message: "offline" });
+    render(<MyShop userId="user-1" initial={shop} products={three} saveProductOrder={saveProductOrder} />);
+    await moveFirstRight(user);
+    expect(await screen.findByRole("alert")).toHaveTextContent("บันทึกลำดับสินค้าไม่สำเร็จ: offline");
+    expect(names()).toEqual(["Guide A", "Guide B", "Guide C"]);
+  });
+
+  it("offers no arranging for a single product", () => {
+    render(<MyShop userId="user-1" initial={shop} products={[three[0]]} />);
+    expect(screen.queryByRole("button", { name: /ย้ายตำแหน่ง/ })).not.toBeInTheDocument();
+  });
 });
