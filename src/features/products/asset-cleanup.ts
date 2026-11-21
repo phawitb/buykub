@@ -29,6 +29,13 @@ export function findRemovedProductAssets(
     }
   });
 
+  const currentPreviewPaths = new Set((current.previews ?? []).map((preview) => preview.path));
+  (initial.previews ?? []).forEach((preview) => {
+    if (!currentPreviewPaths.has(preview.path)) {
+      removed.push({ destination: "product-image", path: preview.path });
+    }
+  });
+
   return removed;
 }
 
@@ -52,6 +59,13 @@ export function findNewProductAssets(
   current.images.forEach((image) => {
     if (!initialImagePaths.has(image.path)) {
       added.push({ destination: "product-image", path: image.path });
+    }
+  });
+
+  const initialPreviewPaths = new Set((initial.previews ?? []).map((preview) => preview.path));
+  (current.previews ?? []).forEach((preview) => {
+    if (!initialPreviewPaths.has(preview.path)) {
+      added.push({ destination: "product-image", path: preview.path });
     }
   });
 

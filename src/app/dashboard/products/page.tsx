@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSellerContext } from "@/lib/supabase/seller-context";
+import { normalizePreviewImages } from "@/features/products/previews";
 import { isMissingColumnError } from "@/lib/supabase/missing-column";
 import { MyShop } from "./MyShop";
 
@@ -35,6 +36,14 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
     return [product.id, Number(data ?? 0)] as const;
   }));
   const stockByProduct = new Map(stockEntries);
+  // Sample images are deleted with their product; a database without the column has none.
+  const previewRows = products?.length
+    ? await supabase.from("products").select("id, preview_images").eq("shop_id", shop.id)
+    : { data: [], error: null };
+  if (previewRows.error && !isMissingColumnError(previewRows.error, "preview_images")) throw previewRows.error;
+  const previewsByProduct = new Map(
+    (previewRows.data ?? []).map((row) => [row.id as string, normalizePreviewImages(row.preview_images)]),
+  );
   const listItems = (products ?? []).map((product) => {
     const imagesV2 = Array.isArray(product.images_v2)
       ? (product.images_v2 as Array<{ path?: string; publicUrl?: string }>)
@@ -65,6 +74,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
             destination: "product-image" as const,
             path: image.path,
           })),
+        ...(previewsByProduct.get(product.id) ?? []).map((preview) => ({
+          destination: "product-image" as const,
+          path: preview.path,
+        })),
       ],
     };
   });

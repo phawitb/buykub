@@ -9,10 +9,12 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
   purchase: vi.fn(),
   examSummary: vi.fn(),
+  previews: vi.fn(async () => [] as unknown[]),
 }));
 
 vi.mock("next/server", () => ({ connection: vi.fn(async () => undefined) }));
 vi.mock("@/lib/storefront/catalog", () => ({ getPublicShop: mocks.getPublicShop, getPublicProduct: mocks.getPublicProduct }));
+vi.mock("@/lib/storefront/previews", () => ({ getPublicPreviewImages: mocks.previews }));
 vi.mock("@/lib/storefront/exam-summary", () => ({ getPublicExamSummary: mocks.examSummary }));
 vi.mock("@/lib/supabase/public", () => ({ createPublicClient: () => ({ rpc: mocks.rpc }) }));
 vi.mock("@/components/DashboardShortcut", () => ({ DashboardShortcut: () => null }));
@@ -81,4 +83,22 @@ it("lists what an exam-prep course contains, from its public summary", async () 
   expect(screen.getByText("300 ข้อ")).toBeInTheDocument();
   expect(screen.getByText(/ภาคทั่วไป 30\/50 ข้อ/)).toBeInTheDocument();
   expect(screen.getByText(/เข้าเรียนได้ 30 วันนับจากชำระเงิน/)).toBeInTheDocument();
+});
+
+it("shows the seller's sample images under what the buyer gets, each whole", async () => {
+  mocks.getPublicProduct.mockResolvedValue({
+    id: "product-1", name: "Sheet", delivery_type: "file", price_cents: 9900,
+    images: [], images_v2: [], faq: [], highlights: ["สรุป 6 วิชา"],
+  });
+  mocks.previews.mockResolvedValueOnce([
+    { id: "a", publicUrl: "https://cdn.example/a.png", width: 800, height: 1200 },
+    { id: "b", publicUrl: "https://cdn.example/b.png", width: 1200, height: 800 },
+  ]);
+  render(await ProductDetailPage({ params: Promise.resolve({ slug: "demo", productSlug: "sheet" }) }));
+  expect(mocks.previews).toHaveBeenCalledWith("product-1");
+  const section = screen.getByRole("region", { name: "ตัวอย่าง" });
+  const images = section.querySelectorAll("img");
+  expect([...images].map((image) => image.getAttribute("src"))).toEqual(["https://cdn.example/a.png", "https://cdn.example/b.png"]);
+  expect(images[0]).toHaveClass("h-auto", "w-full");
+  expect(images[0]).not.toHaveClass("object-cover");
 });

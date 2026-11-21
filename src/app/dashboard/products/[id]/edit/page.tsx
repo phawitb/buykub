@@ -6,6 +6,11 @@ import type {
   ProductImage,
   ProductKeyRecord,
 } from "@/features/products/model";
+import {
+  DEFAULT_PDF_PREVIEW_PREFERENCES,
+  normalizePdfPreviewPreferences,
+} from "@/features/products/pdf/preferences";
+import { normalizePreviewImages } from "@/features/products/previews";
 import { isMissingColumnError } from "@/lib/supabase/missing-column";
 import { getSellerContext } from "@/lib/supabase/seller-context";
 
@@ -33,7 +38,7 @@ export default async function EditProductPage({
   const row = () => supabase.from("products").select(PRODUCT_FIELDS).eq("id", id).eq("shop_id", shop.id).maybeSingle();
   const rowWithPages = () => supabase.from("products").select(PRODUCT_FIELDS_WITH_PAGES).eq("id", id).eq("shop_id", shop.id).maybeSingle();
 
-  const [productResult, { data: slugRows }, { data: keyRows }] = await Promise.all([
+  const [productResult, { data: slugRows }, { data: keyRows }, previewResult, preferences] = await Promise.all([
     // The page count is newer than some databases this runs against, and the
     // editor has to open whether or not that migration has been applied.
     rowWithPages().then(async (result) => {
@@ -50,7 +55,15 @@ export default async function EditProductPage({
       .select("id, key_value, status, assigned_order_id, created_at")
       .eq("product_id", id)
       .order("created_at", { ascending: false }),
+    // Read on its own so a database without the column still opens the editor.
+    supabase.from("products").select("preview_images").eq("id", id).eq("shop_id", shop.id).maybeSingle(),
+    supabase
+      .from("seller_pdf_preferences")
+      .select("preview_page_count, watermark_enabled, watermark_text, blur_strength, watermark_opacity")
+      .eq("user_id", user.id)
+      .maybeSingle(),
   ]);
+  if (previewResult.error && !isMissingColumnError(previewResult.error, "preview_images")) throw previewResult.error;
   const product = productResult.data;
   if (!product) notFound();
 
@@ -102,6 +115,7 @@ export default async function EditProductPage({
           }
         : null,
     images: imagesV2.length ? imagesV2 : legacyImages,
+    previews: normalizePreviewImages(previewResult.data?.preview_images),
     highlights: product.highlights ?? [],
     faq,
     published: product.published,
@@ -113,6 +127,12 @@ export default async function EditProductPage({
       productId={product.id}
       shopId={shop.id}
       userId={user.id}
+      shopName={shop.name}
+      pdfPreferences={
+        preferences.error || !preferences.data
+          ? DEFAULT_PDF_PREVIEW_PREFERENCES
+          : normalizePdfPreviewPreferences(preferences.data)
+      }
       existingSlugs={(slugRows ?? [])
         .map((row) => row.slug)
         .filter((slug): slug is string => Boolean(slug))}

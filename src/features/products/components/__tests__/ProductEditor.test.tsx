@@ -547,3 +547,33 @@ describe("ProductEditor refusals", () => {
     await vi.waitFor(() => expect(saveProduct).toHaveBeenCalledTimes(1));
   });
 });
+
+describe("preview images", () => {
+  const preview = { id: "p", path: "user-123/p.png", publicUrl: "https://cdn.example/p.png", width: 800, height: 600, blur: false, watermark: true };
+
+  it("saves the sample images with the product", async () => {
+    const saveProduct = vi.fn().mockResolvedValue(undefined);
+    render(<ProductEditor mode="edit" shopId="shop-123" userId="user-123" productId="p-1" existingSlugs={[]} initialValue={{ ...validValue, previews: [preview] }} saveProduct={saveProduct} />);
+    expect(screen.getByRole("heading", { name: "รูปตัวอย่าง (Preview)" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "บันทึกการเปลี่ยนแปลง" }));
+    await vi.waitFor(() => expect(saveProduct).toHaveBeenCalledWith(expect.objectContaining({ preview_images: [preview] })));
+  });
+
+  it("refuses to drop samples on a database that cannot store them yet", async () => {
+    const saveProduct = vi.fn().mockRejectedValue({ code: "PGRST204", message: "Could not find the 'preview_images' column" });
+    render(<ProductEditor mode="edit" shopId="shop-123" userId="user-123" productId="p-1" existingSlugs={[]} initialValue={{ ...validValue, previews: [preview] }} saveProduct={saveProduct} />);
+    await userEvent.click(screen.getByRole("button", { name: "บันทึกการเปลี่ยนแปลง" }));
+    expect(await screen.findByText(/ระบบยังไม่พร้อมบันทึกรูปตัวอย่าง/)).toBeInTheDocument();
+    expect(saveProduct).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves a product without samples on such a database by leaving the column out", async () => {
+    const saveProduct = vi.fn()
+      .mockRejectedValueOnce({ code: "PGRST204", message: "Could not find the 'preview_images' column" })
+      .mockResolvedValue(undefined);
+    render(<ProductEditor mode="edit" shopId="shop-123" userId="user-123" productId="p-1" existingSlugs={[]} initialValue={validValue} saveProduct={saveProduct} />);
+    await userEvent.click(screen.getByRole("button", { name: "บันทึกการเปลี่ยนแปลง" }));
+    await vi.waitFor(() => expect(saveProduct).toHaveBeenCalledTimes(2));
+    expect(saveProduct.mock.calls[1][0]).not.toHaveProperty("preview_images");
+  });
+});
