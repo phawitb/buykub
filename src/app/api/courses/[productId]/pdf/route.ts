@@ -8,9 +8,14 @@ const headers = {"Cache-Control":"private, no-store","Referrer-Policy":"no-refer
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const error = (message: string,status: number) => NextResponse.json({error:message},{status,headers});
 
-/** The course's companion PDF, for whoever may enter the classroom right now: the owner or a buyer still in their access period. */
-export async function GET(_request: Request,{params}:{params:Promise<{productId:string}>}) {
+/**
+ * The course's companion PDF, for whoever may enter the classroom right now: the owner or a buyer still in their access period.
+ * `?view=1` serves it to show in the page, for an hour so the viewer can keep
+ * reading; otherwise it downloads, with a five-minute link.
+ */
+export async function GET(request: Request,{params}:{params:Promise<{productId:string}>}) {
   const {productId}=await params;
+  const view=new URL(request.url).searchParams.get("view")==="1";
   if(!uuid.test(productId)) return error("ไม่พบไฟล์ PDF",404);
   const supabase=await createClient();
   const {data:{user}}=await supabase.auth.getUser();
@@ -29,7 +34,7 @@ export async function GET(_request: Request,{params}:{params:Promise<{productId:
   // Only a file inside the course owner's own upload folder is ever signed.
   if(product?.delivery_type!=="course"||!path||!ownerId||!/^[-a-zA-Z0-9_./]+$/.test(path)||path.split("/").some(part=>!part||part==="."||part==="..")||path.split("/")[0]!==ownerId) return error("ไม่พบไฟล์ PDF",404);
   try {
-    const signed=await admin.storage.from("product-files").createSignedUrl(path,300,{download:(product.file_name as string|null)||true});
+    const signed=await admin.storage.from("product-files").createSignedUrl(path,view?3600:300,view?undefined:{download:(product.file_name as string|null)||true});
     if(signed.error||!signed.data?.signedUrl) return error("ไม่สามารถดาวน์โหลดไฟล์ PDF ได้",503);
     return new NextResponse(null,{status:303,headers:{...headers,Location:signed.data.signedUrl}});
   } catch {

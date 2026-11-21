@@ -110,7 +110,7 @@ export async function getPurchaseLibrary(): Promise<Purchase[]> {
       expiresAt: kind === "course" ? row.course_expires_at : null,
       href,
       coverUrl: coverOf(row.products),
-      ...(kind === "course" ? { pdfHref: href && row.products?.file_path ? `/api/courses/${encodeURIComponent(row.product_id)}/pdf` : null } : {}),
+      ...(kind === "course" ? { pdfHref: href && row.products?.file_path ? `/learn/${encodeURIComponent(row.product_id)}/pdf` : null } : {}),
       productId: row.product_id,
     };
   }));
@@ -138,7 +138,7 @@ export async function getShopTryouts(): Promise<ShopTryout[]> {
   const tryouts = (data ?? []).flatMap((row): ShopTryout[] => {
     const id = encodeURIComponent(row.id);
     const base = { id: row.id as string, name: row.name as string, published: row.published === true, coverUrl: coverOf(row) };
-    if (row.delivery_type === "course") return [{ ...base, kind: "course", href: `/learn/${id}`, pdfHref: row.file_path ? `/api/courses/${id}/pdf` : null }];
+    if (row.delivery_type === "course") return [{ ...base, kind: "course", href: `/learn/${id}`, pdfHref: row.file_path ? `/learn/${id}/pdf` : null }];
     if (row.delivery_type === "file") return [{ ...base, kind: "file", href: row.file_path ? `/api/products/${id}/file` : null }];
     if (row.delivery_type === "key") return [{ ...base, kind: "key", href: `/dashboard/products/${id}/edit` }];
     return [];

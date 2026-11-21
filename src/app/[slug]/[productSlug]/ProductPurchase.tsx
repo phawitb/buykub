@@ -60,7 +60,7 @@ export function ProductPurchase({product}:{product:{id:string;shopId:string;name
       </p>
       <div className="flex gap-2">
         <Link href={`/learn/${product.id}`} className="primary-button group flex flex-1 items-center justify-center gap-2">เข้าเรียนคอร์สนี้<ArrowRightIcon className="size-4 transition-transform duration-[200ms] ease-out group-hover:translate-x-0.5" /></Link>
-        {product.hasPdf && <PdfButton href={`/api/courses/${encodeURIComponent(product.id)}/pdf`} />}
+        {product.hasPdf && <PdfButton href={`/learn/${encodeURIComponent(product.id)}/pdf`} />}
       </div>
     </>}
     {(state === "guest" || state === "purchase") && <StripeCheckout product={product}/>}
