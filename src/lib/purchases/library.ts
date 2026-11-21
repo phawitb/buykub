@@ -3,7 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getSellerContext } from "@/lib/supabase/seller-context";
 import { isReceiptId } from "@/lib/payments/receipt";
 import type { CourseAccess } from "@/features/courses/model";
-import type { Purchase } from "./types";
+import { readExamSummary } from "@/features/courses/exam-prep/pack";
+import type { Purchase, PurchaseProgress } from "./types";
 
 type PurchaseRow = {
   id: string;
@@ -60,7 +61,7 @@ export async function getPurchaseLibrary(): Promise<Purchase[]> {
   const accessChecks = new Map<string, Promise<CourseAccess | null>>();
   const now = Date.now();
 
-  return Promise.all(rows.map(async row => {
+  const purchases = await Promise.all(rows.map(async row => {
     const kind: Purchase["kind"] = row.course_purchase ? "course"
       : row.products?.delivery_type === "file" ? "file"
       : row.products?.delivery_type === "key" ? "key" : "other";
@@ -100,6 +101,32 @@ export async function getPurchaseLibrary(): Promise<Purchase[]> {
       status,
       expiresAt: kind === "course" ? row.course_expires_at : null,
       href,
+      productId: row.product_id,
     };
   }));
+  const open = purchases.filter(purchase => purchase.kind === "course" && purchase.href).map(purchase => purchase.productId);
+  const progress = await readExamProgress(admin, user.id, [...new Set(open)]).catch(() => new Map<string, PurchaseProgress>());
+  return purchases.map(({ productId, ...purchase }) => {
+    const answered = purchase.href ? progress.get(productId) : undefined;
+    return answered ? { ...purchase, progress: answered } : purchase;
+  });
+}
+
+/** Questions attempted in each open exam-prep course. Best effort: the library never fails over it. */
+async function readExamProgress(admin: ReturnType<typeof createAdminClient>, userId: string, productIds: string[]) {
+  const progress = new Map<string, PurchaseProgress>();
+  if (!productIds.length) return progress;
+  const [products, saved] = await Promise.all([
+    admin.from("products").select("id, course_format, exam_summary").in("id", productIds),
+    admin.from("course_progress").select("product_id, state").eq("user_id", userId).in("product_id", productIds),
+  ]);
+  if (products.error || saved.error) return progress;
+  const states = new Map((saved.data ?? []).map(row => [row.product_id as string, row.state as { att?: Record<string, unknown> } | null]));
+  for (const product of products.data ?? []) {
+    const summary = product.course_format === "exam_prep" ? readExamSummary(product.exam_summary) : null;
+    if (!summary) continue;
+    const attempts = states.get(product.id)?.att;
+    progress.set(product.id, { answered: attempts && typeof attempts === "object" ? Object.keys(attempts).length : 0, total: summary.questions });
+  }
+  return progress;
 }

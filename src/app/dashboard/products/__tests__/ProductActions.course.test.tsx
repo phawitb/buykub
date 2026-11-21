@@ -8,7 +8,7 @@ vi.mock("@/lib/supabase/client", () => ({createClient: () => ({from: () => ({upd
 it("explains an empty course publishing rejection and links to curriculum", async () => {
   render(<ProductActions productId="course-1" shopId="shop" productName="Course" published={false} assets={[]}/>);
   await userEvent.click(screen.getByRole("button", {name:"เผยแพร่สินค้า"}));
-  expect(await screen.findByRole("alert")).toHaveTextContent("เพิ่มบทเรียนที่เผยแพร่อย่างน้อย 1 บทก่อนเปิดขายคอร์ส");
+  expect(await screen.findByRole("alert")).toHaveTextContent("เพิ่มเนื้อหาก่อนเปิดขายคอร์ส: บทเรียนที่เผยแพร่อย่างน้อย 1 บท หรือแพ็กคอร์สติวสอบ");
   expect(screen.getByRole("link", {name:"จัดการบทเรียน"})).toHaveAttribute("href", "/dashboard/products/course-1/lessons");
   expect(refresh).not.toHaveBeenCalled();
   expect(screen.getByRole("button", {name:"เผยแพร่สินค้า"})).toBeEnabled();

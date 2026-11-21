@@ -9,7 +9,7 @@ import type { ProductAsset } from "@/features/products/asset-cleanup";
 import { createClient } from "@/lib/supabase/client";
 import { deleteShopAsset, type UploadDestination } from "@/lib/supabase/upload";
 
-const COURSE_NOT_READY_MESSAGE = "เพิ่มบทเรียนที่เผยแพร่อย่างน้อย 1 บทก่อนเปิดขายคอร์ส";
+const COURSE_NOT_READY_MESSAGE = "เพิ่มเนื้อหาก่อนเปิดขายคอร์ส: บทเรียนที่เผยแพร่อย่างน้อย 1 บท หรือแพ็กคอร์สติวสอบ";
 
 type Props = {
   compact?: boolean;
