@@ -27,6 +27,7 @@ export function ProductCard({
   product: StorefrontProductCard;
 }) {
   const stock = product.availableStock ?? 0;
+  const soldOut = product.deliveryType === "key" && stock <= 0;
 
   return (
     <Link
@@ -58,24 +59,39 @@ export function ProductCard({
           {product.name}
         </h3>
 
-        <p className="mt-auto flex items-baseline gap-2 pt-3 text-sm">
-          <span className="font-semibold text-ink" data-numeric>
-            {formatTHB(product.priceCents)}
-          </span>
-          {product.comparePriceCents && (
-            <span className="text-xs text-muted line-through" data-numeric>
-              {formatTHB(product.comparePriceCents)}
+        {/* The buy pill is part of the card's one link: checkout happens on the product page, where the buyer signs in and pays. */}
+        <div className="mt-auto flex items-end justify-between gap-2 pt-3">
+          <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-sm">
+            <span className="font-semibold text-ink" data-numeric>
+              {formatTHB(product.priceCents)}
+            </span>
+            {product.comparePriceCents && (
+              <span className="text-xs text-muted line-through" data-numeric>
+                {formatTHB(product.comparePriceCents)}
+              </span>
+            )}
+          </p>
+          {soldOut ? (
+            <span className="inline-flex h-8 shrink-0 items-center rounded-full bg-paper-dim px-3.5 text-xs font-medium text-muted">
+              สินค้าหมด
+            </span>
+          ) : (
+            <span
+              aria-hidden="true"
+              className="inline-flex h-8 shrink-0 items-center rounded-full bg-accent px-4 text-xs font-semibold text-on-ink transition duration-[120ms] ease-out group-hover:bg-accent-hover group-active:scale-[0.97]"
+            >
+              ซื้อเลย
             </span>
           )}
-        </p>
+        </div>
 
-        {product.deliveryType === "key" && (
+        {product.deliveryType === "key" && !soldOut && (
           <p
             className={`mt-1.5 text-xs font-medium ${
-              stock > 0 ? (stock <= 5 ? "text-amber-700" : "text-success") : "text-error-solid"
+              stock <= 5 ? "text-amber-700" : "text-success"
             }`}
           >
-            {stock > 0 ? `เหลือ ${stock} รายการ` : "สินค้าหมด"}
+            {`เหลือ ${stock} รายการ`}
           </p>
         )}
       </div>
