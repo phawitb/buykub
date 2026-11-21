@@ -1,31 +1,18 @@
 "use client";
 
 import Script from "next/script";
-import { useEffect, useRef } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
 
 export const META_PIXEL_ID = "992513783444452";
 
 /** Meta's base code, verbatim apart from the id coming from the constant. */
 const BASE_CODE = `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${META_PIXEL_ID}');fbq('track','PageView');`;
 
-type Fbq = (command: "track", event: string) => void;
-
 /**
- * Meta Pixel for BUYKUB's own ads, on every page. The base code counts the
- * first page; moving between pages inside the app does not reload, so each
- * later route change is counted here.
+ * Meta Pixel for BUYKUB's own ads, on every page. fbevents.js counts a
+ * PageView itself on each in-app route change (it listens to history
+ * changes), so nothing here tracks navigation; doing so would double count.
  */
 export function MetaPixel() {
-  const pathname = usePathname();
-  const search = useSearchParams().toString();
-  const first = useRef(true);
-
-  useEffect(() => {
-    if (first.current) { first.current = false; return; }
-    (window as unknown as { fbq?: Fbq }).fbq?.("track", "PageView");
-  }, [pathname, search]);
-
   return (
     <>
       <Script id="meta-pixel" strategy="afterInteractive">{BASE_CODE}</Script>
