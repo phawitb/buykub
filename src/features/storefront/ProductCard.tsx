@@ -34,13 +34,14 @@ export function ProductCard({
       aria-label={product.name}
       className="group card lift-card flex min-w-0 flex-col overflow-hidden p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
-      <div className="zoom-frame relative aspect-square rounded-element bg-paper-dim">
+      {/* A cover keeps the shape it was uploaded in, so nothing on it is cropped away. */}
+      <div className={`zoom-frame relative rounded-element bg-paper-dim ${product.thumbnailUrl ? "" : "aspect-square"}`}>
         {product.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={product.thumbnailUrl}
             alt={product.name}
-            className="size-full object-cover"
+            className="block h-auto w-full"
           />
         ) : (
           <span data-zoom className="block size-full">
