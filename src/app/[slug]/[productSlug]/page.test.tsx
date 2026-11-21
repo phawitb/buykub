@@ -99,6 +99,5 @@ it("shows the seller's sample images under what the buyer gets, each whole", asy
   const section = screen.getByRole("region", { name: "ตัวอย่าง" });
   const images = section.querySelectorAll("img");
   expect([...images].map((image) => image.getAttribute("src"))).toEqual(["https://cdn.example/a.png", "https://cdn.example/b.png"]);
-  expect(images[0]).toHaveClass("h-auto", "w-full");
-  expect(images[0]).not.toHaveClass("object-cover");
+  expect(images[0]).toHaveClass("object-contain");
 });
