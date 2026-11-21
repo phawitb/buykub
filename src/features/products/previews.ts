@@ -18,6 +18,7 @@ export function normalizePreviewImages(raw: unknown): ProductPreviewImage[] {
       height: Number(entry.height) > 0 ? Number(entry.height) : 0,
       blur: entry.blur === true,
       watermark: entry.watermark === true,
+      ...(typeof entry.sourcePath === "string" && entry.sourcePath ? { sourcePath: entry.sourcePath } : {}),
     }];
   }).slice(0, MAX_PREVIEW_IMAGES);
 }

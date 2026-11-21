@@ -30,9 +30,13 @@ export function findRemovedProductAssets(
   });
 
   const currentPreviewPaths = new Set((current.previews ?? []).map((preview) => preview.path));
+  const currentSourcePaths = new Set((current.previews ?? []).map((preview) => preview.sourcePath));
   (initial.previews ?? []).forEach((preview) => {
     if (!currentPreviewPaths.has(preview.path)) {
       removed.push({ destination: "product-image", path: preview.path });
+    }
+    if (preview.sourcePath && !currentSourcePaths.has(preview.sourcePath)) {
+      removed.push({ destination: "product-file", path: preview.sourcePath });
     }
   });
 
@@ -63,9 +67,13 @@ export function findNewProductAssets(
   });
 
   const initialPreviewPaths = new Set((initial.previews ?? []).map((preview) => preview.path));
+  const initialSourcePaths = new Set((initial.previews ?? []).map((preview) => preview.sourcePath));
   (current.previews ?? []).forEach((preview) => {
     if (!initialPreviewPaths.has(preview.path)) {
       added.push({ destination: "product-image", path: preview.path });
+    }
+    if (preview.sourcePath && !initialSourcePaths.has(preview.sourcePath)) {
+      added.push({ destination: "product-file", path: preview.sourcePath });
     }
   });
 

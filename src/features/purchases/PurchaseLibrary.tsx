@@ -12,7 +12,7 @@ function dateLabel(value: string) {
 
 // The PDF route answers with a redirect to storage, so it is a plain link.
 function PdfButton({ href }: { href: string }) {
-  return <a href={href} aria-label="ดาวน์โหลด PDF ประกอบคอร์ส" className="secondary-button inline-flex shrink-0 items-center justify-center gap-1.5 px-5 text-center"><DownloadIcon className="size-4" />PDF</a>;
+  return <a href={href} aria-label="ดาวน์โหลด PDF ประกอบคอร์ส" className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full bg-red-600 px-5 text-center text-sm font-medium text-white transition duration-[120ms] ease-out hover:bg-red-700 active:scale-[0.98]"><DownloadIcon className="size-4" />PDF</a>;
 }
 
 const tryoutLabels = { course: "เข้าเรียน", file: "เปิดไฟล์", key: "จัดการคีย์" };
@@ -43,7 +43,7 @@ function ShopTryouts({ tryouts }: { tryouts: ShopTryout[] }) {
               // The file route answers with a redirect to storage, so it is a plain link.
               tryout.kind === "file"
                 ? <a href={tryout.href} className="secondary-button mt-auto inline-flex items-center justify-center gap-2 text-center">{tryoutLabels.file}</a>
-                : <div className="mt-auto flex gap-2"><Link href={tryout.href} className="secondary-button group inline-flex flex-1 items-center justify-center gap-2 text-center">{tryoutLabels[tryout.kind]}<ArrowRightIcon className="size-4 transition-transform duration-[200ms] ease-out group-hover:translate-x-0.5" /></Link>{tryout.pdfHref && <PdfButton href={tryout.pdfHref} />}</div>
+                : <div className="mt-auto flex gap-2"><Link href={tryout.href} className="primary-button group inline-flex flex-1 items-center justify-center gap-2 text-center">{tryoutLabels[tryout.kind]}<ArrowRightIcon className="size-4 transition-transform duration-[200ms] ease-out group-hover:translate-x-0.5" /></Link>{tryout.pdfHref && <PdfButton href={tryout.pdfHref} />}</div>
             ) : (
               <p className="mt-auto border-t border-line pt-4 text-xs leading-6 text-muted">ยังไม่ได้อัปโหลดไฟล์ของสินค้านี้</p>
             )}

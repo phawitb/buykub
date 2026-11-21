@@ -14,7 +14,8 @@ export type ProductImage = {
 /**
  * A sample image shown under "สิ่งที่คุณจะได้รับ". The blur and the watermark
  * are drawn into the uploaded file itself, so the flags only record what was
- * applied; the clean original is never uploaded.
+ * applied. The clean original is kept in the owner's private folder so the
+ * protection can be changed later; it is never published.
  */
 export type ProductPreviewImage = {
   id: string;
@@ -24,6 +25,8 @@ export type ProductPreviewImage = {
   height: number;
   blur: boolean;
   watermark: boolean;
+  /** The clean original in product-files. Absent on samples saved before originals were kept. */
+  sourcePath?: string;
 };
 
 export type ProductUploadRecord = {
