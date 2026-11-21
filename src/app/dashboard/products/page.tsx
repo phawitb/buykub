@@ -74,10 +74,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
             destination: "product-image" as const,
             path: image.path,
           })),
-        ...(previewsByProduct.get(product.id) ?? []).map((preview) => ({
-          destination: "product-image" as const,
-          path: preview.path,
-        })),
+        ...(previewsByProduct.get(product.id) ?? []).flatMap((preview) => [
+          { destination: "product-image" as const, path: preview.path },
+          ...(preview.sourcePath ? [{ destination: "product-file" as const, path: preview.sourcePath }] : []),
+        ]),
       ],
     };
   });
