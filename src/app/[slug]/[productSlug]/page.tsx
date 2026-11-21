@@ -127,7 +127,12 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
         <ShareButton url={productUrl(shop.slug, product.slug || productSlug)} title={product.name} label="แชร์สินค้า" />
       </div>
 
-      <ProductGallery images={images} productName={product.name} deliveryType={product.delivery_type === "course" ? "course" : product.delivery_type === "key" ? "key" : "file"} />
+      <ProductGallery
+        images={images}
+        productName={product.name}
+        deliveryType={product.delivery_type === "course" ? "course" : product.delivery_type === "key" ? "key" : "file"}
+        filePageCount={product.file_page_count ?? null}
+      />
 
       <div className="px-[22px] pb-14 pt-6">
           <span className="inline-flex rounded-full bg-ink px-3 py-1.5 text-[10px] font-semibold text-paper">

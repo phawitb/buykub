@@ -15,11 +15,17 @@ export type PdfPreviewPreferences = {
   watermarkOpacity: number;
 };
 
+/**
+ * Five pages, marked but not blurred. A blurred sample proves the pages exist
+ * and nothing else; the seller asked for pages a buyer can actually judge,
+ * with the shop's name across them so they cannot stand in for the product.
+ * Blur is still one slider away, per page.
+ */
 export const DEFAULT_PDF_PREVIEW_PREFERENCES: PdfPreviewPreferences = {
-  previewPageCount: 3,
+  previewPageCount: MAX_PDF_PREVIEW_PAGES,
   watermarkEnabled: true,
   watermarkText: "",
-  blurStrength: 6,
+  blurStrength: 0,
   watermarkOpacity: 35,
 };
 
@@ -72,14 +78,40 @@ export function normalizePdfPreviewPreferences(raw: unknown): PdfPreviewPreferen
   };
 }
 
-export type PdfPreviewSlot = {
-  pageNumber: number;
-  protect: boolean;
+/** What is applied to one page image. Each is the seller's to flip, per page. */
+export type PdfPreviewProtection = {
+  blur: boolean;
+  watermark: boolean;
 };
 
+export type PdfPreviewSlot = {
+  pageNumber: number;
+  protection: PdfPreviewProtection;
+};
+
+export const UNPROTECTED: PdfPreviewProtection = { blur: false, watermark: false };
+
 /**
- * The first page sells the product, so it stays clean. Every later preview page
- * is protected, which is what keeps the sample from being the product itself.
+ * What a single page is blurred at when the shop's slider sits at "ไม่เบลอ",
+ * which is now where it starts. Without this, turning blur on for one page
+ * would redraw it at a strength of zero and look like nothing happened.
+ */
+export const PAGE_BLUR_FALLBACK_STRENGTH = 8;
+
+/** The strength one page's blur is drawn at, given the shop's setting. */
+export function pageBlurStrength(blurStrength: number): number {
+  return blurStrength > 0 ? blurStrength : PAGE_BLUR_FALLBACK_STRENGTH;
+}
+
+/** True when anything at all is drawn over the page as it was rendered. */
+export function isProtected(protection: PdfPreviewProtection): boolean {
+  return protection.blur || protection.watermark;
+}
+
+/**
+ * The first page is the product's cover, so it stays exactly as the PDF draws
+ * it. Every later preview page starts from the seller's settings, and the
+ * product form lets them change any single page afterwards.
  */
 export function pdfPreviewPlan(
   preferences: PdfPreviewPreferences,
@@ -92,7 +124,13 @@ export function pdfPreviewPlan(
   );
   return Array.from({ length: pages }, (_, index) => ({
     pageNumber: index + 1,
-    protect: index > 0 && preferences.watermarkEnabled,
+    protection:
+      index === 0
+        ? { ...UNPROTECTED }
+        : {
+            blur: preferences.watermarkEnabled && preferences.blurStrength > 0,
+            watermark: preferences.watermarkEnabled,
+          },
   }));
 }
 

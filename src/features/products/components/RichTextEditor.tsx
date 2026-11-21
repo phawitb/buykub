@@ -43,7 +43,7 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class:
-          "min-h-64 px-4 py-4 text-sm leading-7 text-ink outline-none sm:min-h-72",
+          "rich-editor-content min-h-64 px-4 py-4 text-sm leading-7 text-ink outline-none sm:min-h-72",
         "aria-label": label,
       },
     },
@@ -69,7 +69,6 @@ export function RichTextEditor({
             bulletList: currentEditor.isActive("bulletList"),
             orderedList: currentEditor.isActive("orderedList"),
             blockquote: currentEditor.isActive("blockquote"),
-            characterCount: currentEditor.getText().length,
           }
         : null,
   });
@@ -378,10 +377,16 @@ export function RichTextEditor({
         )}
         <EditorContent editor={activeEditor} />
       </fieldset>
+      {/*
+        Read at render time rather than from the editor-state snapshot: the
+        snapshot is first taken while the document is still empty, so content
+        handed in at mount — a description the agent drafted from a PDF — would
+        sit in the editor under a count of zero until the seller typed.
+      */}
       <div className="mt-2 flex items-center justify-between text-[11px] text-muted">
         <span>เคล็ดลับ: ใช้ heading + bullet list ทำให้อ่านง่ายขึ้น</span>
         <span>
-          {(editorState?.characterCount ?? 0).toLocaleString("th-TH")} /{" "}
+          {activeEditor.getText().length.toLocaleString("th-TH")} /{" "}
           {maxCharacters.toLocaleString("th-TH")} ตัวอักษร
         </span>
       </div>

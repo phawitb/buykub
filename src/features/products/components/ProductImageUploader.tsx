@@ -3,9 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import { formatBytes } from "@/features/products/format";
 import type { ProductImage } from "@/features/products/model";
+import {
+  renderPreviewFile,
+  type PdfPageSource,
+} from "@/features/products/pdf/extract";
+import type { ProtectedPreviewOptions } from "@/features/products/pdf/watermark";
 import { validateProductImages } from "@/features/products/validation";
 import {
+  deleteShopAsset,
   uploadShopAsset,
+  type UploadDestination,
   type UploadRequest,
   type UploadResult,
 } from "@/lib/supabase/upload";
@@ -27,6 +34,11 @@ type Props = {
   onChange: (images: ProductImage[]) => void;
   onUploadingChange?: (uploading: boolean) => void;
   uploadAsset?: (request: UploadRequest) => Promise<UploadResult>;
+  /** Images that came from PDF pages, which can still be blurred or marked. */
+  pages?: PdfPageSource[];
+  protectionOptions?: ProtectedPreviewOptions;
+  onPagesChange?: (pages: PdfPageSource[]) => void;
+  deleteAsset?: (destination: UploadDestination, path: string) => Promise<void>;
 };
 
 export function ProductImageUploader({
@@ -35,9 +47,15 @@ export function ProductImageUploader({
   onChange,
   onUploadingChange,
   uploadAsset = uploadShopAsset,
+  pages = [],
+  protectionOptions,
+  onPagesChange,
+  deleteAsset = deleteShopAsset,
 }: Props) {
   const [tasks, setTasks] = useState<ImageTask[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
+  const [reprotecting, setReprotecting] = useState<string[]>([]);
+  const [protectionError, setProtectionError] = useState<string | null>(null);
   const controllers = useRef(new Map<string, AbortController>());
   const savedImagesRef = useRef(value);
 
@@ -146,6 +164,46 @@ export function ProductImageUploader({
     nextTasks.forEach((task) => void uploadTask(task));
   }
 
+  /**
+   * Turns one page's blur or watermark on or off. The page is rebuilt from the
+   * clean render kept at reading time — never from the image on screen, which
+   * would stack a second watermark over the first — then uploaded in place of
+   * the old one, which is dropped so the bucket keeps one object per image.
+   */
+  async function toggleProtection(image: ProductImage, field: "blur" | "watermark") {
+    const page = pages.find((item) => item.imageId === image.id);
+    if (!page || !protectionOptions || reprotecting.includes(image.id)) return;
+    const protection = { ...page.protection, [field]: !page.protection[field] };
+
+    setReprotecting((current) => [...current, image.id]);
+    setProtectionError(null);
+    try {
+      const file = await renderPreviewFile(page.source, protection, protectionOptions);
+      const result = await uploadAsset({
+        userId,
+        file,
+        destination: "product-image",
+        signal: new AbortController().signal,
+        onProgress: () => undefined,
+      });
+      const nextImages = savedImagesRef.current.map((item) =>
+        item.id === image.id
+          ? { ...item, path: result.path, publicUrl: result.publicUrl! }
+          : item,
+      );
+      savedImagesRef.current = nextImages;
+      onChange(nextImages);
+      onPagesChange?.(
+        pages.map((item) => (item.imageId === image.id ? { ...item, protection } : item)),
+      );
+      void deleteAsset("product-image", image.path).catch(() => undefined);
+    } catch {
+      setProtectionError("ปรับรูปตัวอย่างไม่สำเร็จ กรุณาลองอีกครั้ง");
+    } finally {
+      setReprotecting((current) => current.filter((id) => id !== image.id));
+    }
+  }
+
   function removeSaved(image: ProductImage) {
     const nextImages = value.filter((item) => item.id !== image.id);
     savedImagesRef.current = nextImages;
@@ -224,6 +282,12 @@ export function ProductImageUploader({
                 ลบ
               </button>
             </div>
+            <PageProtectionControls
+              page={pages.find((item) => item.imageId === image.id) ?? null}
+              busy={reprotecting.includes(image.id)}
+              enabled={Boolean(protectionOptions)}
+              onToggle={(field) => void toggleProtection(image, field)}
+            />
           </div>
         ))}
 
@@ -329,11 +393,67 @@ export function ProductImageUploader({
         )}
       </div>
 
+      {protectionError && (
+        <p className="mt-2 text-xs text-red-600" role="alert">
+          {protectionError}
+        </p>
+      )}
+
       {errors.map((error) => (
         <p key={error} className="mt-2 text-xs text-red-600" role="alert">
           {error}
         </p>
       ))}
     </section>
+  );
+}
+
+/**
+ * Per-page protection, shown only on images the seller got from their PDF.
+ * The settings page sets what every new upload starts with; this is where a
+ * single page is changed — the cover left clean, one page blurred because it
+ * gives away the method, the rest merely marked.
+ */
+function PageProtectionControls({
+  page,
+  busy,
+  enabled,
+  onToggle,
+}: {
+  page: PdfPageSource | null;
+  busy: boolean;
+  enabled: boolean;
+  onToggle: (field: "blur" | "watermark") => void;
+}) {
+  if (!page || !enabled) return null;
+  const fields = [
+    { key: "blur", label: "เบลอ", on: page.protection.blur },
+    { key: "watermark", label: "ลายน้ำ", on: page.protection.watermark },
+  ] as const;
+
+  return (
+    <div className="mt-2 flex items-center gap-1">
+      <span className="text-[11px] text-muted">หน้า {page.pageNumber}</span>
+      {fields.map((field) => (
+        <button
+          key={field.key}
+          type="button"
+          aria-pressed={field.on}
+          aria-label={`${field.label}หน้า ${page.pageNumber}`}
+          disabled={busy}
+          onClick={() => onToggle(field.key)}
+          className={`small-button px-2 ${
+            field.on ? "border-accent font-semibold text-accent" : "text-muted"
+          }`}
+        >
+          {field.label}
+        </button>
+      ))}
+      {busy && (
+        <span className="text-[11px] text-muted" role="status">
+          กำลังปรับ...
+        </span>
+      )}
+    </div>
   );
 }

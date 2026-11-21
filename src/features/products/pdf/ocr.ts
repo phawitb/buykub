@@ -3,6 +3,8 @@
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import type { PSM } from "tesseract.js";
 
+import { recomposeThai } from "@/features/products/pdf/text";
+
 /**
  * Reads the characters off a PDF page image when the file has no text layer —
  * a scan, or a Thai export whose embedded fonts carry no ToUnicode map. The
@@ -43,16 +45,13 @@ export type OcrOptions = {
 };
 
 /**
- * Tesseract reports the Thai sara am as its two components, and drops stray
- * marks onto lines of their own. Both would reach the model as noise, so the
- * text is put back into the form a Thai reader expects.
+ * The recognizer spells the Thai sara am as its two components, and drops
+ * stray marks onto lines of their own. Both would reach the model as noise, so
+ * the text is put back into the form a Thai reader expects. The spelling rules
+ * live in ./text because Chromium's PDF exporter writes sara am the same way.
  */
 export function normalizeThaiText(raw: string): string {
-  const lines = raw
-    .normalize("NFC")
-    // NIKHAHIT + SARA AA is how the recognizer spells SARA AM.
-    .replace(/ํา/g, "ำ")
-    .replace(/ํ([่-์])า/g, "$1ำ")
+  const lines = recomposeThai(raw)
     .split("\n")
     .map((line) => line.replace(/[ \t ]+/g, " ").trim())
     .filter(isReadableLine);

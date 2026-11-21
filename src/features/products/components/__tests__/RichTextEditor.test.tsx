@@ -206,3 +206,14 @@ describe("RichTextEditor YouTube popover", () => {
     expect(onChange.mock.lastCall?.[0]).toBe(htmlBeforeOpen);
   });
 });
+
+describe("RichTextEditor character count", () => {
+  it("counts the text it was handed, before the seller types anything", async () => {
+    // The agent fills the description from the PDF, so the editor's first
+    // content arrives at mount. A count of zero under a full description
+    // reads as a field that failed to fill.
+    render(<RichTextEditor value="<p>คู่มือสูตรขนมปัง</p>" onChange={vi.fn()} />);
+    await screen.findByLabelText("รายละเอียดสินค้า");
+    expect(await screen.findByText("16 / 5,000 ตัวอักษร")).toBeInTheDocument();
+  });
+});

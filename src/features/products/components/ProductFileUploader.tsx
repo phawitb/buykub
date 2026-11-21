@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { formatBytes } from "@/features/products/format";
+import { readPdfPageCount } from "@/features/products/pdf/extract";
 import type { ProductUploadRecord } from "@/features/products/model";
 import {
   createUploadTask,
@@ -21,6 +22,7 @@ type Props = {
   onChange: (value: ProductUploadRecord | null) => void;
   onUploadingChange?: (uploading: boolean) => void;
   uploadAsset?: (request: UploadRequest) => Promise<UploadResult>;
+  readPageCount?: (file: File) => Promise<number | null>;
 };
 
 export function ProductFileUploader({
@@ -29,6 +31,7 @@ export function ProductFileUploader({
   onChange,
   onUploadingChange,
   uploadAsset = uploadShopAsset,
+  readPageCount = readPdfPageCount,
 }: Props) {
   const [task, setTask] = useState<ReturnType<typeof createUploadTask> | null>(
     null,
@@ -47,6 +50,21 @@ export function ProductFileUploader({
     [],
   );
 
+  /**
+   * The storefront says how long the delivered PDF is, so a buyer does not
+   * read the sample's own "3 / 5" as the length of the product. Counting the
+   * pages is the seller's browser opening the file it is already holding; it
+   * runs beside the upload, and a file it cannot read simply has no count.
+   */
+  async function pdfPageCount(file: File): Promise<number | null> {
+    if (file.type !== "application/pdf") return null;
+    try {
+      return (await readPageCount(file)) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   async function startUpload(file: File) {
     const error = validateProductFile(file);
     if (error) {
@@ -55,6 +73,7 @@ export function ProductFileUploader({
     }
 
     setValidationError(null);
+    const pageCount = pdfPageCount(file);
     const nextTask = createUploadTask(file);
     setTask(uploadTaskReducer(nextTask, { type: "START" }));
     controllerRef.current?.abort();
@@ -90,6 +109,7 @@ export function ProductFileUploader({
         fileName: file.name,
         size: file.size,
         mimeType: file.type || "application/octet-stream",
+        pageCount: await pageCount,
       });
     } catch (uploadError) {
       if (

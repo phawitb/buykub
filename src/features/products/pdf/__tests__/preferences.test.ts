@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_PDF_PREVIEW_PREFERENCES,
+  isProtected,
   MAX_PDF_PREVIEW_PAGES,
   normalizePdfPreviewPreferences,
+  PAGE_BLUR_FALLBACK_STRENGTH,
+  pageBlurStrength,
   pdfPreviewPlan,
   watermarkLabel,
 } from "@/features/products/pdf/preferences";
@@ -55,28 +58,38 @@ describe("normalizePdfPreviewPreferences", () => {
 });
 
 describe("pdfPreviewPlan", () => {
-  it("keeps the first page clean and protects the pages after it", () => {
+  it("marks the pages after the cover without blurring them by default", () => {
+    // The seller wants a buyer to be able to read the sample pages. Only the
+    // watermark stands between a sample and the product.
     expect(pdfPreviewPlan(DEFAULT_PDF_PREVIEW_PREFERENCES, 10)).toEqual([
-      { pageNumber: 1, protect: false },
-      { pageNumber: 2, protect: true },
-      { pageNumber: 3, protect: true },
+      { pageNumber: 1, protection: { blur: false, watermark: false } },
+      { pageNumber: 2, protection: { blur: false, watermark: true } },
+      { pageNumber: 3, protection: { blur: false, watermark: true } },
+      { pageNumber: 4, protection: { blur: false, watermark: true } },
+      { pageNumber: 5, protection: { blur: false, watermark: true } },
     ]);
+  });
+
+  it("blurs the later pages once the seller asks for it", () => {
+    const plan = pdfPreviewPlan({ ...DEFAULT_PDF_PREVIEW_PREFERENCES, blurStrength: 6 }, 10);
+    expect(plan[0].protection).toEqual({ blur: false, watermark: false });
+    expect(plan[1].protection).toEqual({ blur: true, watermark: true });
   });
 
   it("never plans more pages than the document has", () => {
     expect(pdfPreviewPlan(DEFAULT_PDF_PREVIEW_PREFERENCES, 2)).toEqual([
-      { pageNumber: 1, protect: false },
-      { pageNumber: 2, protect: true },
+      { pageNumber: 1, protection: { blur: false, watermark: false } },
+      { pageNumber: 2, protection: { blur: false, watermark: true } },
     ]);
     expect(pdfPreviewPlan(DEFAULT_PDF_PREVIEW_PREFERENCES, 0)).toEqual([]);
   });
 
   it("leaves every page unprotected when the seller turns the watermark off", () => {
     const plan = pdfPreviewPlan(
-      { ...DEFAULT_PDF_PREVIEW_PREFERENCES, watermarkEnabled: false },
+      { ...DEFAULT_PDF_PREVIEW_PREFERENCES, watermarkEnabled: false, blurStrength: 10 },
       5,
     );
-    expect(plan.every((slot) => !slot.protect)).toBe(true);
+    expect(plan.every((slot) => !isProtected(slot.protection))).toBe(true);
   });
 
   it("caps the plan at the product image slots", () => {
@@ -119,5 +132,18 @@ describe("watermarkTiles", () => {
     const rows = new Map<number, number[]>();
     for (const tile of tiles) rows.set(tile.y, [...(rows.get(tile.y) ?? []), tile.x]);
     expect(new Set([...rows.values()].map((row) => row[0] % 100)).size).toBe(2);
+  });
+});
+
+describe("pageBlurStrength", () => {
+  it("keeps the shop's own strength when the seller set one", () => {
+    expect(pageBlurStrength(14)).toBe(14);
+  });
+
+  it("blurs a single page visibly even when the shop slider sits at zero", () => {
+    expect(pageBlurStrength(DEFAULT_PDF_PREVIEW_PREFERENCES.blurStrength)).toBe(
+      PAGE_BLUR_FALLBACK_STRENGTH,
+    );
+    expect(PAGE_BLUR_FALLBACK_STRENGTH).toBeGreaterThan(0);
   });
 });

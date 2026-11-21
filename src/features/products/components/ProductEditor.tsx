@@ -18,11 +18,14 @@ import { ProductKeyInventory } from "@/features/products/components/ProductKeyIn
 import {
   ProductPdfIntake,
   type PdfIntakeResult,
+  type PdfIntakeSummary,
 } from "@/features/products/components/ProductPdfIntake";
 import {
   DEFAULT_PDF_PREVIEW_PREFERENCES,
   type PdfPreviewPreferences,
 } from "@/features/products/pdf/preferences";
+import type { PdfPageSource } from "@/features/products/pdf/extract";
+import type { ProtectedPreviewOptions } from "@/features/products/pdf/watermark";
 import { RichTextEditor } from "@/features/products/components/RichTextEditor";
 import {
   FAQFields,
@@ -41,9 +44,14 @@ import { productCategory } from "@/features/products/category";
 import { isBlankProductValue, validateProductEditor } from "@/features/products/validation";
 import { parseProductKeys } from "@/features/products/product-keys";
 import { createClient } from "@/lib/supabase/client";
+import { writeWithoutMissingColumn } from "@/lib/supabase/missing-column";
 import { deleteShopAsset } from "@/lib/supabase/upload";
 import type { UploadDestination } from "@/lib/supabase/upload";
+import { formatUsd } from "@/lib/agent/pricing";
 import { ArrowRightIcon } from "@/components/icons";
+
+/** One object, so showing nothing never re-renders the fields. */
+const NO_FIELD_ERRORS: ProductFieldErrors = {};
 
 const PRODUCT_TYPES = [
   { value: "course", title: "Course", description: "คอร์สเรียน พร้อมบทเรียน วิดีโอ และเอกสาร" },
@@ -105,7 +113,12 @@ function ProductEditorSession({
   const [restoredDraft] = useState(() => draftStore?.read(draftKey));
   const draftActive = useRef(true);
   const [value, setValue] = useState(restoredDraft?.value ?? initialValue);
-  const [errors, setErrors] = useState<ProductFieldErrors>({});
+  // Field errors stay quiet until the seller presses the button; from then on
+  // they follow the fields live, so a message never outlives its mistake.
+  const [showErrors, setShowErrors] = useState(false);
+  // Bumped on every refused submit, to carry the seller to the field at fault.
+  const [refusedAt, setRefusedAt] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
   const [fileUploading, setFileUploading] = useState(false);
   const [imagesUploading, setImagesUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -118,15 +131,34 @@ function ProductEditorSession({
   const [intakeOpen, setIntakeOpen] = useState(
     mode === "create" && !restoredDraft && isBlankProductValue(initialValue),
   );
+  // What the agent flagged about the draft it just wrote into these fields.
+  const [intakeSummary, setIntakeSummary] = useState<PdfIntakeSummary | null>(null);
+  // An empty price is the one blank that costs money if it ships unnoticed, so
+  // once the agent has filled the form the field is marked red until a price is
+  // there — whether the model found none or the seller cleared it again.
+  const [agentFilledForm, setAgentFilledForm] = useState(false);
+  const [agentFoundPrice, setAgentFoundPrice] = useState(false);
+  // The clean page renders behind the preview images, kept for as long as the
+  // seller is in the form so any one page can be blurred or marked afterwards.
+  // They are held in memory only: a reopened draft has the images, not these.
+  const [pageSources, setPageSources] = useState<PdfPageSource[]>([]);
+  const [protectionOptions, setProtectionOptions] = useState<ProtectedPreviewOptions | null>(null);
   const persistedValue = useRef(restoredDraft?.baseline ?? initialValue);
   const draftStorageKey = `framelink-product-draft-assets:${userId}`;
 
   const currentErrors = useMemo(() => validateProductEditor(value), [value]);
-  const canSave =
-    Object.keys(currentErrors).length === 0 &&
-    !fileUploading &&
-    !imagesUploading &&
-    !saving;
+  const errors = showErrors ? currentErrors : NO_FIELD_ERRORS;
+  // The button stays pressable while the form is still wrong, because pressing
+  // it is how the seller finds out what is wrong. It locks only while an upload
+  // or the save itself is in flight, where a second press would do damage.
+  const busy = fileUploading || imagesUploading || saving;
+
+  useEffect(() => {
+    if (!refusedAt) return;
+    const field = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+    field?.focus({ preventScroll: true });
+    field?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  }, [refusedAt]);
 
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
@@ -197,19 +229,35 @@ function ProductEditorSession({
     setDirty(true);
   }
 
-  /** Writes only the fields the seller ticked on the PDF review step. */
-  function applyIntake({ draft, applied, productFile, images }: PdfIntakeResult) {
+  /**
+   * Writes every field the agent drafted straight into the form. Nothing is
+   * held back behind a second confirmation: each field is editable where it
+   * lands, so the seller reviews it by reading the form they are already in.
+   */
+  function applyIntake({
+    draft,
+    summary,
+    productFile,
+    images,
+    pages,
+    protectionOptions: options,
+  }: PdfIntakeResult) {
     const patch: Partial<ProductEditorValue> = { deliveryType: "file", productFile };
-    if (applied.name && draft.name) patch.name = draft.name;
-    if (applied.price && draft.price) {
+    if (draft.name) patch.name = draft.name;
+    if (draft.price) {
       patch.price = draft.price;
       patch.comparePrice = draft.comparePrice;
     }
-    if (applied.description && draft.descriptionHtml) patch.descriptionHtml = draft.descriptionHtml;
-    if (applied.highlights && draft.highlights.length) patch.highlights = draft.highlights;
-    if (applied.faq && draft.faq.length) patch.faq = draft.faq;
-    if (applied.images && images.length) patch.images = images;
+    if (draft.descriptionHtml) patch.descriptionHtml = draft.descriptionHtml;
+    if (draft.highlights.length) patch.highlights = draft.highlights;
+    if (draft.faq.length) patch.faq = draft.faq;
+    if (images.length) patch.images = images;
     update(patch);
+    setPageSources(pages);
+    setProtectionOptions(options);
+    setAgentFilledForm(true);
+    setAgentFoundPrice(Boolean(draft.price));
+    setIntakeSummary(summary);
     setIntakeOpen(false);
   }
 
@@ -284,11 +332,16 @@ function ProductEditorSession({
     return () => { workspaceDialog.current = null; };
   });
 
+  const priceMissing = agentFilledForm && !value.price.trim();
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     const nextErrors = validateProductEditor(value);
-    setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
+    setShowErrors(true);
+    if (Object.keys(nextErrors).length > 0) {
+      setRefusedAt((attempt) => attempt + 1);
+      return;
+    }
 
     setSaving(true);
     setSaveError(null);
@@ -325,6 +378,8 @@ function ProductEditorSession({
       file_size: value.deliveryType === "file" ? value.productFile?.size : null,
       file_mime_type:
         value.deliveryType === "file" ? value.productFile?.mimeType : null,
+      file_page_count:
+        value.deliveryType === "file" ? value.productFile?.pageCount ?? null : null,
       published: mode === "create" && value.deliveryType === "course" ? false : value.published,
       updated_at: new Date().toISOString(),
     };
@@ -337,22 +392,33 @@ function ProductEditorSession({
       );
       try {
         if (saveProduct) {
-          await saveProduct({
-            ...payload,
-            slug,
-            product_keys:
-              value.deliveryType === "key"
-                ? parseProductKeys(value.keyInput).keys
-                : [],
-          });
+          await writeWithoutMissingColumn(
+            {
+              ...payload,
+              slug,
+              product_keys:
+                value.deliveryType === "key"
+                  ? parseProductKeys(value.keyInput).keys
+                  : [],
+            },
+            "file_page_count",
+            (row) => saveProduct(row),
+          );
         } else {
           const supabase = createClient();
-          const { data: createdProduct, error } = await supabase
-            .from("products")
-            .insert({ ...payload, slug })
-            .select("id")
-            .single();
-          if (error) throw error;
+          const createdProduct = await writeWithoutMissingColumn(
+            { ...payload, slug },
+            "file_page_count",
+            async (row) => {
+              const { data, error } = await supabase
+                .from("products")
+                .insert(row)
+                .select("id")
+                .single();
+              if (error) throw error;
+              return data;
+            },
+          );
           createdId = createdProduct.id;
           if (value.deliveryType === "key") {
             const { error: keyError } = await supabase.rpc(
@@ -393,21 +459,27 @@ function ProductEditorSession({
           value.deliveryType === "key"
             ? parseProductKeys(value.keyInput).keys.length
             : 0;
-        await saveProduct({
-          ...payload,
-          product_keys:
-            value.deliveryType === "key"
-              ? parseProductKeys(value.keyInput).keys
-              : [],
-        });
+        await writeWithoutMissingColumn(
+          {
+            ...payload,
+            product_keys:
+              value.deliveryType === "key"
+                ? parseProductKeys(value.keyInput).keys
+                : [],
+          },
+          "file_page_count",
+          (row) => saveProduct(row),
+        );
       } else {
         const supabase = createClient();
-        const { error } = await supabase
-          .from("products")
-          .update(payload)
-          .eq("id", productId!)
-          .eq("shop_id", shopId);
-        if (error) throw error;
+        await writeWithoutMissingColumn(payload, "file_page_count", async (row) => {
+          const { error } = await supabase
+            .from("products")
+            .update(row)
+            .eq("id", productId!)
+            .eq("shop_id", shopId);
+          if (error) throw error;
+        });
         refreshed = await invalidatePublicCatalog();
         if (value.deliveryType === "key") {
           const { data: keyResult, error: keyError } = await supabase.rpc(
@@ -493,8 +565,15 @@ function ProductEditorSession({
   }
 
   return (
-    <form onSubmit={submit} className="product-editor">
+    <form ref={formRef} onSubmit={submit} className="product-editor">
       {heading}
+
+      {intakeSummary && (
+        <IntakeSummaryCard
+          summary={intakeSummary}
+          onDismiss={() => setIntakeSummary(null)}
+        />
+      )}
 
       <section className="product-section">
         <h2 className="product-section-title" id="product-type-title">ประเภทสินค้า</h2>
@@ -567,10 +646,17 @@ function ProductEditorSession({
                   onChange={(event) => update({ price: event.target.value })}
                   placeholder="199"
                   className="field-input pl-9"
-                  aria-invalid={Boolean(errors.price)}
+                  aria-invalid={Boolean(errors.price) || priceMissing}
                 />
               </span>
               {errors.price && <span className="field-error">{errors.price}</span>}
+              {!errors.price && priceMissing && (
+                <span className="field-error">
+                  {agentFoundPrice
+                    ? "ยังไม่ได้กรอกราคา กรอกก่อนบันทึก"
+                    : "AI หาราคาในไฟล์ไม่เจอ กรุณากรอกราคาเอง"}
+                </span>
+              )}
             </label>
             <label className="field-label">
               ราคาเดิม (ถ้ามี)
@@ -648,6 +734,10 @@ function ProductEditorSession({
         value={value.images}
         onChange={(images) => update({ images })}
         onUploadingChange={setImagesUploading}
+        pages={pageSources}
+        protectionOptions={protectionOptions ?? undefined}
+        onPagesChange={setPageSources}
+        deleteAsset={deleteAsset}
       />
 
       <HighlightFields
@@ -678,7 +768,7 @@ function ProductEditorSession({
         >
           ยกเลิก
         </button>
-        <button type="submit" disabled={!canSave} className="primary-button">
+        <button type="submit" disabled={busy} className="primary-button">
           {saving
             ? "กำลังบันทึก..."
             : mode === "create"
@@ -687,5 +777,58 @@ function ProductEditorSession({
         </button>
       </div>
     </form>
+  );
+}
+
+/**
+ * The draft is already in the fields, so this says only what reading the form
+ * cannot: what the agent could not work out, what the reading cost, and whether
+ * the words were recognized from images and so may be misspelled.
+ */
+function IntakeSummaryCard({
+  summary,
+  onDismiss,
+}: {
+  summary: PdfIntakeSummary;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border px-4 py-3 ${
+        summary.scanned ? "border-amber-200 bg-amber-50" : "border-line bg-paper-dim"
+      }`}
+      role="status"
+    >
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className={`text-sm font-semibold ${summary.scanned ? "text-amber-900" : "text-ink"}`}>
+            AI กรอกข้อมูลจาก {summary.fileName} ให้แล้ว
+          </p>
+          <p
+            className={`mt-1 text-xs leading-5 ${summary.scanned ? "text-amber-800" : "text-muted"}`}
+          >
+            ตรวจและแก้ได้ทุกช่องก่อนบันทึก อ่าน {summary.textPagesRead} หน้าแรกของไฟล์
+            {summary.costMicros !== null && ` · ค่าใช้จ่ายครั้งนี้ ${formatUsd(summary.costMicros)}`}
+          </p>
+          {summary.scanned && (
+            <p className="mt-2 text-xs leading-5 text-amber-800">
+              ไฟล์นี้ไม่มีชั้นข้อความ (น่าจะเป็นไฟล์สแกน) ระบบอ่านตัวอักษรจากรูป
+              การอ่านแบบนี้สะกดคำพลาดได้
+              <strong className="font-semibold"> กรุณาตรวจราคาและชื่อสินค้าให้ละเอียด</strong>
+            </p>
+          )}
+          {summary.notes && (
+            <p
+              className={`mt-2 text-xs leading-5 ${summary.scanned ? "text-amber-800" : "text-ink-soft"}`}
+            >
+              {summary.notes}
+            </p>
+          )}
+        </div>
+        <button type="button" onClick={onDismiss} className="small-button shrink-0">
+          ปิด
+        </button>
+      </div>
+    </div>
   );
 }

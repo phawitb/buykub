@@ -117,8 +117,9 @@ export function PdfPreviewSettings({ userId, shopName, initial, savePreferences 
       <div>
         <h2 className="text-sm font-semibold text-ink">รูปตัวอย่างจากไฟล์ PDF</h2>
         <p className="mt-2 text-sm leading-6 text-muted">
-          เมื่อสร้างสินค้าจากไฟล์ PDF ระบบใช้หน้าแรกเป็นรูปหลักของสินค้า และหน้าถัด ๆ ไปเป็นรูป
-          ตัวอย่างที่ติดลายน้ำและเบลอไว้ เพื่อให้ลูกค้าเห็นเนื้อหาจริงแต่ใช้แทนตัวสินค้าไม่ได้
+          เมื่อสร้างสินค้าจากไฟล์ PDF ระบบใช้หน้าแรกเป็นรูปหลักของสินค้าแบบคมชัด และหน้าถัด ๆ ไป
+          เป็นรูปตัวอย่างที่ติดลายน้ำไว้ เพื่อให้ลูกค้าอ่านเนื้อหาจริงได้แต่ใช้แทนตัวสินค้าไม่ได้
+          ค่านี้เป็นค่าเริ่มต้น หลังสร้างสินค้าแล้วคุณเปิด-ปิดเบลอและลายน้ำรายหน้าได้ในฟอร์มสินค้า
         </p>
       </div>
 
@@ -153,7 +154,7 @@ export function PdfPreviewSettings({ userId, shopName, initial, savePreferences 
               className="mt-0.5 size-4 shrink-0"
             />
             <span>
-              <span className="block text-sm font-medium text-ink">ติดลายน้ำและเบลอหน้าตัวอย่าง</span>
+              <span className="block text-sm font-medium text-ink">ติดลายน้ำบนหน้าตัวอย่าง</span>
               <span className="mt-1 block text-xs leading-5 text-muted">
                 ปิดได้ถ้าต้องการโชว์ทุกหน้าแบบคมชัด แต่ลูกค้าจะอ่านเนื้อหาจากรูปได้เลย
               </span>
@@ -179,7 +180,7 @@ export function PdfPreviewSettings({ userId, shopName, initial, savePreferences 
             </label>
 
             <label className="field-label">
-              ความเบลอ · {value.blurStrength}px
+              ความเบลอ · {value.blurStrength === 0 ? "ไม่เบลอ" : `${value.blurStrength}px`}
               <input
                 type="range"
                 className="mt-3 block w-full accent-[var(--accent)]"
@@ -189,6 +190,9 @@ export function PdfPreviewSettings({ userId, shopName, initial, savePreferences 
                 value={value.blurStrength}
                 onChange={(event) => update({ blurStrength: Number(event.target.value) })}
               />
+              <span className="mt-1.5 block text-xs text-muted">
+                แนะนำให้ไว้ที่ 0 เพื่อให้ลูกค้าอ่านตัวอย่างได้ แล้วค่อยเบลอเฉพาะหน้าที่ไม่อยากให้เห็น
+              </span>
             </label>
 
             <label className="field-label">

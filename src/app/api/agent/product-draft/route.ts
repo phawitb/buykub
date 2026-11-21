@@ -18,7 +18,13 @@ export const maxDuration = 90;
 const RESPONSE_HEADERS = { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie" };
 /** Ten pages of Thai text, plus JSON overhead. */
 const MAX_REQUEST_BYTES = 200_000;
-const MAX_COMPLETION_TOKENS = 2000;
+/**
+ * Shared by the model's reasoning and its answer. A real ten-page Thai study
+ * guide spent all 2000 of the previous ceiling on reasoning and returned an
+ * empty reply; the same request finished in 1798 with room to spare. The draft
+ * itself is around 800 tokens, so this leaves the thinking three times that.
+ */
+const MAX_COMPLETION_TOKENS = 4000;
 
 class RequestError extends Error {
   constructor(

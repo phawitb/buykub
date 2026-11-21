@@ -1,13 +1,23 @@
 "use client";
 
+import { canvasToFile } from "@/features/products/pdf/encode";
+import { fitPageToSquare } from "@/features/products/pdf/frame";
 import { needsOcr, ocrDocumentPages, ocrPagePlan } from "@/features/products/pdf/ocr";
 import {
+  isProtected,
   MAX_PDF_PAGE_CHARS,
   MAX_PDF_TEXT_PAGES,
+  pageBlurStrength,
   pdfPreviewPlan,
   type PdfPreviewPreferences,
+  type PdfPreviewProtection,
 } from "@/features/products/pdf/preferences";
-import { drawProtectedPreview } from "@/features/products/pdf/watermark";
+import { withReadableShadings } from "@/features/products/pdf/shading";
+import { joinTextItems } from "@/features/products/pdf/text";
+import {
+  drawProtectedPreview,
+  type ProtectedPreviewOptions,
+} from "@/features/products/pdf/watermark";
 
 export type PdfPageText = {
   pageNumber: number;
@@ -19,9 +29,29 @@ export type PdfTextSource = "layer" | "ocr" | "none";
 
 export type PdfPreviewImage = {
   pageNumber: number;
-  protected: boolean;
+  protection: PdfPreviewProtection;
+  /** What is uploaded: the page with whatever protection is currently on. */
   file: File;
   previewUrl: string;
+  /**
+   * The page exactly as the PDF draws it. Kept so the seller can turn the blur
+   * or the watermark on and off per page afterwards without re-reading the
+   * file, which on a scanned document costs a minute of OCR.
+   */
+  source: File;
+};
+
+/**
+ * One preview page as the form keeps it: the uploaded image it became, and the
+ * clean render it can be rebuilt from when the seller changes that page's
+ * protection.
+ */
+export type PdfPageSource = {
+  /** The id of the ProductImage this page was uploaded as. */
+  imageId: string;
+  pageNumber: number;
+  protection: PdfPreviewProtection;
+  source: File;
 };
 
 export type PdfExtraction = {
@@ -33,6 +63,8 @@ export type PdfExtraction = {
   textSource: PdfTextSource;
   /** How many pages the text actually came from; OCR reads fewer than the layer. */
   textPagesRead: number;
+  /** The settings a later per-page change re-renders with. */
+  protectionOptions: ProtectedPreviewOptions;
 };
 
 export type PdfExtractProgress = {
@@ -48,8 +80,11 @@ export type PdfExtractOptions = {
   onProgress?: (progress: PdfExtractProgress) => void;
 };
 
-/** Wide enough for a storefront gallery without producing multi-megabyte files. */
-const PREVIEW_TARGET_WIDTH = 1200;
+/**
+ * The side of the square each page is drawn into: large enough for a
+ * storefront gallery without producing multi-megabyte files.
+ */
+const PREVIEW_TARGET_SIZE = 1200;
 
 type PdfModule = typeof import("pdfjs-dist");
 
@@ -67,41 +102,86 @@ async function loadPdfModule(): Promise<PdfModule> {
       );
     }
     return pdfjs;
-  })();
+  })().catch((error) => {
+    // A failed load must not be remembered: the next upload would inherit the
+    // rejection and no page would ever render again in this tab.
+    pdfModulePromise = null;
+    throw error;
+  });
   return pdfModulePromise;
+}
+
+/**
+ * How many pages a PDF has, and nothing else. The storefront needs the number
+ * for every file a seller attaches, including the ones that never went through
+ * the drafting intake, and reading the page tree costs far less than rendering
+ * anything. A file that cannot be opened returns null rather than failing the
+ * upload: the count is a nicety, the file is the product.
+ */
+export async function readPdfPageCount(file: File): Promise<number | null> {
+  try {
+    const pdfjs = await loadPdfModule();
+    const data = new Uint8Array(await file.arrayBuffer());
+    const loadTask = pdfjs.getDocument({ data, isEvalSupported: false });
+    try {
+      const document = await loadTask.promise;
+      const pageCount = document.numPages;
+      await document.cleanup().catch(() => undefined);
+      return pageCount > 0 ? pageCount : null;
+    } finally {
+      await loadTask.destroy().catch(() => undefined);
+    }
+  } catch {
+    return null;
+  }
 }
 
 function throwIfAborted(signal: AbortSignal | undefined) {
   if (signal?.aborted) throw new DOMException("ยกเลิกการอ่าน PDF แล้ว", "AbortError");
 }
 
-function pageText(items: readonly unknown[]): string {
-  let text = "";
-  for (const item of items) {
-    if (!item || typeof item !== "object" || !("str" in item)) continue;
-    const entry = item as { str?: unknown; hasEOL?: unknown };
-    if (typeof entry.str !== "string") continue;
-    text += entry.str;
-    if (entry.hasEOL === true) text += "\n";
-    else if (!entry.str.endsWith(" ")) text += " ";
-  }
-  return text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+/**
+ * Draws one page's protection onto a canvas holding the clean page. Blur and
+ * watermark are independent, so each is switched off by the value that already
+ * makes `drawProtectedPreview` skip it.
+ */
+function applyProtection(
+  canvas: HTMLCanvasElement,
+  protection: PdfPreviewProtection,
+  options: ProtectedPreviewOptions,
+): HTMLCanvasElement {
+  if (!isProtected(protection)) return canvas;
+  return drawProtectedPreview(canvas, {
+    blurStrength: protection.blur ? pageBlurStrength(options.blurStrength) : 0,
+    watermarkOpacity: options.watermarkOpacity,
+    watermarkText: protection.watermark ? options.watermarkText : "",
+  });
 }
 
-async function canvasToFile(
-  canvas: HTMLCanvasElement,
-  fileName: string,
+/**
+ * Re-renders one preview page from the clean copy kept at extraction time, so
+ * flipping blur or the watermark on a single page never stacks a second
+ * watermark over the first.
+ */
+export async function renderPreviewFile(
+  source: File,
+  protection: PdfPreviewProtection,
+  options: ProtectedPreviewOptions,
 ): Promise<File> {
-  for (const type of ["image/webp", "image/jpeg"] as const) {
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, type, 0.82),
-    );
-    if (blob && blob.type === type) {
-      const extension = type === "image/webp" ? "webp" : "jpg";
-      return new File([blob], `${fileName}.${extension}`, { type });
-    }
+  if (!isProtected(protection)) return source;
+  const bitmap = await createImageBitmap(source);
+  try {
+    const canvas = window.document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("เบราว์เซอร์นี้ไม่รองรับการแก้ไขรูปตัวอย่าง");
+    context.drawImage(bitmap, 0, 0);
+    const baseName = source.name.replace(/\.[^.]+$/, "") || "page";
+    return canvasToFile(applyProtection(canvas, protection, options), baseName);
+  } finally {
+    bitmap.close();
   }
-  throw new Error("สร้างรูปตัวอย่างจาก PDF ไม่สำเร็จ");
 }
 
 /**
@@ -127,6 +207,11 @@ export async function extractPdf(
     const pageCount = document.numPages;
     const textPageCount = Math.min(pageCount, MAX_PDF_TEXT_PAGES);
     const plan = pdfPreviewPlan(options.preferences, pageCount);
+    const protectionOptions: ProtectedPreviewOptions = {
+      blurStrength: options.preferences.blurStrength,
+      watermarkOpacity: options.preferences.watermarkOpacity,
+      watermarkText: options.watermarkText,
+    };
     let pages: PdfPageText[] = [];
 
     for (let pageNumber = 1; pageNumber <= textPageCount; pageNumber += 1) {
@@ -135,7 +220,7 @@ export async function extractPdf(
       const page = await document.getPage(pageNumber);
       try {
         const content = await page.getTextContent();
-        const text = pageText(content.items).slice(0, MAX_PDF_PAGE_CHARS);
+        const text = joinTextItems(content.items).slice(0, MAX_PDF_PAGE_CHARS);
         if (text) pages.push({ pageNumber, text });
       } finally {
         page.cleanup();
@@ -172,42 +257,49 @@ export async function extractPdf(
       }
     }
 
-    for (const [index, slot] of plan.entries()) {
-      throwIfAborted(options.signal);
-      options.onProgress?.({ phase: "rendering", completed: index, total: plan.length });
-      const page = await document.getPage(slot.pageNumber);
-      try {
-        const base = page.getViewport({ scale: 1 });
-        const scale = Math.min(2, Math.max(0.5, PREVIEW_TARGET_WIDTH / base.width));
-        const viewport = page.getViewport({ scale });
-        const canvas = window.document.createElement("canvas");
-        canvas.width = Math.round(viewport.width);
-        canvas.height = Math.round(viewport.height);
-        const context = canvas.getContext("2d");
-        if (!context) throw new Error("เบราว์เซอร์นี้ไม่รองรับการสร้างรูปจาก PDF");
-        context.fillStyle = "#ffffff";
-        context.fillRect(0, 0, canvas.width, canvas.height);
-        await page.render({ canvas, viewport }).promise;
+    await withReadableShadings(async () => {
+      for (const [index, slot] of plan.entries()) {
+        throwIfAborted(options.signal);
+        options.onProgress?.({ phase: "rendering", completed: index, total: plan.length });
+        const page = await document.getPage(slot.pageNumber);
+        try {
+          const base = page.getViewport({ scale: 1 });
+          // Fitted by the longer edge, so a page keeps its proportions and the
+          // square it is centred in stays the same size whichever way it turns.
+          const scale = Math.min(
+            2,
+            Math.max(0.5, PREVIEW_TARGET_SIZE / Math.max(base.width, base.height)),
+          );
+          const viewport = page.getViewport({ scale });
+          const rendered = window.document.createElement("canvas");
+          rendered.width = Math.round(viewport.width);
+          rendered.height = Math.round(viewport.height);
+          const context = rendered.getContext("2d");
+          if (!context) throw new Error("เบราว์เซอร์นี้ไม่รองรับการสร้างรูปจาก PDF");
+          context.fillStyle = "#ffffff";
+          context.fillRect(0, 0, rendered.width, rendered.height);
+          await page.render({ canvas: rendered, viewport }).promise;
 
-        const output = slot.protect
-          ? drawProtectedPreview(canvas, {
-              blurStrength: options.preferences.blurStrength,
-              watermarkOpacity: options.preferences.watermarkOpacity,
-              watermarkText: options.watermarkText,
-            })
-          : canvas;
-
-        const image = await canvasToFile(output, `page-${slot.pageNumber}`);
-        previews.push({
-          pageNumber: slot.pageNumber,
-          protected: slot.protect,
-          file: image,
-          previewUrl: URL.createObjectURL(image),
-        });
-      } finally {
-        page.cleanup();
+          const canvas = fitPageToSquare(rendered);
+          const source = await canvasToFile(canvas, `page-${slot.pageNumber}`);
+          const image = isProtected(slot.protection)
+            ? await canvasToFile(
+                applyProtection(canvas, slot.protection, protectionOptions),
+                `page-${slot.pageNumber}`,
+              )
+            : source;
+          previews.push({
+            pageNumber: slot.pageNumber,
+            protection: slot.protection,
+            file: image,
+            previewUrl: URL.createObjectURL(image),
+            source,
+          });
+        } finally {
+          page.cleanup();
+        }
       }
-    }
+    });
 
     options.onProgress?.({ phase: "rendering", completed: plan.length, total: plan.length });
     return {
@@ -217,6 +309,7 @@ export async function extractPdf(
       truncated: pageCount > textPagesRead,
       textSource,
       textPagesRead,
+      protectionOptions,
     };
   } catch (error) {
     previews.forEach((preview) => URL.revokeObjectURL(preview.previewUrl));
