@@ -8,6 +8,8 @@ export type Purchase = {
   status: "paid" | "pending" | "refunded" | "expired" | "unavailable";
   expiresAt: string | null;
   href: string | null;
+  /** A course's companion PDF, while the course itself can be opened. */
+  pdfHref?: string | null;
   /** Exam-prep courses only: distinct questions attempted out of the whole bank. */
   progress?: PurchaseProgress | null;
 };
@@ -24,5 +26,7 @@ export type ShopTryout = {
   coverUrl: string | null;
   /** null when there is nothing to open yet, such as a file product without its file. */
   href: string | null;
+  /** A course's companion PDF. */
+  pdfHref?: string | null;
   progress?: PurchaseProgress | null;
 };

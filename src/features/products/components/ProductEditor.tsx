@@ -350,6 +350,12 @@ function ProductEditorSession({
       ADD_TAGS: ["iframe"],
       ADD_ATTR: ["allow", "allowfullscreen", "frameborder", "src"],
     });
+    // A file product delivers its file; a course may carry a companion PDF,
+    // and a file left over from switching a file product to a course is dropped.
+    const deliveredFile =
+      value.deliveryType === "file" ? value.productFile
+      : value.deliveryType === "course" && value.productFile?.mimeType === "application/pdf" ? value.productFile
+      : null;
     const payload = {
       shop_id: shopId,
       name: value.name.trim(),
@@ -372,14 +378,11 @@ function ProductEditorSession({
       images_v2: value.images,
       delivery_type: value.deliveryType,
       course_access_days: value.deliveryType === "course" && value.courseAccessDays ? Number(value.courseAccessDays) : null,
-      file_path: value.deliveryType === "file" ? value.productFile?.path : null,
-      file_name:
-        value.deliveryType === "file" ? value.productFile?.fileName : null,
-      file_size: value.deliveryType === "file" ? value.productFile?.size : null,
-      file_mime_type:
-        value.deliveryType === "file" ? value.productFile?.mimeType : null,
-      file_page_count:
-        value.deliveryType === "file" ? value.productFile?.pageCount ?? null : null,
+      file_path: deliveredFile?.path ?? null,
+      file_name: deliveredFile?.fileName ?? null,
+      file_size: deliveredFile?.size ?? null,
+      file_mime_type: deliveredFile?.mimeType ?? null,
+      file_page_count: deliveredFile?.pageCount ?? null,
       published: mode === "create" && value.deliveryType === "course" ? false : value.published,
       updated_at: new Date().toISOString(),
     };
@@ -715,6 +718,7 @@ function ProductEditorSession({
           onStatusChange={mode === "edit" ? changeKeyStatus : undefined}
         />
       ) : (
+        <>
         <section className="product-section">
           <h2 className="product-section-title">สิทธิ์เข้าเรียน</h2>
           <p className="product-help">ชำระครั้งเดียว เริ่มนับจากเวลาชำระสำเร็จ การแก้ไขระยะเวลามีผลเฉพาะออเดอร์ใหม่</p>
@@ -727,6 +731,14 @@ function ProductEditorSession({
           {errors.courseAccessDays && <p role="alert" className="field-error">{errors.courseAccessDays}</p>}
           {mode === "create" ? <p className="mt-4 text-sm text-muted">คอร์สจะถูกสร้างเป็นแบบร่าง จากนั้นเพิ่มบทเรียนและเผยแพร่เมื่อพร้อม</p> : <Link className="secondary-button group mt-5 inline-flex items-center gap-1.5" href={`/dashboard/products/${productId}/lessons`}>จัดการบทเรียน<ArrowRightIcon className="size-4 transition-transform duration-[200ms] ease-out group-hover:translate-x-0.5" /></Link>}
         </section>
+        <ProductFileUploader
+          coursePdf
+          userId={userId}
+          value={value.productFile?.mimeType === "application/pdf" ? value.productFile : null}
+          onChange={(productFile) => update({ productFile })}
+          onUploadingChange={setFileUploading}
+        />
+        </>
       )}
 
       <ProductImageUploader

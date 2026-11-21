@@ -1,0 +1,15 @@
+import { beforeEach, expect, it, vi } from "vitest";
+const {getUser,rpc,maybeSingle,createSignedUrl}=vi.hoisted(()=>({getUser:vi.fn(),rpc:vi.fn(),maybeSingle:vi.fn(),createSignedUrl:vi.fn()}));
+vi.mock("@/lib/supabase/server",()=>({createClient:async()=>({auth:{getUser},rpc,storage:{from:()=>{throw new Error("buyers never sign storage paths themselves");}}})}));
+vi.mock("@/lib/supabase/admin",()=>({createAdminClient:()=>({from:()=>({select:()=>({eq:()=>({maybeSingle})})}),storage:{from:()=>({createSignedUrl})}})}));
+import { GET } from "./route";
+const productId="12345678-1234-4123-8123-123456789abc";
+const request=(id=productId)=>GET(new Request("https://buykub.com/api/courses/test/pdf"),{params:Promise.resolve({productId:id})});
+const product=(extra={})=>({data:{delivery_type:"course",file_path:"seller/course.pdf",file_name:"Course.pdf",shops:{owner_id:"seller"},...extra},error:null});
+beforeEach(()=>{vi.clearAllMocks();getUser.mockResolvedValue({data:{user:{id:"buyer",app_metadata:{provider:"google"}}}});rpc.mockResolvedValue({data:{allowed:true,reason:"active"},error:null});maybeSingle.mockResolvedValue(product());createSignedUrl.mockResolvedValue({data:{signedUrl:"https://storage.example/course?token=private"},error:null});});
+it("requires Google login before checking anything",async()=>{getUser.mockResolvedValue({data:{user:null}});expect((await request()).status).toBe(401);expect(rpc).not.toHaveBeenCalled();});
+it("rejects ids that are not product ids",async()=>{expect((await request("x")).status).toBe(404);expect(rpc).not.toHaveBeenCalled();});
+it.each(["expired","refunded","not_purchased"])("refuses a %s course without reading the file",async(reason)=>{rpc.mockResolvedValue({data:{allowed:false,reason},error:null});expect((await request()).status).toBe(403);expect(maybeSingle).not.toHaveBeenCalled();expect(createSignedUrl).not.toHaveBeenCalled();});
+it("gives an entitled buyer or the owner the PDF for five minutes, uncached",async()=>{const response=await request();expect(rpc).toHaveBeenCalledWith("course_access",{p_product_id:productId});expect(response.status).toBe(303);expect(response.headers.get("location")).toBe("https://storage.example/course?token=private");expect(response.headers.get("cache-control")).toBe("private, no-store");expect(createSignedUrl).toHaveBeenCalledWith("seller/course.pdf",300,{download:"Course.pdf"});});
+it.each(["other/course.pdf","seller/../other.pdf","seller//course.pdf","seller/course.pdf?x","seller/%2e%2e/x"])("never signs %s",async(file_path)=>{maybeSingle.mockResolvedValue(product({file_path}));expect((await request()).status).toBe(404);expect(createSignedUrl).not.toHaveBeenCalled();});
+it("has no PDF for a course without one or a product that is not a course",async()=>{maybeSingle.mockResolvedValue(product({file_path:null}));expect((await request()).status).toBe(404);maybeSingle.mockResolvedValue(product({delivery_type:"file"}));expect((await request()).status).toBe(404);expect(createSignedUrl).not.toHaveBeenCalled();});
