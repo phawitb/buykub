@@ -87,7 +87,7 @@ export default async function BookingsPage() {
                 </p>
                 <Link
                   href="/dashboard/bookings/new"
-                  className="primary-button mt-6 inline-block"
+                  className="primary-button mt-6"
                 >
                   สร้างบริการจองแรก
                 </Link>
