@@ -4,7 +4,7 @@ import { getSellerContext } from "@/lib/supabase/seller-context";
 import { isReceiptId } from "@/lib/payments/receipt";
 import type { CourseAccess } from "@/features/courses/model";
 import { readExamSummary } from "@/features/courses/exam-prep/pack";
-import type { Purchase, PurchaseProgress } from "./types";
+import type { Purchase, PurchaseProgress, ShopTryout } from "./types";
 
 type PurchaseRow = {
   id: string;
@@ -110,6 +110,32 @@ export async function getPurchaseLibrary(): Promise<Purchase[]> {
     const answered = purchase.href ? progress.get(productId) : undefined;
     return answered ? { ...purchase, progress: answered } : purchase;
   });
+}
+
+/**
+ * Products of the seller's own shop, so they can try each one as a buyer would.
+ * Courses open through course_access, which already lets the owner in; files use
+ * the owner-only download route; keys stay in the dashboard, since opening one
+ * would hand out real stock.
+ */
+export async function getShopTryouts(): Promise<ShopTryout[]> {
+  const { user, supabase, shop } = await getSellerContext();
+  if (!shop) return [];
+  // The user-scoped client reads through RLS; file_path stays on the server.
+  const { data, error } = await supabase.from("products").select("id, name, delivery_type, file_path, published")
+    .eq("shop_id", shop.id).order("position", { ascending: true, nullsFirst: false }).order("created_at", { ascending: true });
+  if (error) throw new Error("โหลดสินค้าของร้านไม่สำเร็จ");
+  const tryouts = (data ?? []).flatMap((row): ShopTryout[] => {
+    const id = encodeURIComponent(row.id);
+    const base = { id: row.id as string, name: row.name as string, published: row.published === true };
+    if (row.delivery_type === "course") return [{ ...base, kind: "course", href: `/learn/${id}` }];
+    if (row.delivery_type === "file") return [{ ...base, kind: "file", href: row.file_path ? `/api/products/${id}/file` : null }];
+    if (row.delivery_type === "key") return [{ ...base, kind: "key", href: `/dashboard/products/${id}/edit` }];
+    return [];
+  });
+  const courses = tryouts.filter(tryout => tryout.kind === "course").map(tryout => tryout.id);
+  const progress = await readExamProgress(createAdminClient(), user.id, courses).catch(() => new Map<string, PurchaseProgress>());
+  return tryouts.map(tryout => progress.has(tryout.id) ? { ...tryout, progress: progress.get(tryout.id) } : tryout);
 }
 
 /** Questions attempted in each open exam-prep course. Best effort: the library never fails over it. */
