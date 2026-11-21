@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSellerContext } from "@/lib/supabase/seller-context";
+import { isMissingColumnError } from "@/lib/supabase/missing-column";
 import { MyShop } from "./MyShop";
 
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ slug?: string; create?: string }> }) {
@@ -12,13 +13,21 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
     .eq("id", sellerShop.id).eq("owner_id", user.id).single();
   if (shopError) throw shopError;
 
-  const { data: products, error: productsError } = await supabase
-    .from("products")
-    .select(
-      "id, shop_id, name, slug, description, price_cents, compare_price_cents, category, published, delivery_type, images, images_v2, file_path",
-    )
-    .eq("shop_id", shop.id)
-    .order("created_at", { ascending: true });
+  const listProducts = (arranged: boolean) => {
+    const query = supabase
+      .from("products")
+      .select(
+        "id, shop_id, name, slug, description, price_cents, compare_price_cents, category, published, delivery_type, images, images_v2, file_path",
+      )
+      .eq("shop_id", shop.id);
+    // Same order as the storefront: the seller's arrangement, then never-arranged products oldest first.
+    return (arranged ? query.order("position", { ascending: true, nullsFirst: false }) : query)
+      .order("created_at", { ascending: true });
+  };
+  const arranged = await listProducts(true);
+  const { data: products, error: productsError } = isMissingColumnError(arranged.error, "position")
+    ? await listProducts(false)
+    : arranged;
   if (productsError) throw productsError;
 
   const stockEntries = await Promise.all((products ?? []).filter((product) => product.delivery_type === "key").map(async (product) => {

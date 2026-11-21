@@ -7,12 +7,13 @@ import { BRAND_DOMAIN, shopUrl } from "@/lib/brand";
 import { createClient } from "@/lib/supabase/client";
 import { invalidatePublicCatalog, CATALOG_REFRESH_WARNING } from "@/lib/storefront/invalidate";
 import { ProductCard } from "@/features/storefront/ProductCard";
-import { ProductGrid } from "@/features/storefront/ProductGrid";
+import { arrayMove } from "@dnd-kit/sortable";
 import { DEFAULT_COVERS, getShopCover } from "@/lib/storefront/covers";
 import { Storefront, type ShopAppearance } from "@/features/storefront/Storefront";
 import { ShopEditorDialog } from "./ShopEditorDialog";
 import { ShopIcon, shopIconButton } from "./ShopIcon";
 import { ProductActions } from "./ProductActions";
+import { SortableProducts } from "./SortableProducts";
 import type { ProductListItem } from "./ProductRow";
 import { ShareButton } from "@/app/[slug]/ShareButton";
 import { ShopImageUploader } from "../settings/ShopImageUploader";
@@ -29,12 +30,13 @@ const EDITOR_COPY: Record<EditingSection, { title: string; description: string }
   cover: { title: "เปลี่ยนรูปปก", description: "อัปโหลดภาพของคุณ หรือสุ่มจากภาพธรรมชาติที่เตรียมไว้" },
 };
 
-export function MyShop({ initial, userId, products, desiredSlug = "", saveAppearance }: {
+export function MyShop({ initial, userId, products, desiredSlug = "", saveAppearance, saveProductOrder }: {
   initial: Shop | null;
   userId: string;
   products: Product[];
   desiredSlug?: string;
   saveAppearance?: (payload: ShopAppearance) => Promise<{ id: string }>;
+  saveProductOrder?: (productIds: string[]) => Promise<void>;
 }) {
   const router = useRouter();
   const [persistedSlug, setPersistedSlug] = useState(initial?.slug ?? "");
@@ -55,6 +57,12 @@ export function MyShop({ initial, userId, products, desiredSlug = "", saveAppear
   const draftKey = `buykub:appearance-draft:${userId}:${initial?.id ?? "new"}`;
   const hydrated = useRef(false);
   const [baseline, setBaseline] = useState(JSON.stringify({ slug, name, bio, avatar_url: avatarUrl, cover_url: coverUrl, accent_color: accentColor }));
+  // The order on screen runs ahead of the server while a move saves; a new product
+  // list from the server (a refresh, an added or deleted product) replaces it.
+  const productIds = products.map((product) => product.id).join(",");
+  const [arrangement, setArrangement] = useState({ source: productIds, ids: products.map((product) => product.id) });
+  const [arranging, setArranging] = useState(false);
+  if (arrangement.source !== productIds) setArrangement({ source: productIds, ids: products.map((product) => product.id) });
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -127,9 +135,42 @@ export function MyShop({ initial, userId, products, desiredSlug = "", saveAppear
     } finally { setSaving(false); }
   }
 
+  async function moveProduct(activeId: string, overId: string) {
+    if (arranging || !shopId) return;
+    const previous = arrangement.ids;
+    const ids = arrayMove(previous, previous.indexOf(activeId), previous.indexOf(overId));
+    setArrangement((current) => ({ ...current, ids }));
+    setError(null); setSaved(false); setArranging(true);
+    try {
+      if (saveProductOrder) {
+        await saveProductOrder(ids);
+      } else {
+        const { error: orderError } = await createClient().rpc("reorder_products", { p_shop_id: shopId, p_product_ids: ids });
+        if (orderError) throw orderError;
+      }
+    } catch (orderError) {
+      setArrangement((current) => ({ ...current, ids: previous }));
+      const message = orderError && typeof orderError === "object" && "message" in orderError ? String(orderError.message) : "";
+      if (message.includes("product_list_changed")) {
+        setError("รายการสินค้าเพิ่งเปลี่ยนจากที่อื่น โหลดลำดับล่าสุดให้แล้ว ลองย้ายอีกครั้ง");
+        router.refresh();
+      } else {
+        setError(`บันทึกลำดับสินค้าไม่สำเร็จ: ${message || "กรุณาลองอีกครั้ง"}`);
+      }
+      setArranging(false);
+      return;
+    }
+    setArranging(false);
+    if (!(await invalidatePublicCatalog())) setError(CATALOG_REFRESH_WARNING);
+    router.refresh();
+  }
+
   const appearance: ShopAppearance = { slug, name, bio, avatar_url: avatarUrl, cover_url: coverUrl, accent_color: accentColor };
-  const visibleProducts = mode === "customer" ? products.filter((product) => product.published) : products;
+  const productsById = new Map(products.map((product) => [product.id, product]));
+  const orderedProducts = arrangement.ids.flatMap((id) => productsById.get(id) ?? []);
+  const visibleProducts = mode === "customer" ? orderedProducts.filter((product) => product.published) : orderedProducts;
   const managing = mode === "manage";
+  const sortable = managing && Boolean(shopId) && visibleProducts.length > 1;
   const hasUnsavedChanges = JSON.stringify(appearance) !== baseline;
 
   return (
@@ -192,7 +233,7 @@ export function MyShop({ initial, userId, products, desiredSlug = "", saveAppear
           nameContent={managing ? <button type="button" aria-label="แก้ไขชื่อร้าน" title="แก้ไขชื่อร้าน" onClick={() => setEditing("name")} className="group inline-flex max-w-full items-center gap-2 rounded-lg text-left transition hover:bg-paper-dim focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"><span className="break-words">{name || "ตั้งชื่อร้านของคุณ"}</span><span className="shrink-0 text-muted/60 group-hover:text-ink"><ShopIcon name="edit" /></span></button> : undefined}
           bioContent={managing ? <button type="button" aria-label="แก้ไขคำแนะนำร้าน" title="แก้ไขคำแนะนำร้าน" onClick={() => setEditing("bio")} className="group inline-flex max-w-full items-start gap-2 rounded-lg py-1 text-left transition hover:bg-paper-dim focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"><span className="whitespace-pre-line break-words">{bio || "เพิ่มคำแนะนำร้าน"}</span><span className="mt-0.5 shrink-0 text-muted/60 group-hover:text-ink"><ShopIcon name="edit" /></span></button> : undefined}
           productActions={managing && shopId ? <Link prefetch={false} scroll={false} href="/dashboard/products/new" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-paper shadow-lift-1 transition hover:bg-ink/85 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"><ShopIcon name="plus" /> เพิ่มสินค้า</Link> : undefined}>
-          {visibleProducts.length ? <ProductGrid>{visibleProducts.map((product) => <div key={product.id} role="listitem" className="relative min-w-0">
+          {visibleProducts.length ? <>{sortable && <p className="mb-4 text-xs text-muted" aria-live="polite">{arranging ? "กำลังบันทึกลำดับสินค้า..." : "กดค้างที่สินค้าแล้วลากเพื่อเรียงลำดับบนหน้าร้าน"}</p>}<SortableProducts items={visibleProducts} sortable={sortable} onMove={(activeId, overId) => void moveProduct(activeId, overId)}>{(product) => <>
             <ProductCard shopSlug={persistedSlug || slug} product={{ name: product.name, slug: product.slug || `product-${product.id.slice(0, 8)}`, category: product.category, priceCents: product.price_cents, comparePriceCents: product.compare_price_cents, thumbnailUrl: product.thumbnailUrl, deliveryType: product.delivery_type === "key" ? "key" : product.delivery_type === "course" ? "course" : "file", availableStock: product.availableStock }} />
             {managing && <>
               <div className="absolute right-3 top-3 flex gap-2">
@@ -204,7 +245,7 @@ export function MyShop({ initial, userId, products, desiredSlug = "", saveAppear
                 <ProductActions compact productId={product.id} shopId={product.shop_id} productName={product.name} published={product.published} assets={product.assets} />
               </div>
             </>}
-          </div>)}</ProductGrid> : <div className="rounded-2xl border border-dashed border-line py-12 text-center"><p className="text-sm font-semibold text-ink">ร้านนี้ยังไม่มีสินค้า</p><p className="mt-1 text-xs text-muted">{managing ? "เพิ่มสินค้าชิ้นแรกเพื่อเริ่มขาย" : "กลับมาเช็กใหม่เร็ว ๆ นี้"}</p></div>}
+          </>}</SortableProducts></> : <div className="rounded-2xl border border-dashed border-line py-12 text-center"><p className="text-sm font-semibold text-ink">ร้านนี้ยังไม่มีสินค้า</p><p className="mt-1 text-xs text-muted">{managing ? "เพิ่มสินค้าชิ้นแรกเพื่อเริ่มขาย" : "กลับมาเช็กใหม่เร็ว ๆ นี้"}</p></div>}
         </Storefront>
       </section>
     </div>
