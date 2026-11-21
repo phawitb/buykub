@@ -849,3 +849,64 @@ buykub.com, and the `by_operation` card has not been seen against a real databas
 product created from a scanned draft has been saved and published. Recognition speed was
 measured only on this Mac (about 1.1 s/page); a mid-range phone should be expected to take
 several times longer per page.
+
+## Interactive exam-prep courses — 2026-11-21
+
+A course can now be an **exam-prep course** (`products.course_format = 'exam_prep'`)
+instead of hand-written lessons. Its content is one study pack — a daily plan, chapter
+summaries, a question bank with explanations and timed mock exams — run in the browser
+by a static, content-free engine in `public/exam-prep`. Everything else is an ordinary
+course: checkout, `course_access_days`, refunds, `/learn` and the purchase library.
+
+- **The pack is never public.** It is stored at the derived path
+  `product-files/{owner}/exam-prep/{product}/pack.json` and served only by
+  `/api/courses/[id]/pack` after `course_access` allows the signed-in Google user
+  (`private, no-store`; 401 anonymous, 403 not bought or expired, 503 if the check
+  itself fails). The page passes only ids to the client, never a path.
+- **Progress follows the buyer between devices.** `buykub.course_progress` holds one
+  JSON state per learner and course, readable by its learner while access lasts and
+  written only through `save_course_progress`, which rejects a write based on an older
+  copy (409) so two devices settle on the newer one. The client keeps a local copy,
+  saves two seconds after the last answer and flushes when the tab is hidden; offline
+  work stays in the browser until the next save succeeds.
+- **Publishing** an exam-prep course needs an uploaded pack summary instead of a
+  published lesson. The format can be switched only while the course is unpublished.
+- **The sales page** shows a "ในคอร์สนี้" block built from `products.exam_summary`, which
+  holds counts only (days, questions, mocks, subjects, chapters). The part pass mark is
+  labelled as a practice threshold, not a real cut-off score.
+- **The purchase library** shows `ทำโจทย์แล้ว x / y ข้อ` for exam-prep courses.
+- Sellers upload a pack from `/dashboard/products/[id]/lessons`; for terminal setup,
+  `node --env-file=.env.local scripts/upload-exam-pack.mjs <product-id> <dist-dir>` does the
+  same with the service role and refuses a pack whose id differs from the one already on
+  the course, because learner progress is keyed by question id.
+- Code reads the new columns tolerantly, so a database without the migration keeps
+  treating every course as lessons.
+
+Migration: `20261121120000_exam_prep_courses.sql`, with `supabase/tests/exam_prep.sql`.
+**Applied to `buykub-th`** on 2026-11-21 through the SQL editor, then confirmed from the
+service role (columns present, `save_course_progress` refuses a caller without access).
+
+Launched in ร้านชีสส์ (`/mysheet`), each with 30 days of access and no trial:
+
+| Course | Slug | Price | Pack |
+|---|---|---|---|
+| นักเรียนนายสิบตำรวจ 30 วัน | `nst-30-days-exam-prep` | ฿299 | 30 days, 1,200 questions, 4 mocks |
+| ตำรวจสายอำนวยการ/สนับสนุน 30 วัน | `police-support-30-days-exam-prep` | ฿299 | 30 days, 1,200 questions, 4 mocks |
+| ตำรวจสายอำนวยการ/สนับสนุน 7 วัน (ฉบับย่อ) | `police-support-7-days-exam-prep` | ฿149 | 7 days, 300 questions, 1 mock |
+
+Packs are built in the AFAPS-Exam repository (`output/web/exam-engine`). The 30-day
+police plan counts down to the 29 Nov 2026 exam; the NST pack carries 2027-01-17.
+
+Deployed from a clean worktree of commit `0e694bc`, so uncommitted work in this checkout
+was not shipped. That deploy **also released the already-committed, previously undeployed
+OCR draft work** above; its `agent_usage_by_operation` migration is still unapplied, which
+only keeps the admin card hidden.
+
+Verification: 777 tests (774 on the deployed commit plus 3 classroom tests), TypeScript and lint pass; the three real packs
+validate and their summaries match `summarizeExamPack` exactly. On buykub.com the three
+sales pages render the overview and price, the engine assets load, and the pack and
+progress endpoints answer 401 to an anonymous request.
+
+**Not verified:** no browser automation was available, so the classroom has not been
+opened on buykub.com by the owner or a buyer, cross-device sync has not been watched end
+to end, and no real purchase has been made.
