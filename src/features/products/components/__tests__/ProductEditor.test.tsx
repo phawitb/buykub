@@ -128,7 +128,13 @@ describe("ProductEditor", () => {
     expect(
       screen.getByRole("heading", { name: "คำถามที่พบบ่อย (FAQ)" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "สร้างสินค้า" })).toBeDisabled();
+    // Pressable on an empty form: pressing it is how the seller is told what
+    // the form still wants.
+    const create = screen.getByRole("button", { name: "สร้างสินค้า" });
+    expect(create).toBeEnabled();
+    await userEvent.click(create);
+    expect(screen.getByText("กรุณากรอกชื่อสินค้า")).toBeInTheDocument();
+    expect(screen.getByText("กรุณาอัปโหลดไฟล์สินค้า")).toBeInTheDocument();
   });
 
   it("offers only Course and File without a second category picker", async () => {
@@ -144,6 +150,22 @@ describe("ProductEditor", () => {
     await userEvent.click(screen.getByRole("radio", { name: /Course/ }));
     expect(screen.getByRole("heading", { name: "สิทธิ์เข้าเรียน" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "ไฟล์สินค้า *" })).not.toBeInTheDocument();
+  });
+
+  it("saves how many pages the PDF has, so the storefront can say it", async () => {
+    const saveProduct = vi.fn().mockResolvedValue(undefined);
+    render(<ProductEditor mode="edit" shopId="shop-123" userId="user-123" productId="product-123" existingSlugs={[]} initialValue={{ ...validValue, productFile: { path: "user-123/guide.pdf", fileName: "guide.pdf", size: 2048, mimeType: "application/pdf", pageCount: 42 } }} saveProduct={saveProduct} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "บันทึกการเปลี่ยนแปลง" }));
+    await vi.waitFor(() => expect(saveProduct).toHaveBeenCalledWith(expect.objectContaining({ file_name: "guide.pdf", file_page_count: 42 })));
+  });
+
+  it("leaves the page count empty for a file that has no pages to count", async () => {
+    const saveProduct = vi.fn().mockResolvedValue(undefined);
+    render(<ProductEditor mode="edit" shopId="shop-123" userId="user-123" productId="product-123" existingSlugs={[]} initialValue={validValue} saveProduct={saveProduct} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "บันทึกการเปลี่ยนแปลง" }));
+    await vi.waitFor(() => expect(saveProduct).toHaveBeenCalledWith(expect.objectContaining({ file_page_count: null })));
   });
 
   it.each(["create", "edit"] as const)("saves the File category from its delivery type in %s mode", async (mode) => {
@@ -475,3 +497,42 @@ describe("ProductImageUploader", () => {
 });
 
 vi.mock("@/lib/storefront/invalidate", () => ({ invalidatePublicCatalog: vi.fn(async () => true), CATALOG_REFRESH_WARNING: "Refresh delayed" }));
+
+describe("ProductEditor refusals", () => {
+  it("says why it will not save instead of leaving the button dead", async () => {
+    const saveProduct = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ProductEditor
+        mode="create"
+        shopId="shop-123"
+        userId="user-123"
+        existingSlugs={[]}
+        initialValue={{ ...validValue, price: "998", comparePrice: "590" }}
+        saveProduct={saveProduct}
+      />,
+    );
+
+    // A seller who raised the price past the old one had no way to find out:
+    // the button went grey and the reason was only ever shown on submit.
+    const button = screen.getByRole("button", { name: "สร้างสินค้า" });
+    expect(button).toBeEnabled();
+
+    await userEvent.click(button);
+    expect(screen.getByText("ราคาเดิมต้องมากกว่าราคาขาย")).toBeInTheDocument();
+    expect(saveProduct).not.toHaveBeenCalled();
+
+    const comparePrice = screen.getByLabelText(/ราคาเดิม/);
+    expect(comparePrice).toHaveAttribute("aria-invalid", "true");
+    expect(comparePrice).toHaveFocus();
+
+    // And the message goes as soon as the mistake does, without a second press.
+    await userEvent.clear(comparePrice);
+    await userEvent.type(comparePrice, "1290");
+    expect(
+      screen.queryByText("ราคาเดิมต้องมากกว่าราคาขาย"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(button);
+    await vi.waitFor(() => expect(saveProduct).toHaveBeenCalledTimes(1));
+  });
+});

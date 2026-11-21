@@ -16,6 +16,8 @@ export type ProductUploadRecord = {
   fileName: string;
   size: number;
   mimeType: string;
+  /** Pages in the file, for a PDF; unknown for anything else. */
+  pageCount?: number | null;
 };
 
 export type ProductDeliveryType = "file" | "key" | "course";

@@ -18,13 +18,25 @@ export const getPublicShop = cache(unstable_cache(async (slug: string) => {
   return data;
 }, ["public-shop-v1", ...namespace], options));
 
+const PRODUCT_FIELDS = "id, shop_id, slug, name, description, description_html, category, price_cents, compare_price_cents, highlights, faq, images, images_v2, delivery_type, course_access_days, published";
+
+const PRODUCT_FIELDS_WITH_PAGES = `${PRODUCT_FIELDS}, file_page_count` as const;
+
 export const getPublicProduct = cache(unstable_cache(async (shopId: string, slug: string) => {
-  const { data, error } = await createPublicClient().from("products")
-    .select("id, shop_id, slug, name, description, description_html, category, price_cents, compare_price_cents, highlights, faq, images, images_v2, delivery_type, course_access_days, published")
+  const client = createPublicClient();
+  const { data, error } = await client.from("products")
+    .select(PRODUCT_FIELDS_WITH_PAGES)
     .eq("shop_id", shopId).eq("slug", slug).eq("published", true).maybeSingle();
-  if (error) throw error;
-  return data;
-}, ["public-product-v1", ...namespace], options));
+  if (!error) return data;
+  // The page count is newer than some databases this runs against; a storefront
+  // must not go down over a line of copy under the gallery.
+  if (!isMissingColumnError(error, "file_page_count")) throw error;
+  const fallback = await client.from("products")
+    .select(PRODUCT_FIELDS)
+    .eq("shop_id", shopId).eq("slug", slug).eq("published", true).maybeSingle();
+  if (fallback.error) throw fallback.error;
+  return fallback.data ? { ...fallback.data, file_page_count: null } : null;
+}, ["public-product-v2", ...namespace], options));
 
 export const getPublicProducts = cache(unstable_cache(async (shopId: string) => {
   const client = createPublicClient();

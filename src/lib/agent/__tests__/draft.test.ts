@@ -214,3 +214,49 @@ describe("buildDraftMessages with recognized text", () => {
     expect(scanned.startsWith(plain)).toBe(true);
   });
 });
+
+describe("descriptionToHtml from blocks", () => {
+  it("builds headings, paragraphs and bullet lists", () => {
+    expect(
+      descriptionToHtml([
+        { type: "paragraph", text: "คู่มือสูตรขนมปัง 30 สูตร" },
+        { type: "heading", text: "ในไฟล์มีอะไรบ้าง" },
+        { type: "bullets", items: ["สูตรวัดเป็นกรัม", "ตารางสตาร์ทเตอร์ 7 วัน"] },
+      ]),
+    ).toBe(
+      "<p>คู่มือสูตรขนมปัง 30 สูตร</p>" +
+        "<h2>ในไฟล์มีอะไรบ้าง</h2>" +
+        "<ul><li>สูตรวัดเป็นกรัม</li><li>ตารางสตาร์ทเตอร์ 7 วัน</li></ul>",
+    );
+  });
+
+  it("turns **text** into bold, and nothing else into a tag", () => {
+    expect(descriptionToHtml([{ type: "paragraph", text: "ราคา **390 บาท** <b>ลด</b>" }])).toBe(
+      "<p>ราคา <strong>390 บาท</strong> ลด</p>",
+    );
+  });
+
+  it("escapes what the seller's text brought with it", () => {
+    expect(descriptionToHtml([{ type: "heading", text: "ขนม & นม" }])).toBe("<h2>ขนม &amp; นม</h2>");
+  });
+
+  it("still reads a model that answered in prose", () => {
+    expect(descriptionToHtml("ย่อหน้าหนึ่ง\n\nย่อหน้าสอง")).toBe(
+      "<p>ย่อหน้าหนึ่ง</p><p>ย่อหน้าสอง</p>",
+    );
+  });
+
+  it("drops empty blocks and caps how much one reply can fill", () => {
+    const blocks = Array.from({ length: 20 }, (_, index) => ({
+      type: "paragraph",
+      text: `ย่อหน้า ${index + 1}`,
+    }));
+    expect(descriptionToHtml([...blocks, { type: "heading", text: "   " }]).match(/<p>/g)).toHaveLength(12);
+    expect(descriptionToHtml([{ type: "bullets", items: ["", "  "] }])).toBe("");
+  });
+
+  it("keeps a bullet list to a readable length", () => {
+    const items = Array.from({ length: 12 }, (_, index) => `ข้อ ${index + 1}`);
+    expect(descriptionToHtml([{ type: "bullets", items }]).match(/<li>/g)).toHaveLength(8);
+  });
+});

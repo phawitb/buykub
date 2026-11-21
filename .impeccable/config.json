@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "files": [
+          "supabase/functions/send-product-key/email.ts"
+        ],
+        "createdAt": "2026-11-14T11:30:18.476Z",
+        "reason": "Claude: HTML email bodies only. Email clients strip @font-face, so Arial,sans-serif is the correct safe stack for transactional mail; this is not web UI typography."
+      }
+    ]
+  }
+}

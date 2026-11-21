@@ -6,7 +6,12 @@ import type {
   ProductImage,
   ProductKeyRecord,
 } from "@/features/products/model";
+import { isMissingColumnError } from "@/lib/supabase/missing-column";
 import { getSellerContext } from "@/lib/supabase/seller-context";
+
+const PRODUCT_FIELDS =
+  "id, name, slug, description, description_html, category, price_cents, compare_price_cents, highlights, faq, images, images_v2, file_url, file_path, file_name, file_size, file_mime_type, delivery_type, course_access_days, published";
+const PRODUCT_FIELDS_WITH_PAGES = `${PRODUCT_FIELDS}, file_page_count` as const;
 
 type DatabaseFAQ = {
   id?: string;
@@ -25,15 +30,20 @@ export default async function EditProductPage({
   const { supabase, user, shop } = await getSellerContext();
   if (!shop) redirect("/dashboard/products");
 
-  const [{ data: product }, { data: slugRows }, { data: keyRows }] = await Promise.all([
-    supabase
-      .from("products")
-      .select(
-        "id, name, slug, description, description_html, category, price_cents, compare_price_cents, highlights, faq, images, images_v2, file_url, file_path, file_name, file_size, file_mime_type, delivery_type, course_access_days, published",
-      )
-      .eq("id", id)
-      .eq("shop_id", shop.id)
-      .maybeSingle(),
+  const row = () => supabase.from("products").select(PRODUCT_FIELDS).eq("id", id).eq("shop_id", shop.id).maybeSingle();
+  const rowWithPages = () => supabase.from("products").select(PRODUCT_FIELDS_WITH_PAGES).eq("id", id).eq("shop_id", shop.id).maybeSingle();
+
+  const [productResult, { data: slugRows }, { data: keyRows }] = await Promise.all([
+    // The page count is newer than some databases this runs against, and the
+    // editor has to open whether or not that migration has been applied.
+    rowWithPages().then(async (result) => {
+      if (!isMissingColumnError(result.error, "file_page_count")) return result;
+      const fallback = await row();
+      return {
+        ...fallback,
+        data: fallback.data ? { ...fallback.data, file_page_count: null } : null,
+      };
+    }),
     supabase.from("products").select("slug").eq("shop_id", shop.id).neq("id", id),
     supabase
       .from("product_keys")
@@ -41,6 +51,7 @@ export default async function EditProductPage({
       .eq("product_id", id)
       .order("created_at", { ascending: false }),
   ]);
+  const product = productResult.data;
   if (!product) notFound();
 
   const imagesV2 = Array.isArray(product.images_v2)
@@ -87,6 +98,7 @@ export default async function EditProductPage({
             fileName: product.file_name || "ไฟล์สินค้าเดิม",
             size: Number(product.file_size ?? 0),
             mimeType: product.file_mime_type || "application/octet-stream",
+            pageCount: product.file_page_count ?? null,
           }
         : null,
     images: imagesV2.length ? imagesV2 : legacyImages,

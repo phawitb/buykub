@@ -6,7 +6,12 @@ export type ProtectedPreviewOptions = {
   watermarkText: string;
 };
 
-export const WATERMARK_ANGLE = -Math.PI / 9;
+/**
+ * Horizontal. A tilted mark reads as a stamp over someone else's page; the
+ * seller wants the page itself to stay readable and upright, so the marks run
+ * with the lines of text instead of across them.
+ */
+export const WATERMARK_ANGLE = 0;
 
 /**
  * Tiles that cover a rotated rectangle. The grid is laid out around the origin

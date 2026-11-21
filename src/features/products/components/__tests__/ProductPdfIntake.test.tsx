@@ -23,10 +23,29 @@ const extraction = {
     { pageNumber: 2, text: "หน้าสอง" },
   ],
   previews: [
-    { pageNumber: 1, protected: false, file: previewFile("page-1.webp"), previewUrl: "blob:1" },
-    { pageNumber: 2, protected: true, file: previewFile("page-2.webp"), previewUrl: "blob:2" },
-    { pageNumber: 3, protected: true, file: previewFile("page-3.webp"), previewUrl: "blob:3" },
+    {
+      pageNumber: 1,
+      protection: { blur: false, watermark: false },
+      file: previewFile("page-1.png"),
+      previewUrl: "blob:1",
+      source: previewFile("page-1.png"),
+    },
+    {
+      pageNumber: 2,
+      protection: { blur: false, watermark: true },
+      file: previewFile("page-2.png"),
+      previewUrl: "blob:2",
+      source: previewFile("page-2-clean.png"),
+    },
+    {
+      pageNumber: 3,
+      protection: { blur: false, watermark: true },
+      file: previewFile("page-3.png"),
+      previewUrl: "blob:3",
+      source: previewFile("page-3-clean.png"),
+    },
   ],
+  protectionOptions: { blurStrength: 0, watermarkOpacity: 35, watermarkText: "ร้านเอ" },
 };
 
 const draftResponse: ProductDraftResponse = {
@@ -88,11 +107,11 @@ beforeEach(() => {
 });
 
 describe("ProductPdfIntake", () => {
-  it("reads the PDF, drafts from its text, and waits for a confirmation", async () => {
-    const { onApply, requestDraft, uploadAsset } = setup();
+  it("reads the PDF, drafts from its text, and fills the form without asking again", async () => {
+    const { onApply, requestDraft } = setup();
     await choosePdf();
 
-    expect(await screen.findByText("ตรวจข้อมูลที่ AI ร่างไว้")).toBeInTheDocument();
+    await vi.waitFor(() => expect(onApply).toHaveBeenCalledOnce());
     expect(requestDraft).toHaveBeenCalledWith({
       fileName: "guide.pdf",
       textSource: "layer",
@@ -101,20 +120,19 @@ describe("ProductPdfIntake", () => {
         { pageNumber: 2, text: "หน้าสอง" },
       ],
     });
-    // Nothing is applied or uploaded while the seller is still reviewing.
-    expect(onApply).not.toHaveBeenCalled();
-    expect(uploadAsset).not.toHaveBeenCalled();
-
-    expect(screen.getByText("คู่มือสูตรขนมปัง")).toBeInTheDocument();
-    expect(screen.getByText("ราคามาจากหน้าปก")).toBeInTheDocument();
-    expect(screen.getByText(/0.0006 USD/)).toBeInTheDocument();
-    expect(screen.getByText(/12 หน้า/)).toBeInTheDocument();
+    expect(onApply.mock.calls[0][0].draft.name).toBe("คู่มือสูตรขนมปัง");
+    expect(onApply.mock.calls[0][0].summary).toEqual({
+      fileName: "guide.pdf",
+      notes: "ราคามาจากหน้าปก",
+      costMicros: 630,
+      scanned: false,
+      textPagesRead: 10,
+    });
   });
 
-  it("uploads the PDF and its preview images once confirmed", async () => {
+  it("uploads the PDF and its preview images on the way to the form", async () => {
     const { onApply, uploadAsset } = setup();
     await choosePdf();
-    await userEvent.click(await screen.findByRole("button", { name: "ยืนยันและกรอกลงฟอร์ม" }));
 
     await vi.waitFor(() => expect(onApply).toHaveBeenCalledOnce());
     const result = onApply.mock.calls[0][0];
@@ -123,6 +141,8 @@ describe("ProductPdfIntake", () => {
       fileName: "guide.pdf",
       size: 8,
       mimeType: "application/pdf",
+      // The whole document's length, not the three pages sampled from it.
+      pageCount: 12,
     });
     expect(result.images).toHaveLength(3);
     // The first page carries the model's alt text; later pages say which page they are.
@@ -133,42 +153,60 @@ describe("ProductPdfIntake", () => {
     expect(uploadAsset.mock.calls[1][0].destination).toBe("product-image");
   });
 
-  it("applies only the fields left ticked", async () => {
-    const { onApply, uploadAsset } = setup();
-    await choosePdf();
-    await userEvent.click(await screen.findByRole("checkbox", { name: /ราคา/ }));
-    await userEvent.click(screen.getByRole("checkbox", { name: /รูปสินค้าจาก PDF/ }));
-    await userEvent.click(screen.getByRole("button", { name: "ยืนยันและกรอกลงฟอร์ม" }));
-
-    await vi.waitFor(() => expect(onApply).toHaveBeenCalledOnce());
-    expect(onApply.mock.calls[0][0].applied).toMatchObject({
-      name: true,
-      price: false,
-      description: true,
-      images: false,
-    });
-    // The product file is still uploaded; only the gallery images were declined.
-    expect(onApply.mock.calls[0][0].images).toEqual([]);
-    expect(uploadAsset).toHaveBeenCalledOnce();
-  });
-
-  it("marks which preview pages are protected", async () => {
-    setup();
-    await choosePdf();
-    expect(await screen.findByText(/หน้า 1.*รูปหลัก/)).toBeInTheDocument();
-    expect(screen.getByText(/หน้า 2.*ลายน้ำ \+ เบลอ/)).toBeInTheDocument();
-  });
-
   it("still offers the file and images when the agent is unavailable", async () => {
     const requestDraft = vi.fn().mockRejectedValue(new Error("ใช้โควตา AI ของเดือนนี้ครบแล้ว"));
     const { onApply } = setup({ requestDraft });
     await choosePdf();
 
     expect(await screen.findByText("ใช้โควตา AI ของเดือนนี้ครบแล้ว")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "ยืนยันและกรอกลงฟอร์ม" }));
+    expect(onApply).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "กรอกเองในฟอร์ม" }));
     await vi.waitFor(() => expect(onApply).toHaveBeenCalledOnce());
     expect(onApply.mock.calls[0][0].draft.name).toBe("");
     expect(onApply.mock.calls[0][0].images).toHaveLength(3);
+    expect(onApply.mock.calls[0][0].summary.costMicros).toBeNull();
+  });
+
+  it("asks the agent again from the pages already read", async () => {
+    // The model's reasoning shares a token budget with its answer, so the same
+    // document can fail once and draft fine the next time. Re-reading the file
+    // to find that out would cost the seller the whole upload again.
+    const requestDraft = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("AI ร่างข้อมูลไม่จบ กรุณาลองอีกครั้ง"))
+      .mockResolvedValue(draftResponse);
+    const { onApply } = setup({ requestDraft });
+    await choosePdf();
+
+    expect(await screen.findByText("AI ร่างข้อมูลไม่จบ กรุณาลองอีกครั้ง")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "ให้ AI ลองอีกครั้ง" }));
+
+    await vi.waitFor(() => expect(onApply).toHaveBeenCalledOnce());
+    expect(onApply.mock.calls[0][0].draft.name).toBe("คู่มือสูตรขนมปัง");
+    expect(requestDraft).toHaveBeenCalledTimes(2);
+    expect(requestDraft.mock.calls[1]).toEqual(requestDraft.mock.calls[0]);
+    expect(pdf.extractPdf).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the draft when the upload fails, and retries only the upload", async () => {
+    const uploadAsset = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองอีกครั้ง"))
+      .mockImplementation(async ({ file }: UploadRequest) => ({
+        path: `owner/${file.name}`,
+        publicUrl: `https://cdn.test/${file.name}`,
+      }));
+    const { onApply, requestDraft } = setup({ uploadAsset });
+    await choosePdf();
+
+    expect(await screen.findByText("อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองอีกครั้ง")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "ลองอัปโหลดอีกครั้ง" }));
+
+    await vi.waitFor(() => expect(onApply).toHaveBeenCalledOnce());
+    // The agent is not asked a second time: its answer was never the problem.
+    expect(requestDraft).toHaveBeenCalledOnce();
+    expect(onApply.mock.calls[0][0].draft.name).toBe("คู่มือสูตรขนมปัง");
   });
 
   it("rejects a dropped file that is not a PDF without reading it", async () => {
@@ -197,42 +235,36 @@ describe("ProductPdfIntake", () => {
     expect(uploadAsset).not.toHaveBeenCalled();
   });
 
-  it("lets the seller decline the draft after reviewing it", async () => {
-    const { onSkip, onApply } = setup();
-    await choosePdf();
-    await userEvent.click(await screen.findByRole("button", { name: "ไม่ใช้ แล้วกรอกเอง" }));
-    expect(onSkip).toHaveBeenCalledOnce();
-    expect(onApply).not.toHaveBeenCalled();
-  });
-
-  it("warns the seller and tells the agent when the words came from a scan", async () => {
+  it("tells the agent, and the form, when the words came from a scan", async () => {
     pdf.extractPdf.mockResolvedValue({
       ...extraction,
       textSource: "ocr",
       textPagesRead: 3,
       pages: [{ pageNumber: 1, text: "คนทีเพิงเริมอบขนมปัง" }],
     });
-    const { requestDraft } = setup();
+    const { onApply, requestDraft } = setup();
     await choosePdf("scan.pdf");
 
-    expect(await screen.findByText("ตรวจข้อมูลที่ AI ร่างไว้")).toBeInTheDocument();
+    await vi.waitFor(() => expect(onApply).toHaveBeenCalledOnce());
     expect(requestDraft).toHaveBeenCalledWith({
       fileName: "scan.pdf",
       textSource: "ocr",
       pages: [{ pageNumber: 1, text: "คนทีเพิงเริมอบขนมปัง" }],
     });
     // Recognized text misreads words, and a wrong price is the costly misread.
-    expect(screen.getByText(/กรุณาตรวจราคาและชื่อสินค้าให้ละเอียดก่อนยืนยัน/)).toBeInTheDocument();
-    expect(screen.getByText(/อ่านตัวอักษรจากรูปของ/)).toBeInTheDocument();
-    expect(screen.getByText(/อ่าน 3 หน้าแรก/)).toBeInTheDocument();
+    // The warning travels with the draft, because the fields are the form's now.
+    expect(onApply.mock.calls[0][0].summary).toMatchObject({
+      scanned: true,
+      textPagesRead: 3,
+    });
   });
 
   it("says nothing about scanning when the PDF had a text layer", async () => {
-    setup();
+    const { onApply } = setup();
     await choosePdf();
 
-    expect(await screen.findByText("ตรวจข้อมูลที่ AI ร่างไว้")).toBeInTheDocument();
-    expect(screen.queryByText(/กรุณาตรวจราคาและชื่อสินค้าให้ละเอียดก่อนยืนยัน/)).toBeNull();
+    await vi.waitFor(() => expect(onApply).toHaveBeenCalledOnce());
+    expect(onApply.mock.calls[0][0].summary.scanned).toBe(false);
   });
 });
 

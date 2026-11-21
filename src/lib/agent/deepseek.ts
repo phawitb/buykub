@@ -65,7 +65,7 @@ export async function completeChat(options: {
   }
 
   const payload = (await response.json().catch(() => null)) as {
-    choices?: { message?: { content?: unknown } }[];
+    choices?: { message?: { content?: unknown }; finish_reason?: unknown }[];
     usage?: unknown;
     error?: { message?: unknown; type?: unknown };
   } | null;
@@ -84,7 +84,16 @@ export async function completeChat(options: {
     throw new AgentError("AI ตอบกลับไม่สำเร็จ กรุณาลองอีกครั้ง", 502);
   }
 
-  const content = payload?.choices?.[0]?.message?.content;
+  const choice = payload?.choices?.[0];
+  // The reasoning tokens come out of the same budget as the answer, so a model
+  // that thinks its way to the ceiling returns a truncated reply — or, as
+  // measured on a dense ten-page document, no reply at all. Whatever came back
+  // cannot be parsed, and saying so beats failing as if the service were down.
+  if (choice?.finish_reason === "length") {
+    throw new AgentError("AI ร่างข้อมูลไม่จบ กรุณาลองอีกครั้ง", 502);
+  }
+
+  const content = choice?.message?.content;
   if (typeof content !== "string" || !content.trim()) {
     throw new AgentError("AI ไม่ได้ส่งเนื้อหากลับมา กรุณาลองอีกครั้ง", 502);
   }

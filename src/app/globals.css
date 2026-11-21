@@ -251,6 +251,12 @@ a {
     @apply h-auto py-2.5;
   }
 
+  /* A field the seller still has to fill says so on the box itself, not only
+     in the line of text under it, which is easy to scroll past. */
+  .field-input[aria-invalid="true"] {
+    @apply border-error shadow-[var(--ring-error)];
+  }
+
   .field-error {
     @apply mt-1.5 block text-xs font-normal text-error;
   }
@@ -314,6 +320,58 @@ a {
 
   .rich-editor {
     @apply overflow-hidden rounded-container border border-line bg-paper transition focus-within:border-accent;
+  }
+
+  /* The draft the model writes is headings and bullets, so the editor has to
+     show them as headings and bullets — otherwise the seller reads a wall of
+     one-size text and cannot tell what the buyer will see. Smaller than the
+     storefront's prose, because this one sits inside a form. */
+  .rich-editor-content :first-child {
+    @apply mt-0;
+  }
+
+  .rich-editor-content h2 {
+    @apply mb-2 mt-6 text-lg font-medium leading-snug text-ink;
+  }
+
+  .rich-editor-content h3 {
+    @apply mb-2 mt-5 text-base font-medium leading-snug text-ink;
+  }
+
+  .rich-editor-content p {
+    @apply my-3;
+  }
+
+  .rich-editor-content strong {
+    @apply text-ink;
+  }
+
+  .rich-editor-content ul {
+    @apply my-3 list-disc space-y-1 pl-5;
+  }
+
+  .rich-editor-content ol {
+    @apply my-3 list-decimal space-y-1 pl-5;
+  }
+
+  .rich-editor-content li::marker {
+    @apply text-muted;
+  }
+
+  .rich-editor-content blockquote {
+    @apply my-4 border-l-2 border-accent pl-3 italic text-muted;
+  }
+
+  .rich-editor-content hr {
+    @apply my-5 border-line;
+  }
+
+  .rich-editor-content a {
+    @apply font-medium text-accent-text underline underline-offset-4;
+  }
+
+  .rich-editor-content iframe {
+    @apply my-4 aspect-video w-full rounded-container;
   }
 
   .editor-button {
