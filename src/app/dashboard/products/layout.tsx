@@ -1,8 +1,7 @@
 "use client";
 
 import { useSelectedLayoutSegment } from "next/navigation";
-import { Suspense, type ReactNode } from "react";
-import { MetaPixel } from "@/components/MetaPixel";
+import type { ReactNode } from "react";
 import { ProductDraftProvider } from "@/features/products/components/ProductDraftProvider";
 
 export default function ProductsLayout({ children, modal }: { children: ReactNode; modal: ReactNode }) {
@@ -11,6 +10,5 @@ export default function ProductsLayout({ children, modal }: { children: ReactNod
   return <ProductDraftProvider>
     <div className={segment ? "px-5 py-7 sm:px-10 sm:py-9" : undefined}>{children}</div>
     {modal}
-    <Suspense fallback={null}><MetaPixel /></Suspense>
   </ProductDraftProvider>;
 }
