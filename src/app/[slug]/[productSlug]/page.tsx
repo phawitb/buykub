@@ -179,11 +179,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
                 availableStock,
               }}
             />
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-muted">
-              <span>ชำระเงินปลอดภัยผ่าน Stripe</span>
-              <span aria-hidden="true">·</span>
-              <span>คืนเงินได้ภายใน 7 วัน</span>
-            </div>
+            <p className="mt-3 text-center text-[11px] text-muted">ชำระเงินปลอดภัยผ่าน Stripe</p>
           </div>
 
           {examSummary && (
