@@ -94,7 +94,7 @@ function NotFoundCard({ slug }: { slug: string }) {
         <p className="mt-2 text-sm leading-6 text-muted">
           ร้าน “{slug}” อาจยังไม่ได้เปิดหรือเปลี่ยนชื่อไปแล้ว
         </p>
-        <Link href="/" className="primary-button mt-6 inline-block">
+        <Link href="/" className="primary-button mt-6">
           กลับหน้าแรก
         </Link>
       </div>

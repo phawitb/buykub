@@ -13,7 +13,7 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
     <main className="mx-auto flex min-h-screen max-w-lg items-center px-5">
       <section className="w-full rounded-3xl border border-line bg-paper p-8 text-center shadow-lift-1">
         <CheckoutSuccess sessionId={sessionId} />
-        <Link href="/" className="secondary-button mt-7 inline-block">กลับหน้าแรก</Link>
+        <Link href="/" className="secondary-button mt-7">กลับหน้าแรก</Link>
       </section>
     </main>
   );

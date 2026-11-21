@@ -40,7 +40,7 @@ describe('course receipts', () => {
   ])('links completed courses to the classroom with expiry %s and no download', async (expiresAt, label) => {
     response('completed', { delivery_type:'course', product_id:'course-123', item_name:'My course', course_expires_at:expiresAt });
     render(<CheckoutSuccess sessionId="cs_test_course" />);
-    expect(await screen.findByRole('link', { name:'เริ่มเรียนคอร์ส' })).toHaveAttribute('href','/learn/course-123');
+    expect(await screen.findByRole('link', { name:'เริ่มเรียนคอร์ส' })).toHaveAttribute('href','/learn');
     expect(screen.getByText(label!)).toBeInTheDocument();
     expect(screen.getByText(/บัญชี Google เดียวกับที่ใช้ซื้อคอร์ส/)).toBeInTheDocument();
     expect(screen.queryByRole('link', {name:'ดาวน์โหลดไฟล์สินค้า'})).not.toBeInTheDocument();

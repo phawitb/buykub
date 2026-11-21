@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CheckIcon } from "@/components/icons";
 
@@ -61,7 +62,7 @@ export function CheckoutSuccess({ sessionId }: { sessionId: string }) {
       <>
         <h1 className="text-2xl font-bold text-ink">ชำระเงินสำเร็จ</h1>
         <p className="mt-4 text-sm leading-6 text-muted">ใบเสร็จรายการเดิม “{result.item_name}” ระบบจองบริการพักให้บริการชั่วคราว หากต้องการสอบถามรายการนี้ กรุณาติดต่อร้านค้า</p>
-        {result.meet_url && <a href={result.meet_url} target="_blank" rel="noreferrer" className="primary-button mt-6 inline-block">เปิด Google Meet</a>}
+        {result.meet_url && <a href={result.meet_url} target="_blank" rel="noreferrer" className="primary-button mt-6">เปิด Google Meet</a>}
       </>
     );
   }
@@ -71,7 +72,7 @@ export function CheckoutSuccess({ sessionId }: { sessionId: string }) {
         <p className="text-xs font-semibold tracking-widest text-accent">BUYKUB CLASSROOM</p>
         <h1 className="mt-3 text-2xl font-bold text-ink">คอร์สของคุณพร้อมเรียนแล้ว</h1>
         <p className="mt-4 text-sm leading-6 text-muted">ชำระเงิน “{result.item_name}” สำเร็จแล้ว เข้าเรียนด้วยบัญชี Google เดียวกับที่ใช้ซื้อคอร์ส</p>
-        <a href={`/learn/${encodeURIComponent(result.product_id)}`} className="primary-button mt-6 inline-block">เริ่มเรียนคอร์ส</a>
+        <Link href="/learn" className="primary-button mt-6">เริ่มเรียนคอร์ส</Link>
         <p className="mt-4 text-xs text-muted">{result.course_expires_at ? `เรียนได้ถึง ${new Date(result.course_expires_at).toLocaleDateString("th-TH", {timeZone:"Asia/Bangkok", day:"numeric", month:"long", year:"numeric"})}` : "สิทธิ์เรียนตลอดไป"}</p>
       </>
     );
@@ -81,7 +82,7 @@ export function CheckoutSuccess({ sessionId }: { sessionId: string }) {
       <h1 className="text-2xl font-bold text-ink">ชำระเงินสำเร็จ</h1>
       <p className="mt-4 text-sm leading-6 text-muted">ชำระเงิน “{result.item_name}” สำเร็จแล้ว</p>
       {!result.assigned_key && (
-        <a href={`/api/stripe/download?session_id=${encodeURIComponent(sessionId)}`} rel="noreferrer" className="primary-button mt-6 inline-block">ดาวน์โหลดไฟล์สินค้า</a>
+        <a href={`/api/stripe/download?session_id=${encodeURIComponent(sessionId)}`} rel="noreferrer" className="primary-button mt-6">ดาวน์โหลดไฟล์สินค้า</a>
       )}
       {result.assigned_key && (
         <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left">
