@@ -18,6 +18,8 @@ const eslintConfig = defineConfig([
     ".claude/skills/**",
     // OCR engine copied out of node_modules by scripts/copy-ocr-assets.mjs.
     "public/ocr/**",
+    // Exam-prep engine built in the AFAPS-Exam repository (output/web/exam-engine).
+    "public/exam-prep/**",
   ]),
 ]);
 

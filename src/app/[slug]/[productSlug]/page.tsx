@@ -15,6 +15,8 @@ import { BRAND_NAME, productUrl } from "@/lib/brand";
 import { ShareButton } from "../ShareButton";
 import { createPublicClient } from "@/lib/supabase/public";
 import { ProductPurchase } from "./ProductPurchase";
+import { getPublicExamSummary } from "@/lib/storefront/exam-summary";
+import { ExamCourseOverview } from "@/features/storefront/ExamCourseOverview";
 import { ArrowRightIcon, CheckIcon } from "@/components/icons";
 
 type Params = Promise<{ slug: string; productSlug: string }>;
@@ -34,9 +36,13 @@ const loadProduct = cache(async (slug: string, productSlug: string) => {
         })
       : { data: null };
 
+  const examSummary =
+    product.delivery_type === "course" ? await getPublicExamSummary(product.id) : null;
+
   return {
     shop,
     product,
+    examSummary,
     availableStock:
       product.delivery_type === "key" ? Number(availableStock ?? 0) : undefined,
   };
@@ -62,7 +68,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
   const { slug, productSlug } = await params;
   const result = await loadProduct(slug, productSlug);
   if (!result) notFound();
-  const { shop, product, availableStock } = result;
+  const { shop, product, examSummary, availableStock } = result;
 
   const imagesV2 = Array.isArray(product.images_v2)
     ? (product.images_v2 as ProductImage[])
@@ -165,6 +171,10 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
               <span>คืนเงินได้ภายใน 7 วัน</span>
             </div>
           </div>
+
+          {examSummary && (
+            <ExamCourseOverview summary={examSummary} accessDays={product.course_access_days} />
+          )}
 
           {safeDescription && (
             <section className="mt-8 border-t border-line pt-7">

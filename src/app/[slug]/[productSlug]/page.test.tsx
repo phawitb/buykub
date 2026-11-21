@@ -8,10 +8,12 @@ const mocks = vi.hoisted(() => ({
   getPublicProduct: vi.fn(),
   rpc: vi.fn(),
   purchase: vi.fn(),
+  examSummary: vi.fn(),
 }));
 
 vi.mock("next/server", () => ({ connection: vi.fn(async () => undefined) }));
 vi.mock("@/lib/storefront/catalog", () => ({ getPublicShop: mocks.getPublicShop, getPublicProduct: mocks.getPublicProduct }));
+vi.mock("@/lib/storefront/exam-summary", () => ({ getPublicExamSummary: mocks.examSummary }));
 vi.mock("@/lib/supabase/public", () => ({ createPublicClient: () => ({ rpc: mocks.rpc }) }));
 vi.mock("@/features/analytics/ProductViewTracker", () => ({ ProductViewTracker: () => null }));
 vi.mock("@/features/storefront/ProductGallery", () => ({ ProductGallery: () => null }));
@@ -22,6 +24,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.getPublicShop.mockResolvedValue({ id: "shop-1", slug: "demo", name: "Demo shop", avatar_url: null });
   mocks.rpc.mockResolvedValue({ data: 3 });
+  mocks.examSummary.mockResolvedValue(null);
 });
 
 describe("product detail category", () => {
@@ -58,4 +61,23 @@ it("shares the public product URL from the product header", async () => {
   render(await ProductDetailPage({ params: Promise.resolve({ slug: "demo", productSlug: "my-product" }) }));
   fireEvent.click(screen.getByRole("button", { name: "แชร์สินค้า" }));
   await waitFor(() => expect(writeText).toHaveBeenCalledWith("https://buykub.com/demo/my-product"));
+});
+
+it("lists what an exam-prep course contains, from its public summary", async () => {
+  mocks.getPublicProduct.mockResolvedValue({
+    id: "product-1", name: "Exam course", delivery_type: "course", course_access_days: 30,
+    price_cents: 9900, images: [], images_v2: [], faq: [], highlights: [],
+  });
+  mocks.examSummary.mockResolvedValue({
+    format: "exam-prep", version: 1, id: "demo", title: "Demo", days: 7, questions: 300, practice: 150,
+    mocks: 1, mockQuestions: 150, mockMinutes: 180, chapters: 39,
+    subjects: [{ key: "math", code: "M", name: "คณิต", short: "M", questions: 40, perSet: 20, chapters: 6 }],
+    parts: [{ name: "ภาคทั่วไป", max: 50, pass: 0.6 }],
+  });
+  render(await ProductDetailPage({ params: Promise.resolve({ slug: "demo", productSlug: "exam" }) }));
+  expect(mocks.examSummary).toHaveBeenCalledWith("product-1");
+  expect(screen.getByText("7 วัน")).toBeInTheDocument();
+  expect(screen.getByText("300 ข้อ")).toBeInTheDocument();
+  expect(screen.getByText(/ภาคทั่วไป 30\/50 ข้อ/)).toBeInTheDocument();
+  expect(screen.getByText(/เข้าเรียนได้ 30 วันนับจากชำระเงิน/)).toBeInTheDocument();
 });

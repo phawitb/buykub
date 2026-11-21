@@ -48,6 +48,7 @@ export function PurchaseLibrary({ purchases, failed = false }: { purchases: Purc
                   <p className="text-sm font-semibold">฿{(purchase.priceCents / 100).toLocaleString("th-TH", { maximumFractionDigits: 2 })}</p>
                 </div>
                 {purchase.kind === "course" && <p className="mb-5 text-xs text-muted">{purchase.expiresAt ? `สิทธิ์ถึง ${dateLabel(purchase.expiresAt)}` : purchase.status === "paid" ? "สิทธิ์ตลอดชีพ" : "สิทธิ์เข้าเรียนไม่พร้อมใช้งาน"}</p>}
+                {purchase.progress && <div className="-mt-2 mb-5"><div className="flex justify-between text-xs text-muted"><span>ทำโจทย์แล้ว</span><span>{purchase.progress.answered.toLocaleString("th-TH")} / {purchase.progress.total.toLocaleString("th-TH")} ข้อ</span></div><div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-paper-dim" role="progressbar" aria-label="ความคืบหน้า" aria-valuemin={0} aria-valuemax={purchase.progress.total} aria-valuenow={purchase.progress.answered}><div className="h-full rounded-full bg-accent" style={{width:`${Math.min(100, purchase.progress.answered / Math.max(1, purchase.progress.total) * 100)}%`}}/></div></div>}
                 {purchase.href && purchase.status === "paid" ? (
                   <Link href={purchase.href} className="primary-button group mt-auto inline-flex items-center justify-center gap-2 text-center">{actionLabels[purchase.kind]}<ArrowRightIcon className="size-4 transition-transform duration-[200ms] ease-out group-hover:translate-x-0.5" /></Link>
                 ) : (
