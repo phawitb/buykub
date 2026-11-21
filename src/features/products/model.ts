@@ -11,6 +11,21 @@ export type ProductImage = {
   alt: string;
 };
 
+/**
+ * A sample image shown under "สิ่งที่คุณจะได้รับ". The blur and the watermark
+ * are drawn into the uploaded file itself, so the flags only record what was
+ * applied; the clean original is never uploaded.
+ */
+export type ProductPreviewImage = {
+  id: string;
+  path: string;
+  publicUrl: string;
+  width: number;
+  height: number;
+  blur: boolean;
+  watermark: boolean;
+};
+
 export type ProductUploadRecord = {
   path: string;
   fileName: string;
@@ -48,6 +63,8 @@ export type ProductEditorValue = {
   descriptionHtml: string;
   productFile: ProductUploadRecord | null;
   images: ProductImage[];
+  /** Sample images under the highlights. Absent on values built before previews existed. */
+  previews?: ProductPreviewImage[];
   highlights: string[];
   faq: ProductFAQ[];
   published: boolean;

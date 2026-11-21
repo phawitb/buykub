@@ -17,6 +17,7 @@ import { ShareButton } from "../ShareButton";
 import { createPublicClient } from "@/lib/supabase/public";
 import { ProductPurchase } from "./ProductPurchase";
 import { getPublicExamSummary } from "@/lib/storefront/exam-summary";
+import { getPublicPreviewImages } from "@/lib/storefront/previews";
 import { ExamCourseOverview } from "@/features/storefront/ExamCourseOverview";
 import { ArrowRightIcon, CheckIcon } from "@/components/icons";
 
@@ -37,13 +38,16 @@ const loadProduct = cache(async (slug: string, productSlug: string) => {
         })
       : { data: null };
 
-  const examSummary =
-    product.delivery_type === "course" ? await getPublicExamSummary(product.id) : null;
+  const [examSummary, previews] = await Promise.all([
+    product.delivery_type === "course" ? getPublicExamSummary(product.id) : null,
+    getPublicPreviewImages(product.id),
+  ]);
 
   return {
     shop,
     product,
     examSummary,
+    previews,
     availableStock:
       product.delivery_type === "key" ? Number(availableStock ?? 0) : undefined,
   };
@@ -69,7 +73,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
   const { slug, productSlug } = await params;
   const result = await loadProduct(slug, productSlug);
   if (!result) notFound();
-  const { shop, product, examSummary, availableStock } = result;
+  const { shop, product, examSummary, previews, availableStock } = result;
 
   const imagesV2 = Array.isArray(product.images_v2)
     ? (product.images_v2 as ProductImage[])
@@ -208,6 +212,34 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
                   </li>
                 ))}
               </ul>
+            </section>
+          )}
+
+          {previews.length > 0 && (
+            <section aria-labelledby="product-previews" className={`mt-8 ${(product.highlights?.length ?? 0) > 0 ? "" : "border-t border-line pt-7"}`}>
+              <h2 id="product-previews" className="text-xl font-bold text-ink">ตัวอย่าง</h2>
+              {/* Each image keeps the shape it was uploaded in; one sample spans the column. */}
+              <div className={`mt-4 grid gap-3 ${previews.length > 1 ? "grid-cols-2" : ""}`}>
+                {previews.map((preview, index) => (
+                  <a
+                    key={preview.id}
+                    href={preview.publicUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block self-start overflow-hidden rounded-element border border-line bg-paper-dim transition hover:border-line-strong"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={preview.publicUrl}
+                      alt={`ตัวอย่าง ${index + 1} ของ ${product.name}`}
+                      width={preview.width || undefined}
+                      height={preview.height || undefined}
+                      loading="lazy"
+                      className="block h-auto w-full"
+                    />
+                  </a>
+                ))}
+              </div>
             </section>
           )}
 

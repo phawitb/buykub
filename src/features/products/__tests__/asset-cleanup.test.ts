@@ -94,3 +94,12 @@ describe("findNewProductAssets", () => {
     ]);
   });
 });
+
+it("tracks preview images like product images", () => {
+  const base = { deliveryType: "file" as const, keyInput: "", keyInventory: { available: 0, assigned: 0, disabled: 0 }, name: "", price: "", comparePrice: "", category: "OTHER", descriptionHtml: "", productFile: null, images: [], highlights: [], faq: [], published: false };
+  const preview = (path: string) => ({ id: path, path, publicUrl: `https://cdn.example/${path}`, width: 1, height: 1, blur: false, watermark: true });
+  const initial = { ...base, previews: [preview("u/old.png")] };
+  const current = { ...base, previews: [preview("u/new.png")] };
+  expect(findRemovedProductAssets(initial, current)).toEqual([{ destination: "product-image", path: "u/old.png" }]);
+  expect(findNewProductAssets(initial, current)).toEqual([{ destination: "product-image", path: "u/new.png" }]);
+});

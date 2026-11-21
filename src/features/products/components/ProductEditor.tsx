@@ -22,8 +22,10 @@ import {
 } from "@/features/products/components/ProductPdfIntake";
 import {
   DEFAULT_PDF_PREVIEW_PREFERENCES,
+  watermarkLabel,
   type PdfPreviewPreferences,
 } from "@/features/products/pdf/preferences";
+import { ProductPreviewUploader } from "@/features/products/components/ProductPreviewUploader";
 import type { PdfPageSource } from "@/features/products/pdf/extract";
 import type { ProtectedPreviewOptions } from "@/features/products/pdf/watermark";
 import { RichTextEditor } from "@/features/products/components/RichTextEditor";
@@ -44,7 +46,7 @@ import { productCategory } from "@/features/products/category";
 import { isBlankProductValue, validateProductEditor } from "@/features/products/validation";
 import { parseProductKeys } from "@/features/products/product-keys";
 import { createClient } from "@/lib/supabase/client";
-import { writeWithoutMissingColumn } from "@/lib/supabase/missing-column";
+import { isMissingColumnError, writeWithoutMissingColumn } from "@/lib/supabase/missing-column";
 import { deleteShopAsset } from "@/lib/supabase/upload";
 import type { UploadDestination } from "@/lib/supabase/upload";
 import { formatUsd } from "@/lib/agent/pricing";
@@ -74,6 +76,27 @@ export type ProductEditorProps = {
 
 function visibleText(html: string): string {
   return DOMPurify.sanitize(html, { ALLOWED_TAGS: [] }).trim();
+}
+
+/**
+ * Writes the product row on databases with or without the newer optional
+ * columns. A missing page count is dropped quietly; missing preview images
+ * are only dropped when there are none to keep, so a seller's samples are
+ * never silently lost.
+ */
+function writeProductRow<T>(
+  row: Record<string, unknown>,
+  hasPreviews: boolean,
+  run: (body: Record<string, unknown>) => Promise<T>,
+): Promise<T> {
+  const withPages = (body: Record<string, unknown>) => writeWithoutMissingColumn(body, "file_page_count", run);
+  if (!hasPreviews) return writeWithoutMissingColumn(row, "preview_images", withPages);
+  return withPages(row).catch((error: unknown) => {
+    if (isMissingColumnError(error, "preview_images")) {
+      throw new Error("ระบบยังไม่พร้อมบันทึกรูปตัวอย่าง (รอการอัปเดตฐานข้อมูล) — ลบรูปตัวอย่างออกก่อนแล้วบันทึกอีกครั้ง");
+    }
+    throw error;
+  });
 }
 
 function errorMessage(error: unknown) {
@@ -121,6 +144,13 @@ function ProductEditorSession({
   const formRef = useRef<HTMLFormElement>(null);
   const [fileUploading, setFileUploading] = useState(false);
   const [imagesUploading, setImagesUploading] = useState(false);
+  const [previewsUploading, setPreviewsUploading] = useState(false);
+  // Samples are marked in the shop's own style, the same one PDF pages get.
+  const previewProtection = useMemo<ProtectedPreviewOptions>(() => ({
+    blurStrength: pdfPreferences.blurStrength,
+    watermarkOpacity: pdfPreferences.watermarkOpacity,
+    watermarkText: watermarkLabel(pdfPreferences, shopName),
+  }), [pdfPreferences, shopName]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
@@ -151,7 +181,7 @@ function ProductEditorSession({
   // The button stays pressable while the form is still wrong, because pressing
   // it is how the seller finds out what is wrong. It locks only while an upload
   // or the save itself is in flight, where a second press would do damage.
-  const busy = fileUploading || imagesUploading || saving;
+  const busy = fileUploading || imagesUploading || previewsUploading || saving;
 
   useEffect(() => {
     if (!refusedAt) return;
@@ -162,12 +192,12 @@ function ProductEditorSession({
 
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
-      if (!dirty && !fileUploading && !imagesUploading) return;
+      if (!dirty && !fileUploading && !imagesUploading && !previewsUploading) return;
       event.preventDefault();
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty, fileUploading, imagesUploading]);
+  }, [dirty, fileUploading, imagesUploading, previewsUploading]);
 
   useEffect(() => {
     const staleDraft = window.localStorage.getItem(draftStorageKey);
@@ -198,7 +228,7 @@ function ProductEditorSession({
 
   useEffect(() => {
     const interceptNavigation = (event: MouseEvent) => {
-      if (!dirty && !fileUploading && !imagesUploading) return;
+      if (!dirty && !fileUploading && !imagesUploading && !previewsUploading) return;
       const anchor = (event.target as Element | null)?.closest("a");
       if (
         !anchor ||
@@ -315,7 +345,7 @@ function ProductEditorSession({
 
   async function leaveEditor() {
     if (
-      (dirty || fileUploading || imagesUploading) &&
+      (dirty || fileUploading || imagesUploading || previewsUploading) &&
       !window.confirm("มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?")
     ) {
       return;
@@ -327,7 +357,7 @@ function ProductEditorSession({
   useEffect(() => {
     if (!workspaceDialog) return;
     workspaceDialog.current = () => {
-      if (!saving && !fileUploading && !imagesUploading) void leaveEditor();
+      if (!saving && !fileUploading && !imagesUploading && !previewsUploading) void leaveEditor();
     };
     return () => { workspaceDialog.current = null; };
   });
@@ -356,6 +386,7 @@ function ProductEditorSession({
       value.deliveryType === "file" ? value.productFile
       : value.deliveryType === "course" && value.productFile?.mimeType === "application/pdf" ? value.productFile
       : null;
+    const previews = value.previews ?? [];
     const payload = {
       shop_id: shopId,
       name: value.name.trim(),
@@ -376,6 +407,7 @@ function ProductEditorSession({
         .filter((item) => item.question && item.answer),
       images: value.images.map((image) => image.publicUrl),
       images_v2: value.images,
+      preview_images: previews,
       delivery_type: value.deliveryType,
       course_access_days: value.deliveryType === "course" && value.courseAccessDays ? Number(value.courseAccessDays) : null,
       file_path: deliveredFile?.path ?? null,
@@ -395,7 +427,7 @@ function ProductEditorSession({
       );
       try {
         if (saveProduct) {
-          await writeWithoutMissingColumn(
+          await writeProductRow(
             {
               ...payload,
               slug,
@@ -404,14 +436,14 @@ function ProductEditorSession({
                   ? parseProductKeys(value.keyInput).keys
                   : [],
             },
-            "file_page_count",
+            previews.length > 0,
             (row) => saveProduct(row),
           );
         } else {
           const supabase = createClient();
-          const createdProduct = await writeWithoutMissingColumn(
+          const createdProduct = await writeProductRow(
             { ...payload, slug },
-            "file_page_count",
+            previews.length > 0,
             async (row) => {
               const { data, error } = await supabase
                 .from("products")
@@ -462,7 +494,7 @@ function ProductEditorSession({
           value.deliveryType === "key"
             ? parseProductKeys(value.keyInput).keys.length
             : 0;
-        await writeWithoutMissingColumn(
+        await writeProductRow(
           {
             ...payload,
             product_keys:
@@ -470,12 +502,12 @@ function ProductEditorSession({
                 ? parseProductKeys(value.keyInput).keys
                 : [],
           },
-          "file_page_count",
+          previews.length > 0,
           (row) => saveProduct(row),
         );
       } else {
         const supabase = createClient();
-        await writeWithoutMissingColumn(payload, "file_page_count", async (row) => {
+        await writeProductRow(payload, previews.length > 0, async (row) => {
           const { error } = await supabase
             .from("products")
             .update(row)
@@ -755,6 +787,14 @@ function ProductEditorSession({
       <HighlightFields
         value={value.highlights}
         onChange={(highlights) => update({ highlights })}
+      />
+      <ProductPreviewUploader
+        userId={userId}
+        value={value.previews ?? []}
+        onChange={(previews) => update({ previews })}
+        onUploadingChange={setPreviewsUploading}
+        protectionOptions={previewProtection}
+        deleteAsset={deleteAsset}
       />
       <FAQFields value={value.faq} onChange={(faq) => update({ faq })} />
 
