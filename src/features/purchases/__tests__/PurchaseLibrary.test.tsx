@@ -35,10 +35,10 @@ describe("purchase library", () => {
 describe("products from the seller's own shop", () => {
   it("opens each product the way a buyer would, without mixing it into purchases", () => {
     render(<PurchaseLibrary purchases={[]} tryouts={[
-      { id: "c", name: "My course", kind: "course", published: true, href: "/learn/c", progress: { answered: 3, total: 10 } },
-      { id: "f", name: "My file", kind: "file", published: false, href: "/api/products/f/file" },
-      { id: "e", name: "Empty file", kind: "file", published: true, href: null },
-      { id: "k", name: "My key", kind: "key", published: true, href: "/dashboard/products/k/edit" },
+      { id: "c", name: "My course", kind: "course", published: true, coverUrl: "/cover.webp", href: "/learn/c", progress: { answered: 3, total: 10 } },
+      { id: "f", name: "My file", kind: "file", published: false, coverUrl: null, href: "/api/products/f/file" },
+      { id: "e", name: "Empty file", kind: "file", published: true, coverUrl: null, href: null },
+      { id: "k", name: "My key", kind: "key", published: true, coverUrl: null, href: "/dashboard/products/k/edit" },
     ]} />);
     const section = screen.getByRole("region", { name: "จากร้านค้าของฉัน" });
     expect(within(section).getByRole("link", { name: "เข้าเรียน" })).toHaveAttribute("href", "/learn/c");
@@ -48,6 +48,8 @@ describe("products from the seller's own shop", () => {
     expect(within(section).getByText("ยังไม่เผยแพร่")).toBeInTheDocument();
     expect(within(section).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "3");
     expect(screen.getByText("ยังไม่มีรายการที่สั่งซื้อ")).toBeInTheDocument();
+    expect(section.querySelectorAll("img")).toHaveLength(1);
+    expect(section.querySelector("img")).toHaveAttribute("src", "/cover.webp");
   });
   it("is absent for buyers without a shop", () => {
     render(<PurchaseLibrary purchases={[]} />);

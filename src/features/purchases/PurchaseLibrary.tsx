@@ -23,7 +23,11 @@ function ShopTryouts({ tryouts }: { tryouts: ShopTryout[] }) {
       <p className="mb-4 mt-2 text-xs leading-6 text-muted">ลองใช้สินค้าของร้านคุณแบบเดียวกับที่ผู้ซื้อได้รับ ไม่มีค่าใช้จ่ายและไม่นับเป็นคำสั่งซื้อ</p>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {tryouts.map(tryout => (
-          <article key={tryout.id} className="flex flex-col rounded-2xl border border-line bg-paper p-6">
+          <article key={tryout.id} className="flex flex-col overflow-hidden rounded-2xl border border-line bg-paper">
+            {/* Same shape the storefront shows the cover in: whole, never cropped. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {tryout.coverUrl && <img src={tryout.coverUrl} alt="" loading="lazy" className="block h-auto w-full border-b border-line bg-paper-dim" />}
+            <div className="flex flex-1 flex-col p-6">
             <div className="flex items-center justify-between gap-3">
               <span className="rounded-md bg-paper-dim px-2.5 py-1 text-[10px] font-medium text-muted">{kindLabels[tryout.kind]}</span>
               <span className={`text-xs ${tryout.published ? "text-emerald-700" : "text-muted"}`}>{tryout.published ? "เผยแพร่อยู่" : "ยังไม่เผยแพร่"}</span>
@@ -38,6 +42,7 @@ function ShopTryouts({ tryouts }: { tryouts: ShopTryout[] }) {
             ) : (
               <p className="mt-auto border-t border-line pt-4 text-xs leading-6 text-muted">ยังไม่ได้อัปโหลดไฟล์ของสินค้านี้</p>
             )}
+            </div>
           </article>
         ))}
       </div>

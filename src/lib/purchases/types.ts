@@ -20,6 +20,8 @@ export type ShopTryout = {
   name: string;
   kind: "course" | "file" | "key";
   published: boolean;
+  /** The product's first public image, as the storefront card shows it. */
+  coverUrl: string | null;
   /** null when there is nothing to open yet, such as a file product without its file. */
   href: string | null;
   progress?: PurchaseProgress | null;

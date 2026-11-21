@@ -113,10 +113,10 @@ describe("products from the seller's own shop", () => {
   });
   it("opens courses through the classroom, files through the owner route and keys in the dashboard, never exposing file paths", async () => {
     const products = shopQuery([
-      { id: "c", name: "Course", delivery_type: "course", file_path: null, published: true },
+      { id: "c", name: "Course", delivery_type: "course", file_path: null, published: true, images_v2: [{ publicUrl: "https://cdn/c.webp" }] },
       { id: "f", name: "File", delivery_type: "file", file_path: "buyer/secret.pdf", published: false },
       { id: "e", name: "Empty", delivery_type: "file", file_path: null, published: true },
-      { id: "k", name: "Key", delivery_type: "key", file_path: null, published: true },
+      { id: "k", name: "Key", delivery_type: "key", file_path: null, published: true, images: ["https://cdn/k.png"] },
     ]);
     mocks.context.mockResolvedValue({ user, supabase: { from: vi.fn(() => products) }, shop: { id: "shop" } });
     mocks.admin.mockReturnValue({ from: vi.fn(() => ({ select: () => ({ in: async () => ({ data: [], error: null }), eq: () => ({ in: async () => ({ data: [], error: null }) }) }) })) });
@@ -125,6 +125,7 @@ describe("products from the seller's own shop", () => {
     expect(tryouts.map(t => [t.id, t.kind, t.href, t.published])).toEqual([
       ["c", "course", "/learn/c", true], ["f", "file", "/api/products/f/file", false], ["e", "file", null, true], ["k", "key", "/dashboard/products/k/edit", true],
     ]);
+    expect(tryouts.map(t => t.coverUrl)).toEqual(["https://cdn/c.webp", null, null, "https://cdn/k.png"]);
     expect(JSON.stringify(tryouts)).not.toContain("secret.pdf");
   });
 });
