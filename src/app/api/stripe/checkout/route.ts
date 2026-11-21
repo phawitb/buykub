@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isGoogleUser } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe";
 import { cleanupExpiredPromptpay } from "@/lib/payments/promptpay";
-import { MIN_PAID_PRICE_BAHT } from "@/features/products/validation";
+import { MIN_PRICE_BAHT } from "@/features/products/validation";
 
 export const runtime = "nodejs";
 const headers = { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" };
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     const { data: product } = await supabase.from("products").select("delivery_type,name,price_cents").eq("id", body.productId).maybeSingle();
     if (!product) return error("สินค้านี้ไม่พร้อมจำหน่าย", 409);
     // Stripe refuses THB charges under ฿10; say so before reserving anything.
-    if (product.price_cents > 0 && product.price_cents < MIN_PAID_PRICE_BAHT * 100) return error(`สินค้านี้ราคาต่ำกว่าขั้นต่ำที่ชำระผ่าน PromptPay ได้ (฿${MIN_PAID_PRICE_BAHT}) กรุณาแจ้งร้านค้า`, 409);
+    if (product.price_cents < MIN_PRICE_BAHT * 100) return error(`สินค้านี้ราคาต่ำกว่าขั้นต่ำที่ชำระผ่าน PromptPay ได้ (฿${MIN_PRICE_BAHT}) กรุณาแจ้งร้านค้า`, 409);
     const admin = createAdminClient();
     // Sweep abandoned checkouts on new traffic as well as scheduled cleanup.
     await cleanupExpiredPromptpay(admin);
