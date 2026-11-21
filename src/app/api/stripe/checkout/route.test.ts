@@ -146,3 +146,14 @@ describe("PromptPay checkout start", () => {
     expect(mocks.userRpc).not.toHaveBeenCalled();
   });
 });
+
+describe("prices Stripe cannot charge", () => {
+  it("explains the ฿10 minimum before reserving anything or calling Stripe", async () => {
+    mocks.product.mockResolvedValue({ data: { delivery_type: "course", name: "Course", price_cents: 100 } });
+    const response = await POST(request());
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toContain("฿10");
+    expect(mocks.userRpc).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+});

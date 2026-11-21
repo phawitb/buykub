@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isGoogleUser } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe";
 import { cleanupExpiredPromptpay } from "@/lib/payments/promptpay";
+import { MIN_PAID_PRICE_BAHT } from "@/features/products/validation";
 
 export const runtime = "nodejs";
 const headers = { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" };
@@ -27,8 +28,10 @@ export async function POST(request: Request) {
     if (authError || !isGoogleUser(user) || !user.email_confirmed_at || !user.email) return error("กรุณาเข้าสู่ระบบด้วย Google ก่อนซื้อสินค้า", 401, "google_login_required");
     const normalizedEmail = user.email.trim().toLowerCase();
     if (normalizedEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) return error("กรุณาเข้าสู่ระบบด้วย Google เพื่อยืนยันอีเมลรับสินค้า", 401, "google_login_required");
-    const { data: product } = await supabase.from("products").select("delivery_type,name").eq("id", body.productId).maybeSingle();
+    const { data: product } = await supabase.from("products").select("delivery_type,name,price_cents").eq("id", body.productId).maybeSingle();
     if (!product) return error("สินค้านี้ไม่พร้อมจำหน่าย", 409);
+    // Stripe refuses THB charges under ฿10; say so before reserving anything.
+    if (product.price_cents > 0 && product.price_cents < MIN_PAID_PRICE_BAHT * 100) return error(`สินค้านี้ราคาต่ำกว่าขั้นต่ำที่ชำระผ่าน PromptPay ได้ (฿${MIN_PAID_PRICE_BAHT}) กรุณาแจ้งร้านค้า`, 409);
     const admin = createAdminClient();
     // Sweep abandoned checkouts on new traffic as well as scheduled cleanup.
     await cleanupExpiredPromptpay(admin);
@@ -87,7 +90,9 @@ export async function POST(request: Request) {
     if (intent.status === "requires_confirmation") intent = await stripe.paymentIntents.confirm(intent.id, {}, { idempotencyKey: `promptpay-confirm-${reference}` });
     if (intent.status === "canceled" || intent.status === "requires_payment_method") return error("รายการชำระเงินไม่สำเร็จ กรุณาเริ่มใหม่", 409, "checkout_expired");
     return NextResponse.json({ url: `/checkout/promptpay/${context.stripe_session_id}` }, { headers });
-  } catch {
+  } catch (failure) {
+    // Only the code and message reach the logs, never request or buyer details.
+    console.error("checkout failed", (failure as { code?: string })?.code, failure instanceof Error ? failure.message : "");
     // An API timeout is ambiguous. Keep the reservation and same idempotency key;
     // only a signed failure/cancel or confirmed server cancellation releases it.
     return error("ไม่สามารถเปิด QR ได้ กรุณาลองอีกครั้ง ระบบจะใช้รายการเดิม", 502);
