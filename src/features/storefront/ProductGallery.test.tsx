@@ -150,3 +150,11 @@ it("says nothing about pages for a product that is not a PDF", () => {
   expect(screen.getByText("1 / 3")).toBeInTheDocument();
   expect(screen.queryByText(/หน้า$/)).not.toBeInTheDocument();
 });
+
+it("shows each image whole, in the shape it was uploaded", () => {
+  render(<ProductGallery productName="My product" deliveryType="course" images={pages.slice(0, 1)} />);
+  const image = screen.getByRole("img", { name: "First image" });
+  expect(image).not.toHaveClass("object-cover");
+  expect(image).toHaveClass("h-auto", "max-w-full");
+  expect(image.parentElement).not.toHaveClass("aspect-square");
+});

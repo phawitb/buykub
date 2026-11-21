@@ -115,12 +115,14 @@ export function ProductGallery({
           className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain outline-none [-ms-overflow-style:none] [scrollbar-width:none] focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-scrollbar]:hidden"
         >
           {images.map((image, index) => (
-            <div key={image.id} className="aspect-square w-full shrink-0 snap-center">
+            // Each image keeps the shape it was uploaded in, so nothing is cut
+            // off; a very tall one is held to the screen's height instead.
+            <div key={image.id} className="flex w-full shrink-0 snap-center items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={image.publicUrl}
                 alt={image.alt || `${productName} ภาพที่ ${index + 1}`}
-                className="h-full w-full object-cover"
+                className="block h-auto max-h-[85vh] w-auto max-w-full"
                 draggable={false}
               />
             </div>
@@ -131,7 +133,7 @@ export function ProductGallery({
               next page in the stack rather than a banner after the gallery. */}
           {remaining > 0 && (
             <div
-              className="flex aspect-square w-full shrink-0 snap-center items-center justify-center"
+              className="flex min-h-80 w-full shrink-0 snap-center items-center justify-center"
               style={{ backgroundColor: PAGE_GROUND_COLOR }}
             >
               <div
