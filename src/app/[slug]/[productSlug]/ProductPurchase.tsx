@@ -30,7 +30,6 @@ export function ProductPurchase({product}:{product:{id:string;shopId:string;name
   },[product.deliveryType,product.id,retry]);
   if(product.deliveryType !== "course") return <StripeCheckout product={product}/>;
   return <div>
-    <p className="mb-3 text-center text-xs text-muted">ชำระครั้งเดียว · {product.courseAccessDays ? `เข้าเรียนได้ ${product.courseAccessDays.toLocaleString("th-TH")} วัน หลังชำระสำเร็จ` : "เข้าเรียนได้ตลอดชีพ"}</p>
     {state === "loading" && <button disabled className="primary-button w-full">กำลังตรวจสอบสิทธิ์...</button>}
     {state === "learn" && <Link href={`/learn/${product.id}`} className="primary-button group flex w-full items-center justify-center gap-2">เข้าเรียนคอร์สนี้<ArrowRightIcon className="size-4 transition-transform duration-[200ms] ease-out group-hover:translate-x-0.5" /></Link>}
     {(state === "guest" || state === "purchase") && <StripeCheckout product={product}/>}
