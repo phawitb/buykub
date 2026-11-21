@@ -3,7 +3,7 @@ import { SUPPORT_EMAIL } from "@/lib/brand";
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="นโยบายความเป็นส่วนตัว" updatedAt="14 พฤศจิกายน 2569">
+    <LegalPage title="นโยบายความเป็นส่วนตัว" updatedAt="22 พฤศจิกายน 2569">
       <section>
         <h2 className="text-lg font-semibold text-ink">ข้อมูลที่จัดเก็บ</h2>
         <p className="mt-2">
@@ -30,6 +30,11 @@ export default function PrivacyPage() {
           ระบบบันทึกเหตุการณ์ดูสินค้า กดซื้อ เปิด checkout และซื้อสำเร็จ
           ด้วยรหัสผู้เข้าชมแบบสุ่ม พร้อม deduplicate ทุก 30 นาที
           โดยไม่บันทึกชื่อหรืออีเมลในเหตุการณ์ analytics
+        </p>
+        <p className="mt-2">
+          หน้าเปิดร้านใหม่ใช้ Meta Pixel เพื่อวัดผลโฆษณาของ BUYKUB บน Facebook และ Instagram
+          Meta อาจได้รับข้อมูลการเข้าชมหน้านั้นและคุกกี้ตามนโยบายของ Meta
+          หน้าร้านและหน้าสินค้าของผู้ขายไม่มี Meta Pixel นี้
         </p>
       </section>
       <section>
