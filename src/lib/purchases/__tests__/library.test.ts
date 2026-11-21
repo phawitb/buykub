@@ -88,7 +88,7 @@ describe("purchase library authorization", () => {
       order({ id: "expired", course_purchase: true, course_expires_at: "2020-01-01", products: { name: "Course", delivery_type: "course", file_path: "seller/course.pdf" } }),
     ]);
     const list = await getPurchaseLibrary();
-    expect(list.map(item => item.pdfHref)).toEqual(["/api/courses/product/pdf", null]);
+    expect(list.map(item => item.pdfHref)).toEqual(["/learn/product/pdf", null]);
     expect(JSON.stringify(list)).not.toContain("seller/course.pdf");
   });
   it("keeps refunded and expired history without content links, including repurchases", async () => {
@@ -138,7 +138,7 @@ describe("products from the seller's own shop", () => {
     expect(tryouts.map(t => [t.id, t.kind, t.href, t.published])).toEqual([
       ["c", "course", "/learn/c", true], ["f", "file", "/api/products/f/file", false], ["e", "file", null, true], ["k", "key", "/dashboard/products/k/edit", true],
     ]);
-    expect(tryouts[0].pdfHref).toBe("/api/courses/c/pdf");
+    expect(tryouts[0].pdfHref).toBe("/learn/c/pdf");
     expect(tryouts.map(t => t.coverUrl)).toEqual(["https://cdn/c.webp", null, null, "https://cdn/k.png"]);
     expect(JSON.stringify(tryouts)).not.toMatch(/secret\.pdf|course\.pdf/);
   });

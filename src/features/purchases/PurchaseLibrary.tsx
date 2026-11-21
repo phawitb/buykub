@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Purchase, PurchaseProgress, ShopTryout } from "@/lib/purchases/types";
-import { ArrowRightIcon, DownloadIcon, LibraryIcon } from "@/components/icons";
+import { ArrowRightIcon, DocumentIcon, LibraryIcon } from "@/components/icons";
 
 const kindLabels = { course: "คอร์สเรียน", file: "ไฟล์ดิจิทัล", key: "คีย์ / สิทธิ์ใช้งาน", other: "สินค้า" };
 const statusLabels = { paid: "ชำระแล้ว", pending: "รอชำระเงิน", refunded: "คืนเงินแล้ว", expired: "หมดอายุ", unavailable: "ยังไม่พร้อมใช้งาน" };
@@ -12,8 +12,9 @@ function dateLabel(value: string) {
 }
 
 // The PDF route answers with a redirect to storage, so it is a plain link.
+/** Opens the course PDF in the site's reader; downloading is offered there. */
 export function PdfButton({ href }: { href: string }) {
-  return <a href={href} aria-label="ดาวน์โหลด PDF ประกอบคอร์ส" className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full bg-red-600 px-5 text-center text-sm font-medium text-white transition duration-[120ms] ease-out hover:bg-red-700 active:scale-[0.98]"><DownloadIcon className="size-4" />PDF</a>;
+  return <Link href={href} aria-label="เปิด PDF ประกอบคอร์ส" className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full bg-red-600 px-5 text-center text-sm font-medium text-white transition duration-[120ms] ease-out hover:bg-red-700 active:scale-[0.98]"><DocumentIcon className="size-4" />PDF</Link>;
 }
 
 const tryoutLabels = { course: "เข้าเรียน", file: "เปิดไฟล์", key: "จัดการคีย์" };

@@ -41,7 +41,7 @@ describe("ProductPurchase", () => {
     rpc.mockResolvedValue({ data: { allowed: true, reason: "active", expires_at: "2026-12-21T10:00:00Z" }, error: null });
     render(<ProductPurchase product={{ ...product, hasPdf: true }} />);
     expect(await screen.findByText(/คุณมีสิทธิ์เข้าเรียนคอร์สนี้แล้ว · ถึง 21 ธ\.ค\./)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "ดาวน์โหลด PDF ประกอบคอร์ส" })).toHaveAttribute("href", "/api/courses/course-123/pdf");
+    expect(screen.getByRole("link", { name: "เปิด PDF ประกอบคอร์ส" })).toHaveAttribute("href", "/learn/course-123/pdf");
   });
 
   it("leaves out the PDF button for a course without a PDF", async () => {
@@ -49,7 +49,7 @@ describe("ProductPurchase", () => {
     rpc.mockResolvedValue({ data: { allowed: true, reason: "owner", expires_at: null }, error: null });
     render(<ProductPurchase product={product} />);
     expect(await screen.findByText("คอร์สของร้านคุณ เข้าดูได้ทุกเมื่อ")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "ดาวน์โหลด PDF ประกอบคอร์ส" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "เปิด PDF ประกอบคอร์ส" })).toBeNull();
   });
 
   it("offers purchase when a verified Google customer has no course access", async () => {
