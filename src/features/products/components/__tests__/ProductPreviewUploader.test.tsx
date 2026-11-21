@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { expect, it, vi } from "vitest";
@@ -90,6 +90,23 @@ it("swaps two samples with two taps", async () => {
   expect(screen.getByRole("button", { name: "ยกเลิกเลือกรูปตัวอย่าง 1" })).toHaveAttribute("aria-pressed", "true");
   await userEvent.click(screen.getByRole("button", { name: "สลับกับรูปตัวอย่าง 3" }));
   expect(changes.at(-1)!.map((item) => item.id)).toEqual(["c", "b", "a"]);
+  expect(screen.queryByRole("button", { name: /ยกเลิกเลือก/ })).toBeNull();
+});
+
+it("swaps two samples by dragging one onto the other", async () => {
+  const sample = (id: string) => ({ id, path: `user-1/${id}.png`, publicUrl: `https://cdn.example/${id}.png`, width: 10, height: 10, blur: false, watermark: true });
+  const { changes } = setup([sample("a"), sample("b"), sample("c")]);
+  const first = screen.getByRole("button", { name: "เลือกรูปตัวอย่าง 1 เพื่อสลับตำแหน่ง" });
+  const third = screen.getByRole("button", { name: "เลือกรูปตัวอย่าง 3 เพื่อสลับตำแหน่ง" });
+  const pointAt = vi.fn(() => third as Element);
+  Object.defineProperty(document, "elementFromPoint", { configurable: true, value: pointAt });
+  first.setPointerCapture = vi.fn();
+  fireEvent.pointerDown(first, { pointerId: 1, pointerType: "mouse", button: 0, clientX: 10, clientY: 10 });
+  fireEvent.pointerMove(first, { pointerId: 1, pointerType: "mouse", clientX: 300, clientY: 10 });
+  fireEvent.pointerUp(first, { pointerId: 1, pointerType: "mouse", clientX: 300, clientY: 10 });
+  fireEvent.click(first);
+  expect(changes.at(-1)!.map((item) => item.id)).toEqual(["c", "b", "a"]);
+  // The click that ends a drag does not also pick the sample.
   expect(screen.queryByRole("button", { name: /ยกเลิกเลือก/ })).toBeNull();
 });
 

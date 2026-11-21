@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import type { ProductPreviewImage } from "@/features/products/model";
 import { canvasToFile } from "@/features/products/pdf/encode";
 import { pageBlurStrength } from "@/features/products/pdf/preferences";
@@ -81,6 +81,8 @@ type Props = {
   downloadSource?: (path: string) => Promise<Blob>;
 };
 
+type Press = { id: string; url: string; pointer: number; x: number; y: number; dragged: boolean; timer?: number; begin: () => void };
+
 type Pending = { id: string; name: string; error: string | null };
 
 export function ProductPreviewUploader({
@@ -100,12 +102,25 @@ export function ProductPreviewUploader({
   const [errors, setErrors] = useState<string[]>([]);
   /** The sample picked to swap places with the next one tapped. */
   const [picked, setPicked] = useState<string | null>(null);
+  /** A sample being dragged: where the pointer is and which sample it is over. */
+  const [drag, setDrag] = useState<{ id: string; url: string; x: number; y: number; over: string | null } | null>(null);
+  const press = useRef<Press | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // Clean originals, so a sample can be re-protected without stacking a
   // second mark. Each is also kept privately for later visits.
   const sources = useRef(new Map<string, File>());
   const latest = useRef(value);
   useEffect(() => { latest.current = value; }, [value]);
+
+  // While a sample is dragged by touch the page must not scroll under the finger.
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+    const hold = (event: TouchEvent) => { if (press.current?.dragged) event.preventDefault(); };
+    grid.addEventListener("touchmove", hold, { passive: false });
+    return () => grid.removeEventListener("touchmove", hold);
+  });
 
   const uploading = pending.some((item) => !item.error) || busy.length > 0;
   useEffect(() => { onUploadingChange?.(uploading); }, [onUploadingChange, uploading]);
@@ -205,19 +220,84 @@ export function ProductPreviewUploader({
     commit(latest.current.filter((item) => item.id !== preview.id));
   }
 
+  function swap(fromId: string, toId: string) {
+    const from = latest.current.findIndex((item) => item.id === fromId);
+    const to = latest.current.findIndex((item) => item.id === toId);
+    if (from < 0 || to < 0 || from === to) return;
+    const next = [...latest.current];
+    [next[from], next[to]] = [next[to], next[from]];
+    commit(next);
+  }
+
+  function sampleAt(x: number, y: number): string | null {
+    const card = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-preview-id]");
+    return card?.dataset.previewId ?? null;
+  }
+
+  /** A mouse drags at once; a finger holds still briefly first, so a swipe still scrolls the page. */
+  function startPress(event: PointerEvent<HTMLButtonElement>, preview: ProductPreviewImage) {
+    if (event.button !== 0) return;
+    const target = event.currentTarget;
+    const state: Press = {
+      id: preview.id,
+      url: preview.publicUrl,
+      pointer: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      dragged: false,
+      begin: () => {
+        if (press.current !== state || state.dragged) return;
+        state.dragged = true;
+        try { target.setPointerCapture(state.pointer); } catch { /* the pointer may already be gone */ }
+        setPicked(null);
+        setDrag({ id: state.id, url: state.url, x: state.x, y: state.y, over: null });
+      },
+    };
+    press.current = state;
+    if (event.pointerType !== "mouse") state.timer = window.setTimeout(state.begin, 250);
+  }
+
+  function movePress(event: PointerEvent<HTMLButtonElement>) {
+    const state = press.current;
+    if (!state || event.pointerId !== state.pointer) return;
+    const moved = Math.hypot(event.clientX - state.x, event.clientY - state.y) > 6;
+    if (!state.dragged) {
+      if (!moved) return;
+      if (event.pointerType !== "mouse") { cancelPress(); return; }
+      state.begin();
+    }
+    const over = sampleAt(event.clientX, event.clientY);
+    setDrag({ id: state.id, url: state.url, x: event.clientX, y: event.clientY, over: over === state.id ? null : over });
+  }
+
+  function endPress(event: PointerEvent<HTMLButtonElement>) {
+    const state = press.current;
+    if (!state || event.pointerId !== state.pointer) return;
+    if (state.dragged) {
+      const over = sampleAt(event.clientX, event.clientY);
+      if (over) swap(state.id, over);
+    }
+    cancelPress(state.dragged);
+  }
+
+  function cancelPress(keepClickBlocked = false) {
+    const state = press.current;
+    if (state?.timer) window.clearTimeout(state.timer);
+    // The click that follows a drop must not also count as a tap.
+    press.current = keepClickBlocked && state ? { ...state, pointer: -1 } : null;
+    setDrag(null);
+  }
+
   /** The first tap picks a sample, the second swaps it with another (or puts it back). */
   function pick(preview: ProductPreviewImage) {
+    if (press.current?.dragged) { press.current = null; return; }
+    press.current = null;
     if (!picked || picked === preview.id) {
       setPicked(picked ? null : preview.id);
       return;
     }
-    const from = value.findIndex((item) => item.id === picked);
-    const to = value.findIndex((item) => item.id === preview.id);
     setPicked(null);
-    if (from < 0 || to < 0) return;
-    const next = [...value];
-    [next[from], next[to]] = [next[to], next[from]];
-    commit(next);
+    swap(picked, preview.id);
   }
 
   const full = value.length + pending.filter((item) => !item.error).length >= MAX_PREVIEW_IMAGES;
@@ -248,27 +328,34 @@ export function ProductPreviewUploader({
 
       {value.length > 1 && (
         <p className="mt-4 text-xs text-muted" role="status">
-          {picked ? "แตะรูปที่ต้องการสลับตำแหน่งด้วย หรือแตะรูปเดิมเพื่อยกเลิก" : "แตะรูปหนึ่ง แล้วแตะอีกรูปเพื่อสลับตำแหน่ง"}
+          {picked ? "แตะรูปที่ต้องการสลับตำแหน่งด้วย หรือแตะรูปเดิมเพื่อยกเลิก" : "ลากรูปไปวางบนอีกรูป หรือแตะรูปหนึ่งแล้วแตะอีกรูป เพื่อสลับตำแหน่ง"}
         </p>
       )}
 
       {(value.length > 0 || pending.length > 0) && (
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div ref={gridRef} className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           {value.map((preview, index) => {
             const editable = sources.current.has(preview.id) || Boolean(preview.sourcePath);
             const working = busy.includes(preview.id);
             const selected = picked === preview.id;
+            const lifted = drag?.id === preview.id;
+            const target = drag?.over === preview.id;
             return (
-              <div key={preview.id} className={`image-upload-card ${selected ? "ring-2 ring-accent" : ""}`}>
+              <div key={preview.id} data-preview-id={preview.id} className={`image-upload-card transition ${selected || target ? "ring-2 ring-accent" : ""} ${target ? "bg-accent-soft" : ""} ${lifted ? "opacity-40" : ""}`}>
                 <button
                   type="button"
                   aria-pressed={selected}
                   aria-label={selected ? `ยกเลิกเลือกรูปตัวอย่าง ${index + 1}` : picked ? `สลับกับรูปตัวอย่าง ${index + 1}` : `เลือกรูปตัวอย่าง ${index + 1} เพื่อสลับตำแหน่ง`}
                   onClick={() => pick(preview)}
-                  className="relative block w-full rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  onPointerDown={(event) => startPress(event, preview)}
+                  onPointerMove={movePress}
+                  onPointerUp={endPress}
+                  onPointerCancel={() => cancelPress()}
+                  onContextMenu={(event) => event.preventDefault()}
+                  className="relative block w-full cursor-grab select-none rounded-xl [-webkit-touch-callout:none] active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={preview.publicUrl} alt="" className={`block h-auto w-full rounded-xl ${working ? "opacity-60" : ""}`} />
+                  <img src={preview.publicUrl} alt="" draggable={false} className={`block h-auto w-full rounded-xl ${working ? "opacity-60" : ""}`} />
                   <span className={`absolute left-2 top-2 flex size-7 items-center justify-center rounded-full text-xs font-semibold tabular-nums shadow-lift-1 ${selected ? "bg-accent text-white" : "bg-paper text-ink"}`}>
                     {index + 1}
                   </span>
@@ -311,6 +398,17 @@ export function ProductPreviewUploader({
             </div>
           ))}
         </div>
+      )}
+
+      {drag && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={drag.url}
+          alt=""
+          aria-hidden
+          className="pointer-events-none fixed z-50 w-24 -translate-x-1/2 -translate-y-1/2 rotate-2 rounded-lg shadow-lift-2 ring-2 ring-accent"
+          style={{ left: drag.x, top: drag.y }}
+        />
       )}
 
       {errors.length > 0 && (
