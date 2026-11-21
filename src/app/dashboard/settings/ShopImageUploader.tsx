@@ -7,6 +7,7 @@ import {
   type UploadResult,
 } from "@/lib/supabase/upload";
 import { ArrowUpIcon } from "@/components/icons";
+import { ImageCropper, needsCrop, readImageSize, type RenderCrop } from "./ImageCropper";
 
 type Kind = "avatar" | "cover" | "service";
 type Upload = (request: UploadRequest) => Promise<UploadResult>;
@@ -19,6 +20,7 @@ const CONFIG = {
       "แนะนำ 400 × 400 px · 1:1 สี่เหลี่ยมจัตุรัส · JPG, PNG, WebP · สูงสุด 2 MB",
     tips: ["ใช้รูปใบหน้าหรือโลโก้ พื้นหลังเรียบ"],
     maxBytes: 2 * 1024 * 1024,
+    crop: { aspect: 1, width: 400 },
   },
   cover: {
     label: "รูปปก",
@@ -30,6 +32,7 @@ const CONFIG = {
       "หลีกเลี่ยงข้อความสำคัญที่ขอบซ้าย — รูปโปรไฟล์จะทับ",
     ],
     maxBytes: 5 * 1024 * 1024,
+    crop: { aspect: 1600 / 500, width: 1600 },
   },
   service: {
     label: "รูปบริการ",
@@ -38,6 +41,7 @@ const CONFIG = {
       "แนะนำ 1200 × 480 px · 2.5:1 แนวนอน · JPG, PNG, WebP · สูงสุด 5 MB",
     tips: [],
     maxBytes: 5 * 1024 * 1024,
+    crop: { aspect: 1200 / 480, width: 1200 },
   },
 } satisfies Record<
   Kind,
@@ -47,8 +51,13 @@ const CONFIG = {
     hint: string;
     tips: string[];
     maxBytes: number;
+    /** The shape the image is shown at; anything else is cropped by the seller first. */
+    crop: { aspect: number; width: number };
   }
 >;
+
+/** A photo that will be cropped is redrawn smaller, so it may start larger. */
+const MAX_CROP_SOURCE_BYTES = 20 * 1024 * 1024;
 
 const ACCEPTED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
@@ -59,6 +68,8 @@ export function ShopImageUploader({
   onUploaded,
   onBusyChange,
   upload = uploadShopAsset,
+  readSize = readImageSize,
+  renderCrop,
 }: {
   kind: Kind;
   userId: string;
@@ -66,6 +77,8 @@ export function ShopImageUploader({
   onUploaded: (url: string, path: string) => void;
   onBusyChange?: (busy: boolean) => void;
   upload?: Upload;
+  readSize?: (file: File) => Promise<{ width: number; height: number } | null>;
+  renderCrop?: RenderCrop;
 }) {
   const config = CONFIG[kind];
   const inputRef = useRef<HTMLInputElement>(null);
@@ -79,6 +92,7 @@ export function ShopImageUploader({
   >("idle");
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [cropping, setCropping] = useState<{ file: File; size: { width: number; height: number } } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -150,9 +164,19 @@ export function ShopImageUploader({
     }
   }
 
-  function choose(nextFile: File | undefined) {
-    if (nextFile) void startUpload(nextFile);
+  async function choose(nextFile: File | undefined) {
     if (inputRef.current) inputRef.current.value = "";
+    if (!nextFile) return;
+    const size = ACCEPTED_TYPES.has(nextFile.type) && nextFile.size <= MAX_CROP_SOURCE_BYTES
+      ? await readSize(nextFile)
+      : null;
+    if (size && needsCrop(size, config.crop.aspect)) {
+      setError(null);
+      setStatus("idle");
+      setCropping({ file: nextFile, size });
+      return;
+    }
+    void startUpload(nextFile);
   }
 
   const displayedUrl = status === "success" ? value : previewUrl ?? value;
@@ -174,47 +198,61 @@ export function ShopImageUploader({
         onDrop={(event) => {
           event.preventDefault();
           setDragging(false);
-          choose(event.dataTransfer.files[0]);
+          void choose(event.dataTransfer.files[0]);
         }}
         className={`rounded-xl border border-dashed bg-paper p-3 transition ${
           dragging ? "border-accent bg-accent-soft" : "border-line"
         }`}
       >
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-lg text-center"
-        >
-          {displayedUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={displayedUrl}
-              alt=""
-              className={
-                kind === "avatar"
-                  ? "h-16 w-16 rounded-full object-cover"
-                  : "h-20 w-full rounded-lg object-cover"
-              }
-            />
-          ) : (
-            <span
-              aria-hidden
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-paper-dim text-lg text-muted"
-            >
-              <ArrowUpIcon className="size-4.5" />
+        {cropping ? (
+          <ImageCropper
+            key={cropping.file.name + cropping.file.lastModified}
+            file={cropping.file}
+            size={cropping.size}
+            aspect={config.crop.aspect}
+            outputWidth={config.crop.width}
+            round={kind === "avatar"}
+            render={renderCrop}
+            onCancel={() => setCropping(null)}
+            onConfirm={(cropped) => { setCropping(null); void startUpload(cropped); }}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-lg text-center"
+          >
+            {displayedUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={displayedUrl}
+                alt=""
+                className={
+                  kind === "avatar"
+                    ? "h-16 w-16 rounded-full object-cover"
+                    : "h-20 w-full rounded-lg object-cover"
+                }
+              />
+            ) : (
+              <span
+                aria-hidden
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-paper-dim text-lg text-muted"
+              >
+                <ArrowUpIcon className="size-4.5" />
+              </span>
+            )}
+            <span className="text-xs font-medium text-ink-soft">
+              ลากไฟล์มาวางที่นี่ หรือ คลิกเพื่อเลือก
             </span>
-          )}
-          <span className="text-xs font-medium text-ink-soft">
-            ลากไฟล์มาวางที่นี่ หรือ คลิกเพื่อเลือก
-          </span>
-          <span className="text-[11px] text-muted">{config.hint}</span>
-        </button>
+            <span className="text-[11px] text-muted">{config.hint}</span>
+          </button>
+        )}
         <input
           ref={inputRef}
           type="file"
           accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
           aria-label={config.inputLabel}
-          onChange={(event) => choose(event.target.files?.[0])}
+          onChange={(event) => void choose(event.target.files?.[0])}
           className="sr-only"
         />
 
