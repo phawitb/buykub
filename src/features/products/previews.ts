@@ -1,6 +1,6 @@
 import type { ProductPreviewImage } from "@/features/products/model";
 
-export const MAX_PREVIEW_IMAGES = 12;
+export const MAX_PREVIEW_IMAGES = 20;
 
 /** Keeps only well-formed entries, so a hand-edited row cannot break the page. */
 export function normalizePreviewImages(raw: unknown): ProductPreviewImage[] {
