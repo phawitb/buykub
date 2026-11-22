@@ -392,10 +392,12 @@ function mount(root, D, opts = {}) {
   function viewDay(n, key, part) {
     if (!(n >= 1 && n <= NDAYS)) n = planDay();
     const p = D.plan[n - 1], done = dayDone(p);
-    let body = "";
+    let body = "", sub = esc(p.read), tools = "";
     if (p.kind === "study") {
       const items = dayItems(p, n);
       const sel = items.find(it => it.ref === `${key}-${part}`) || items.find(it => !it.done) || items[0];
+      sub = `<span class="num">${dayPct(p)}%</span> · ${esc(itemTitle(sel))}`;
+      tools = `<button class="btn sm ctx-btn" data-act="toc" aria-expanded="false">ภารกิจ ▾</button>`;
       body = `<div class="day-shell">${dayNav(p, n, items, sel)}<section class="pane s-${sel.x.s.key}" aria-live="polite">${sel.ex ? exPane(sel, items, n) : lessonPane(sel, items, n)}</section></div>`;
     } else if (p.kind === "mock") {
       body = mockDayCard(p.mock);
@@ -423,7 +425,7 @@ function mount(root, D, opts = {}) {
         <div class="row"><a class="btn primary" href="#review">เปิดสมุดข้อผิด</a><a class="btn" href="#mock-${k}-result">ข้อผิดชุด ${k}</a></div></div>
         ${g ? `<div class="card taped stack"><h2 style="font-size:20px">${esc(g.title)}</h2><div class="prose">${md(g.md)}</div></div>` : ""}`;
     }
-    head = { title: `วันที่ ${n}`, sub: esc(p.read), back: "plan" };
+    head = { title: `วันที่ ${n}`, sub, back: "plan", tools };
     return `
     <div class="page-head"><h1>วันที่ ${n} · ${esc(p.read)}</h1></div>
     ${body}
@@ -863,7 +865,7 @@ function mount(root, D, opts = {}) {
       case "map": case "toc": {
         const on = root.classList.toggle(act === "map" ? "map-open" : "toc-open");
         t.setAttribute("aria-expanded", on);
-        const d = root.querySelector(".notes-nav"); if (act === "toc" && d && on) d.open = true;
+        const d = root.querySelector(".notes-nav, .dnav"); if (act === "toc" && d && on) d.open = true;
         break;
       }
       case "mpage": S.run.page = +t.dataset.p; save(); render(); window.scrollTo(0, 0); break;
