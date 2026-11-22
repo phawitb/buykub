@@ -86,13 +86,13 @@ describe("ProductCard", () => {
       />,
     );
     expect(screen.getByText("สินค้าหมด")).toBeInTheDocument();
-    expect(screen.queryByText("ซื้อเลย")).not.toBeInTheDocument();
+    expect(screen.queryByText("ดูรายละเอียด")).not.toBeInTheDocument();
   });
 
-  it("offers a buy button that leads to the product page, where checkout happens", () => {
+  it("offers a details button that leads to the product page, where checkout happens", () => {
     render(<ProductCard shopSlug="demo-shop" product={{ ...product, deliveryType: "course" }} />);
     const link = screen.getByRole("link", { name: "E-Book + Audio Book" });
-    expect(link).toContainElement(screen.getByText("ซื้อเลย"));
+    expect(link).toContainElement(screen.getByText("ดูรายละเอียด"));
     expect(link).toHaveAttribute("href", "/demo-shop/e-book-audio-book");
   });
 });
