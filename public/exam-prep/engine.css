@@ -451,7 +451,8 @@
 .exam-prep .score-big { font-family: var(--f-display); font-size: 56px; font-weight: 700; line-height: 1; color: var(--brand-ink); }
 .exam-prep .confirm { background: var(--rose-soft); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; font-size: 14.5px; }
 .exam-prep .set-card { display: flex; flex-direction: column; gap: 10px; }
-.exam-prep .set-card h3 { font-size: 22px; }
+.exam-prep .set-card h3 { font-size: 20px; }
+.exam-prep .set-card > p { font-size: 15px; }
 /* review */
 .exam-prep .reason-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px; }
 .exam-prep .reason-grid .card { padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
@@ -509,4 +510,20 @@
 .exam-prep .ctx .plan-start { flex-shrink: 0; gap: 4px; font-size: 12px; flex-direction: column; align-items: flex-end; }
 .exam-prep .ctx .plan-start span { display: none; }
 .exam-prep .ctx .date-in { padding: 5px 8px; font-size: 14px; max-width: 150px; }
+}
+.exam-prep .pr-card { gap: 10px; }
+.exam-prep .pr-card h2 { font-size: 19px; }
+.exam-prep .pr-btns { display: flex; gap: 6px; }
+.exam-prep .pr-btns .btn { white-space: nowrap; }
+@media (max-width: 640px) {
+.exam-prep .pr-card { padding: 14px 14px 14px 16px; }
+.exam-prep .pr-card h2 { font-size: 17px; }
+.exam-prep .pr-btns .btn { flex: 1 1 auto; padding: 5px 8px; font-size: 13px; min-width: 0; }
+}
+@media (max-width: 640px) {
+.exam-prep .set-card { padding: 16px; gap: 8px; }
+.exam-prep .set-card h3 { font-size: 18px; }
+.exam-prep .set-card > p { font-size: 13.5px; }
+.exam-prep .set-card .small { font-size: 13px; }
+.exam-prep .set-card .btn { padding: 5px 14px; font-size: 14px; }
 }
