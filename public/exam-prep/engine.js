@@ -211,7 +211,7 @@ function mount(root, D, opts = {}) {
     const h = (location.hash || "#home").slice(1);
     const [view, a, b, c] = h.split("-");
     const V = {
-      home: viewHome, plan: viewPlan, day: () => viewDay(+a, b, c), notes: () => viewNotes(a, b), practice: () => viewPractice(a),
+      home: viewHome, plan: viewPlan, day: () => viewDay(+a, b, c), notes: () => viewNotes(a, b), practice: viewPractice,
       quiz: viewQuiz, mock: () => viewMock(+a, b), review: viewReview, guide: viewGuide,
     };
     const fn = V[view] || viewHome;
@@ -220,6 +220,7 @@ function mount(root, D, opts = {}) {
     $("app").innerHTML = fn();
     if (view === "mock" && S.run && S.run.set === +a && b !== "result") startTimer();
     if (!keep && (view === "quiz" || !(view === "mock" && b === undefined))) window.scrollTo(0, 0);
+    if (view === "practice" && a && !keep) { const el = byId("pr-" + a); if (el) el.scrollIntoView({ block: "start" }); }
     const cur = document.querySelector(".exam-prep .dnav[open] .dnav-item.cur"), nav = cur && cur.closest(".dnav");
     if (nav && nav.scrollHeight > nav.clientHeight) nav.scrollTop = cur.offsetTop - nav.clientHeight / 3;
   }
@@ -545,18 +546,17 @@ function mount(root, D, opts = {}) {
   }
 
   /* ---------- views: practice ---------- */
-  function viewPractice(key) {
-    const s = SK[key] || SUBJ[0];
+  function viewPractice() {
+    return `<div class="page-head"><span class="eyebrow">แบบฝึกแยกวิชา ${fmtN(PRACTICE_Q)} ข้อ</span><h1>ฝึกโจทย์</h1></div>
+    ${SUBJ.map(practiceCard).join("")}`;
+  }
+  function practiceCard(s) {
     const ids = practiceIds(s), st = stats(ids);
-    const blocks = D.plan.flatMap(p => p.ranges.filter(([a]) => a[0] === s.code).map(([a, b]) => ({ day: p.day, a, b })));
     const topics = {};
     ids.forEach(id => { const t = Q[id].topic; (topics[t] = topics[t] || []).push(id); });
     const wrong = ids.filter(id => S.att[id] && !S.att[id].ok).length;
     const fresh = ids.filter(id => !S.att[id]).length;
-    return `
-    <div class="page-head"><span class="eyebrow">แบบฝึกแยกวิชา ${fmtN(PRACTICE_Q)} ข้อ</span><h1>ฝึกโจทย์</h1><p>ทำโดยไม่เปิดเฉลย ทำเครื่องหมายข้อที่เดาหรือลังเล แม้ตอบถูกก็ต้องทบทวน ข้อสอบจำลอง ${fmtN(MOCK_Q * MOCKS)} ข้อแยกไว้ในหน้าข้อสอบจำลอง</p></div>
-    <div class="subj-tabs">${SUBJ.map(x => `<a class="chip subj s-${x.key} ${x === s ? "on" : ""}" href="#practice-${x.key}">${esc(x.short)} <span class="n num">${stats(practiceIds(x)).done}/${x.practice}</span></a>`).join("")}</div>
-    <section class="card s-${s.key} stack">
+    return `<section class="card s-${s.key} stack" id="pr-${s.key}" style="border-left:6px solid var(--s)">
       <div class="row" style="justify-content:space-between"><h2 style="font-size:22px">${esc(s.name)}</h2><span class="muted num">${st.done}/${st.total} ข้อ${st.acc !== null ? ` · ถูก ${st.acc}%` : ""}</span></div>
       ${bar2(st)}
       <div class="row">
@@ -564,16 +564,9 @@ function mount(root, D, opts = {}) {
         <button class="btn" data-act="quick" data-s="${s.key}" data-mode="random">สุ่ม 20 ข้อ</button>
         <button class="btn" data-act="quick" data-s="${s.key}" data-mode="wrong" ${wrong ? "" : "disabled"}>ข้อที่ผิด (${wrong})</button>
       </div>
-    </section>
-    <section class="stack">
-      <h2 style="font-size:20px">ตามแผนรายวัน</h2>
-      <div class="grid g3">${blocks.map(bk => { const bs = stats(span(bk.a, bk.b)); return `<div class="card s-${s.key} stack" style="gap:8px;padding:14px 16px">
-        <div class="row" style="justify-content:space-between"><a href="#day-${bk.day}" style="font-family:var(--f-display)">วันที่ ${bk.day}</a><span class="code">${bk.a}–${bk.b}</span></div>
-        ${bar2(bs)}<div class="row" style="justify-content:space-between"><span class="muted small num">${bs.done}/${bs.total}${bs.acc !== null ? ` · ถูก ${bs.acc}%` : ""}</span><button class="btn sm" data-act="range" data-a="${bk.a}" data-b="${bk.b}" data-day="${bk.day}">ฝึก</button></div></div>`; }).join("")}</div>
-    </section>
-    <section class="stack">
-      <h2 style="font-size:20px">ตามหัวข้อ</h2>
-      <div class="row s-${s.key}" style="gap:8px">${Object.entries(topics).map(([t, l]) => { const ts = stats(l); return `<button class="chip subj" data-act="topic" data-s="${s.key}" data-topic="${esc(t)}">${esc(t)} <span class="n num">${ts.done}/${ts.total}${ts.acc !== null ? " · " + ts.acc + "%" : ""}</span></button>`; }).join("")}</div>
+      <details><summary class="muted small" style="cursor:pointer">ฝึกตามหัวข้อ</summary>
+        <div class="row" style="gap:8px;margin-top:10px">${Object.entries(topics).map(([t, l]) => { const ts = stats(l); return `<button class="chip subj" data-act="topic" data-s="${s.key}" data-topic="${esc(t)}">${esc(t)} <span class="n num">${ts.done}/${ts.total}${ts.acc !== null ? " · " + ts.acc + "%" : ""}</span></button>`; }).join("")}</div>
+      </details>
     </section>`;
   }
 
