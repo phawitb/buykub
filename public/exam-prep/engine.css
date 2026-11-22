@@ -479,8 +479,13 @@
 .exam-prep .mq-head { display: flex; align-items: flex-start; gap: 10px; }
 .exam-prep .mq-head .stem { flex: 1; min-width: 0; }
 .exam-prep .mq-head .stem b { font-family: var(--f-display); margin-right: 2px; }
+.exam-prep .stem .qn { font-family: var(--f-display); }
+.exam-prep .ctx-prog { display: none; }
 .exam-prep .mq-head .btn { flex-shrink: 0; }
 @media (max-width: 860px) {
+/* The quiz progress runs along the header's bottom edge. */
+.exam-prep.has-ctx .ctx-prog { display: block; position: absolute; left: 0; bottom: -1px; height: 3px; background: var(--s, var(--brand)); border-radius: 0 3px 3px 0; transition: width .25s; }
+.exam-prep.has-ctx .quiz-prog, .exam-prep.has-ctx .qpos { display: none; }
 .exam-prep.has-ctx .brand, .exam-prep.has-ctx .crumb, .exam-prep.has-ctx .page-head h1, .exam-prep.has-ctx .quiz-top > b { display: none; }
 .exam-prep.has-ctx .ctx { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; min-height: 56px; }
 .exam-prep .ctx-back { font-size: 30px; line-height: 1; text-decoration: none; color: var(--brand); padding: 0 6px 4px 0; }
