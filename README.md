@@ -894,7 +894,11 @@ Launched in ร้านชีสส์ (`/mysheet`), each with 30 days of acces
 | ตำรวจสายอำนวยการ/สนับสนุน 30 วัน | `police-support-30-days-exam-prep` | ฿299 | 30 days, 1,200 questions, 4 mocks |
 | ตำรวจสายอำนวยการ/สนับสนุน 7 วัน (ฉบับย่อ) | `police-support-7-days-exam-prep` | ฿149 | 7 days, 300 questions, 1 mock |
 
-Packs are built in the AFAPS-Exam repository (`output/web/exam-engine`). The 30-day
+Packs are built in `content/web/exam-engine` (moved here from the AFAPS-Exam repository
+on 2026-11-22). `content/` holds the course sources, PDFs, packs and ad builders and is
+git-ignored, because this repository is public and they are the paid content. Keep a
+backup of it outside git. The engine itself is edited in place in `public/exam-prep`;
+`build_pack.py` inlines that copy into its previews. The 30-day
 police plan counts down to the 29 Nov 2026 exam; the NST pack carries 2027-01-17.
 
 Deployed from a clean worktree of commit `0e694bc`, so uncommitted work in this checkout

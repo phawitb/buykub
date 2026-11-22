@@ -67,3 +67,6 @@ next-env.d.ts
 # the Thai model beside it is committed because no package ships it.
 /public/ocr/*
 !/public/ocr/tha.traineddata
+
+# course sources, PDFs, packs and ads: paid content, never pushed (the repo is public)
+/content/

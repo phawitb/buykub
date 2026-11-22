@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     // Vendored agent skills: third-party assets, not this project's source.
     ".agents/**",
     ".claude/skills/**",
+    // Course sources and build tools, kept out of git (see content/README.md).
+    "content/**",
     // OCR engine copied out of node_modules by scripts/copy-ocr-assets.mjs.
     "public/ocr/**",
     // Exam-prep engine built in the AFAPS-Exam repository (output/web/exam-engine).
