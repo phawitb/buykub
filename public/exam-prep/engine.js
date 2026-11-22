@@ -305,7 +305,7 @@ function mount(root, D, opts = {}) {
   function subjCard(s) {
     const pr = stats(practiceIds(s));
     return `<div class="card subj-card s-${s.key}">
-      <div class="row" style="justify-content:space-between"><h3>${esc(s.name)}</h3><span class="code">${s.code}</span></div>
+      <h3>${esc(s.name)}</h3>
       <div class="meta"><span>${s.perSet} ข้อต่อชุดสอบ · ${s.chapters.length} บท</span><span class="num">${pr.done}/${pr.total}</span></div>
       ${bar2(pr)}
       <div class="row"><a class="btn sm" href="#notes-${s.key}">อ่านสรุป</a><a class="btn sm" href="#practice-${s.key}">ฝึกโจทย์</a>${pr.acc !== null ? `<span class="muted small num" style="margin-left:auto">ถูก ${pr.acc}%</span>` : ""}</div>
@@ -527,7 +527,7 @@ function mount(root, D, opts = {}) {
     head = { title: s.name, sub: `อ่านแล้ว ${s.chapters.filter(c => S.read[readKey(s, c.n)]).length}/${s.chapters.length} บท`, back: "notes",
       tools: `<button class="btn sm ctx-btn" data-act="toc" aria-expanded="false">บทเรียน ▾</button>` };
     return `${tabs}<div class="day-shell s-${s.key}">${notesNav(s, list, ch)}<div class="pane">
-      <div class="notes-top"><span>Visual notes / ${s.key}</span><span>อ่าน • เชื่อม • จำ • ลองทำ</span></div>
+      <div class="notes-top"><span>Visual notes</span><span>อ่าน • เชื่อม • จำ • ลองทำ</span></div>
       <div class="ch-head"><span class="badge-n">${isX ? "★" : ch.n}</span><h1>${esc(ch.title)}</h1></div>
       ${visual(ch.visual)}
       <article class="card prose">${md(ch.md)}</article>
