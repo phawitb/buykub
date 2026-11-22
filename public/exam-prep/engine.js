@@ -220,6 +220,8 @@ function mount(root, D, opts = {}) {
     $("app").innerHTML = fn();
     if (view === "mock" && S.run && S.run.set === +a && b !== "result") startTimer();
     if (!keep && (view === "quiz" || !(view === "mock" && b === undefined))) window.scrollTo(0, 0);
+    const cur = document.querySelector(".exam-prep .dnav[open] .dnav-item.cur"), nav = cur && cur.closest(".dnav");
+    if (nav && nav.scrollHeight > nav.clientHeight) nav.scrollTop = cur.offsetTop - nav.clientHeight / 3;
   }
 
   /* ---------- views: home ---------- */
@@ -505,22 +507,17 @@ function mount(root, D, opts = {}) {
         <div class="grid g3">${SUBJ.map(s => `<a class="card subj-card s-${s.key}" href="#notes-${s.key}" style="text-decoration:none;color:inherit"><div class="row" style="justify-content:space-between"><h3>${esc(s.name)}</h3><span class="code">${s.code}</span></div><p class="muted small">${s.chapters.length} บท · ${s.chapters.filter(c => c.visual).length} ภาพสรุป</p><p class="small">${s.chapters.slice(0, 4).map(c => esc(c.title.split(":")[0])).join(" · ")} …</p></a>`).join("")}</div>`;
     }
     const tabs = `<div class="subj-tabs">${SUBJ.map(x => `<a class="chip subj s-${x.key} ${x === s ? "on" : ""}" href="#notes-${x.key}">${esc(x.short)}</a>`).join("")}</div>`;
-    if (!part) {
-      return `${tabs}<div class="page-head"><span class="eyebrow">Visual notes / ${s.key}</span><h1>${esc(s.name)}</h1></div>
-        <div class="ch-list s-${s.key}">${s.chapters.map(c => chLink(s, c.n)).join("")}
-        ${s.extras.map((x, i) => `<a class="ch-item s-${s.key}" href="#notes-${s.key}-x${i + 1}"><span class="badge-n">★</span><span>${esc(x.title)}<small>ทบทวนท้ายบท</small></span></a>`).join("")}</div>`;
-    }
-    const isX = part[0] === "x";
+    const isX = part ? part[0] === "x" : false;
     const list = [...s.chapters.map(c => ({ ...c, ref: String(c.n) })), ...s.extras.map((x, i) => ({ ...x, ref: "x" + (i + 1) }))];
+    // Opening a subject lands on the first chapter not yet read.
+    if (!part) part = (s.chapters.find(c => !S.read[readKey(s, c.n)]) || s.chapters[0]).n + "";
     const idx = list.findIndex(c => c.ref === part);
     const ch = list[idx];
-    if (!ch) return viewNotes(key);
+    if (!ch) return viewNotes(key, String(s.chapters[0].n));
     const prev = list[idx - 1], next = list[idx + 1];
     const qs = isX ? [] : practiceIds(s).filter(id => (s.topicMap[Q[id].topic] || []).includes(ch.n));
     const st = stats(qs);
-    return `<div class="s-${s.key} stack" style="gap:22px">
-      <span class="sidetab">${s.key.toUpperCase()}</span>
-      <div class="crumb"><a href="#notes">สรุปบทเรียน</a> / <a href="#notes-${s.key}">${esc(s.name)}</a></div>
+    return `${tabs}<div class="day-shell s-${s.key}">${notesNav(s, list, ch)}<div class="pane">
       <div class="notes-top"><span>Visual notes / ${s.key}</span><span>อ่าน • เชื่อม • จำ • ลองทำ</span></div>
       <div class="ch-head"><span class="badge-n">${isX ? "★" : ch.n}</span><h1>${esc(ch.title)}</h1></div>
       ${visual(ch.visual)}
@@ -529,7 +526,22 @@ function mount(root, D, opts = {}) {
       ${qs.length ? `<div class="card row" style="justify-content:space-between"><div class="stack" style="gap:6px;flex:1;min-width:200px"><b style="font-family:var(--f-display)">ฝึกโจทย์หัวข้อนี้ ${qs.length} ข้อ</b>${bar2(st)}</div><button class="btn primary" data-act="chapter" data-s="${s.key}" data-n="${ch.n}">${st.done ? "ฝึกอีกรอบ" : "เริ่มฝึก"}</button></div>` : ""}
       ${isX ? "" : `<div class="row"><button class="btn ${S.read[readKey(s, ch.n)] ? "" : "primary"}" data-act="read" data-k="${readKey(s, ch.n)}">${S.read[readKey(s, ch.n)] ? "✓ อ่านบทนี้แล้ว (กดเพื่อยกเลิก)" : "อ่านจบแล้ว ✓"}</button></div>`}
       <div class="pager">${prev ? `<a class="btn" href="#notes-${s.key}-${prev.ref}">← ${esc(prev.title.split(":")[0])}</a>` : "<span></span>"}${next ? `<a class="btn" href="#notes-${s.key}-${next.ref}">${esc(next.title.split(":")[0])} →</a>` : ""}</div>
-    </div>`;
+    </div></div>`;
+  }
+  function notesNav(s, list, sel) {
+    const read = s.chapters.filter(c => S.read[readKey(s, c.n)]).length;
+    const item = c => {
+      const x = c.ref[0] === "x", done = !x && S.read[readKey(s, c.n)];
+      return `<a class="dnav-item ${c === sel ? "cur" : ""} ${done ? "done" : ""}" href="#notes-${s.key}-${c.ref}" ${c === sel ? 'aria-current="true"' : ""}><span class="dot">${done ? "✓" : x ? "★" : c.n}</span><span class="t">${esc(c.title)}</span></a>`;
+    };
+    const chs = list.filter(c => c.ref[0] !== "x"), xs = list.filter(c => c.ref[0] === "x");
+    return `<details class="card dnav" ${innerWidth > 900 ? "open" : ""}>
+      <summary>
+        <span class="row" style="justify-content:space-between"><b style="font-family:var(--f-display);font-size:18px">${esc(s.name)}</b><span class="muted small num">อ่านแล้ว ${read}/${s.chapters.length} บท</span></span>
+        <span class="cur-name small"><span class="muted">กำลังเปิด:</span> ${esc(sel.title)} <span class="chev" aria-hidden="true">▾</span></span>
+      </summary>
+      <div class="dnav-body"><div class="dnav-group">${chs.map(item).join("")}${xs.length ? `<div class="g-sub" style="padding-left:10px">ทบทวนท้ายบท</div>${xs.map(item).join("")}` : ""}</div></div>
+    </details>`;
   }
 
   /* ---------- views: practice ---------- */
