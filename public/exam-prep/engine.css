@@ -498,7 +498,7 @@
   }
 .exam-prep.toc-open .notes-nav summary { display: none; }
 .exam-prep.toc-open .dnav summary { pointer-events: none; }
-.exam-prep.toc-open .dnav { left: 0; right: 0; max-height: calc(100dvh - 190px); border-top: 0; border-radius: 0 0 16px 16px; }
+.exam-prep.map-open .sheet, .exam-prep.toc-open .notes-nav, .exam-prep.toc-open .dnav { left: 0; right: 0; max-height: calc(100dvh - 190px); border-top: 0; border-radius: 0 0 16px 16px; }
 .exam-prep.toc-open .dnav .cur-name { display: none; }
 }
 .exam-prep .plan-head { flex-direction: row; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
@@ -533,5 +533,8 @@
 }
 .exam-prep .rv-list { list-style: none; margin: 8px 0 0; padding: 0; }
 .exam-prep .rv-list li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px dashed var(--line); font-size: 14.5px; }
-.exam-prep .rv-list .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.exam-prep .rv-list .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.exam-prep .rv-list .t { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.45; }
+.exam-prep .rv-list .no { align-self: flex-start; line-height: 1.45; }
 .exam-prep .rv-list .small { white-space: nowrap; }
+.exam-prep .rv-list .no { flex-shrink: 0; min-width: 44px; font-weight: 600; color: var(--s, var(--brand-ink)); white-space: nowrap; }
