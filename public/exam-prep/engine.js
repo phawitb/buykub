@@ -183,7 +183,7 @@ function mount(root, D, opts = {}) {
   }
 
   /* ---------- navigation ---------- */
-  const NAV = [["home", "หน้าหลัก"], ["plan", `แผน ${NDAYS} วัน`], ["notes", "สรุปบทเรียน"], ["practice", "ฝึกโจทย์"], ["mock", "ข้อสอบจำลอง"], ["review", "สมุดข้อผิด"]];
+  const NAV = [["home", "หน้าหลัก"], ["plan", "แผนการเรียน"], ["notes", "บทเรียน"], ["practice", "ฝึกโจทย์"], ["mock", "ข้อสอบ"], ["review", "สมุดข้อผิด"]];
   root.classList.add("exam-prep");
   root.innerHTML = `<header class="topbar"><div class="topbar-in">
       <a class="brand" href="#home" aria-label="หน้าหลัก"><span class="brand-30">${esc(M.brandBig)}</span><span class="brand-t">${esc(M.brandAfter)}<small>${esc(M.brandSub)}</small></span></a>
