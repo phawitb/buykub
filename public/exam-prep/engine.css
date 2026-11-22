@@ -454,9 +454,12 @@
 .exam-prep .set-card h3 { font-size: 20px; }
 .exam-prep .set-card > p { font-size: 15px; }
 /* review */
-.exam-prep .reason-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px; }
-.exam-prep .reason-grid .card { padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
-.exam-prep .reason-grid b { font-family: var(--f-display); font-size: 24px; font-weight: 600; }
+.exam-prep .reason-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 8px; }
+.exam-prep .reason-grid .card { padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14.5px; }
+.exam-prep .reason-grid b { font-family: var(--f-display); font-size: 26px; font-weight: 700; line-height: 1; color: var(--rose); white-space: nowrap; }
+.exam-prep .reason-grid b small { font-size: 12.5px; font-weight: 400; color: var(--muted); }
+.exam-prep .reason-grid .zero { color: var(--muted); }
+.exam-prep .reason-grid .zero b { color: var(--line-strong); }
 .exam-prep .nb select { border: 1px solid var(--line); border-radius: 8px; background: var(--card); padding: 2px 6px; font-size: 13.5px; max-width: 170px; }
 .exam-prep .date-in { border: 1.5px solid var(--line-strong); border-radius: 10px; padding: 6px 10px; background: var(--card); }
 .exam-prep .empty { text-align: center; color: var(--muted); padding: 28px 16px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
@@ -526,4 +529,8 @@
 .exam-prep .set-card > p { font-size: 13.5px; }
 .exam-prep .set-card .small { font-size: 13px; }
 .exam-prep .set-card .btn { padding: 5px 14px; font-size: 14px; }
+}
+@media (max-width: 860px) {
+.exam-prep.has-ctx .ep-main { padding-top: 14px; gap: 16px; }
+.exam-prep.has-ctx .page-head:not(:has(> :not(h1))) { display: none; }
 }
