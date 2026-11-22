@@ -192,6 +192,7 @@ function mount(root, D, opts = {}) {
   root.classList.add("exam-prep");
   root.innerHTML = `<header class="topbar"><div class="topbar-in">
       <a class="brand" href="#home" aria-label="หน้าหลัก"><span class="brand-30">${esc(M.brandBig)}</span><span class="brand-t">${esc(M.brandAfter)}<small>${esc(M.brandSub)}</small></span></a>
+      <div class="ctx" data-ep="ctx"></div>
       <nav class="nav" data-ep="nav" aria-label="เมนูหลัก"></nav></div></header>
     <main class="ep-main" data-ep="app" tabindex="-1"></main>`;
   const $ = k => root.querySelector(`[data-ep="${k}"]`);
@@ -201,6 +202,16 @@ function mount(root, D, opts = {}) {
     const due = dueList().length;
     $("nav").innerHTML = NAV.map(([k, label]) =>
       `<a href="#${k}" ${view === k ? 'aria-current="page"' : ""}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg><span>${label}</span>${k === "review" && due ? `<span class="badge num">${due}</span>` : ""}</a>`).join("");
+  }
+
+  // What the phone header shows in place of the brand; views fill it in.
+  let head = null;
+  function renderCtx(view) {
+    const h = head || (view === "home" ? null : { title: (NAV.find(([k]) => k === view) || [, ""])[1] });
+    root.classList.toggle("has-ctx", !!(h && h.title));
+    root.classList.remove("map-open", "toc-open");
+    $("ctx").innerHTML = h && h.title ? `${h.back ? `<a class="ctx-back" href="#${h.back}" aria-label="ย้อนกลับ">‹</a>` : ""}
+      <span class="ctx-t"><b>${esc(h.title)}</b>${h.sub ? `<small>${h.sub}</small>` : ""}</span>${h.tools || ""}` : "";
   }
 
   let quiz = null, tick = null, confirmOpen = false, pFilter = null, rvFilter = "all";
@@ -217,7 +228,9 @@ function mount(root, D, opts = {}) {
     const fn = V[view] || viewHome;
     const navKey = view === "day" ? "plan" : view === "quiz" ? (quiz && quiz.nav) || "practice" : view === "guide" ? "home" : V[view] ? view : "home";
     renderNav(navKey);
+    head = null;
     $("app").innerHTML = fn();
+    renderCtx(navKey);
     if (view === "mock" && S.run && S.run.set === +a && b !== "result") startTimer();
     if (!keep && (view === "quiz" || !(view === "mock" && b === undefined))) window.scrollTo(0, 0);
     if (view === "practice" && a && !keep) { const el = byId("pr-" + a); if (el) el.scrollIntoView({ block: "start" }); }
@@ -415,6 +428,7 @@ function mount(root, D, opts = {}) {
         <div class="row"><a class="btn primary" href="#review">เปิดสมุดข้อผิด</a><a class="btn" href="#mock-${k}-result">ข้อผิดชุด ${k}</a></div></div>
         ${g ? `<div class="card taped stack"><h2 style="font-size:20px">${esc(g.title)}</h2><div class="prose">${md(g.md)}</div></div>` : ""}`;
     }
+    head = { title: `วันที่ ${n}`, sub: esc(p.read), back: "plan" };
     return `
     <div class="crumb"><a href="#plan">แผน ${NDAYS} วัน</a> / <span>วันที่ ${n}</span></div>
     <div class="page-head">
@@ -518,6 +532,8 @@ function mount(root, D, opts = {}) {
     const prev = list[idx - 1], next = list[idx + 1];
     const qs = isX ? [] : practiceIds(s).filter(id => (s.topicMap[Q[id].topic] || []).includes(ch.n));
     const st = stats(qs);
+    head = { title: s.name, sub: `อ่านแล้ว ${s.chapters.filter(c => S.read[readKey(s, c.n)]).length}/${s.chapters.length} บท`, back: "notes",
+      tools: `<button class="btn sm ctx-btn" data-act="toc" aria-expanded="false">บทเรียน ▾</button>` };
     return `${tabs}<div class="day-shell s-${s.key}">${notesNav(s, list, ch)}<div class="pane">
       <div class="notes-top"><span>Visual notes / ${s.key}</span><span>อ่าน • เชื่อม • จำ • ลองทำ</span></div>
       <div class="ch-head"><span class="badge-n">${isX ? "★" : ch.n}</span><h1>${esc(ch.title)}</h1></div>
@@ -536,7 +552,7 @@ function mount(root, D, opts = {}) {
       return `<a class="dnav-item ${c === sel ? "cur" : ""} ${done ? "done" : ""}" href="#notes-${s.key}-${c.ref}" ${c === sel ? 'aria-current="true"' : ""}><span class="dot">${done ? "✓" : x ? "★" : c.n}</span><span class="t">${esc(c.title)}</span></a>`;
     };
     const chs = list.filter(c => c.ref[0] !== "x"), xs = list.filter(c => c.ref[0] === "x");
-    return `<details class="card dnav" ${innerWidth > 900 ? "open" : ""}>
+    return `<details class="card dnav notes-nav" ${innerWidth > 900 ? "open" : ""}>
       <summary>
         <span class="row" style="justify-content:space-between"><b style="font-family:var(--f-display);font-size:18px">${esc(s.name)}</b><span class="muted small num">อ่านแล้ว ${read}/${s.chapters.length} บท</span></span>
         <span class="cur-name small"><span class="muted">กำลังเปิด:</span> ${esc(sel.title)} <span class="chev" aria-hidden="true">▾</span></span>
@@ -580,6 +596,7 @@ function mount(root, D, opts = {}) {
     if (!quiz) { setTimeout(() => go("practice")); return ""; }
     const { ids, i, title, back, picked } = quiz;
     const total = ids.length;
+    head = { title, sub: i < total ? `ข้อ ${i + 1}/${total}` : "จบชุดฝึก", back };
     const right = Object.entries(picked).filter(([id, c]) => Q[id].ans === c).length;
     const head = `<div class="quiz-top"><a class="btn ghost sm" href="#${back}">← ออก</a><b style="font-family:var(--f-display)">${esc(title)}</b><span class="muted num small">ถูก ${right}/${Object.keys(picked).length}</span></div>${bar(Math.min(i, total) / total * 100)}`;
     if (i >= total) {
@@ -634,6 +651,7 @@ function mount(root, D, opts = {}) {
     if (sub === "result") return viewMockResult(k);
     if (!S.run || S.run.set !== k) {
       const hist = S.mocks[k] || [];
+      head = { title: `ข้อสอบจำลอง ชุดที่ ${k}`, back: "mock" };
       return `<div class="crumb"><a href="#mock">ข้อสอบจำลอง</a> / <span>ชุดที่ ${k}</span></div>
       <div class="card taped stack" style="max-width:720px;width:100%;margin:12px auto 0">
         ${MOCK_DAY[k] ? `<span class="eyebrow">ตามแผนวันที่ ${MOCK_DAY[k]}</span>` : ""}
@@ -657,13 +675,14 @@ function mount(root, D, opts = {}) {
         num++;
         const q = Q[id], c = run.ans[id];
         return `<div class="card mock-q" id="mq-${num}">
-          <div class="qmeta"><b class="num" style="font-family:var(--f-display)">${num}.</b><span class="code">${id}</span>
-            <button class="btn sm ghost ${run.flag[id] ? "flag-on" : ""}" style="margin-left:auto" data-act="mflag" data-id="${id}" aria-pressed="${!!run.flag[id]}">${run.flag[id] ? "★ ค้างไว้" : "☆ ค้างไว้"}</button></div>
-          <div class="stem">${esc(q.stem)}</div>
+          <div class="mq-head"><div class="stem"><b class="num">${num}.</b> ${esc(q.stem)}</div>
+            <button class="btn sm ghost ${run.flag[id] ? "flag-on" : ""}" data-act="mflag" data-id="${id}" aria-pressed="${!!run.flag[id]}" aria-label="ค้างไว้กลับมาดู">${run.flag[id] ? "★" : "☆"}<span class="fl-t"> ค้างไว้</span></button></div>
           <div class="opts">${q.opts.map((o, j) => `<button class="opt ${c === j ? "sel" : ""}" data-act="mpick" data-id="${id}" data-k="${j}" data-num="${num}"><span class="k">${CIRC[j]}</span><span>${esc(o)}</span></button>`).join("")}</div>
         </div>`;
       }).join("");
     const prevS = SUBJ[pg - 1], nextS = SUBJ[pg + 1];
+    head = { title: s.name, sub: `ชุดที่ ${k} · <span class="ans-n num">ตอบแล้ว ${answered}/${MOCK_Q}</span>`, back: "mock",
+      tools: `<span class="timer-s num" data-timer>${fmtClock(LIMIT - (Date.now() - run.start))}</span><button class="btn sm ctx-btn" data-act="map" aria-expanded="false">แผนผัง ▾</button>` };
     const tabs = `<div class="subj-tabs">${SUBJ.map((x, i) => { const xs = ids.filter(id => Q[id].s === x); return `<button class="chip subj s-${x.key} ${i === pg ? "on" : ""}" data-act="mpage" data-p="${i}">${esc(x.short)} <span class="n num">${xs.filter(id => run.ans[id] !== undefined).length}/${xs.length}</span></button>`; }).join("")}</div>`;
     const parts = `${tabs}<div class="part-head s-${s.key}" id="mp-${s.key}">${esc(s.name)} · ข้อ ${first}-${num}</div>${html}
       <div class="pager">${prevS ? `<button class="btn" data-act="mpage" data-p="${pg - 1}">← ${esc(prevS.short)}</button>` : "<span></span>"}${nextS ? `<button class="btn primary" data-act="mpage" data-p="${pg + 1}">ถัดไป: ${esc(nextS.short)} →</button>` : `<button class="btn primary" data-act="mock-confirm">ส่งคำตอบและตรวจ</button>`}</div>`;
@@ -671,9 +690,8 @@ function mount(root, D, opts = {}) {
     <div class="mock-shell">
       <div class="stack">${parts}</div>
       <aside class="card sheet" aria-label="กระดาษคำตอบ">
-        <div class="row" style="justify-content:space-between;align-items:flex-end"><div><span class="eyebrow">เวลาที่เหลือ</span><div class="timer" id="timer">${fmtClock(LIMIT - (Date.now() - run.start))}</div></div><span class="muted num small" id="answered">ตอบแล้ว ${answered}/${MOCK_Q}</span></div>
+        <div class="row" style="justify-content:space-between;align-items:flex-end"><div><span class="eyebrow">เวลาที่เหลือ</span><div class="timer" id="timer" data-timer>${fmtClock(LIMIT - (Date.now() - run.start))}</div></div><span class="muted num small" id="answered">ตอบแล้ว ${answered}/${MOCK_Q}</span></div>
         <div class="bubbles by-subj" id="bubbles">${ids.map((id, j) => `<a href="#mock-${k}" data-act="jump" data-num="${j + 1}" class="s-${Q[id].s.key} ${run.ans[id] !== undefined ? "done" : ""} ${run.flag[id] ? "fl" : ""}" aria-label="ข้อ ${j + 1}">${j + 1}</a>`).join("")}</div>
-        <p class="muted small">ทึบ = ตอบแล้ว · ขอบเหลือง = ค้างไว้กลับมาดู</p>
         ${confirmOpen ? `<div class="confirm"><b>ส่งคำตอบตอนนี้?</b><span>ยังไม่ได้ตอบ ${MOCK_Q - answered} ข้อ ข้อที่ว่างนับเป็นผิด</span><div class="row"><button class="btn sm primary" data-act="mock-submit">ยืนยันส่ง</button><button class="btn sm" data-act="mock-cancel">ทำต่อ</button></div></div>`
           : `<button class="btn primary" data-act="mock-confirm">ส่งคำตอบและตรวจ</button>`}
         <button class="btn ghost sm" data-act="mock-abandon">ยกเลิกชุดนี้โดยไม่บันทึก</button>
@@ -685,7 +703,7 @@ function mount(root, D, opts = {}) {
       if (!S.run) return;
       const left = LIMIT - (Date.now() - S.run.start);
       if (left <= 0) { submitMock(); return; }
-      const t = byId("timer"); if (t) { t.textContent = fmtClock(left); t.classList.toggle("low", left < 15 * 60 * 1000); }
+      root.querySelectorAll("[data-timer]").forEach(t => { t.textContent = fmtClock(left); t.classList.toggle("low", left < 15 * 60 * 1000); });
     };
     upd(); tick = setInterval(upd, 1000);
   }
@@ -714,6 +732,7 @@ function mount(root, D, opts = {}) {
     const ids = mockIds(k);
     const wrong = ids.filter(id => r.ans[id] !== Q[id].ans);
     const guessed = ids.filter(id => r.flag && r.flag[id] && r.ans[id] === Q[id].ans);
+    head = { title: `ผลข้อสอบจำลอง ชุดที่ ${k}`, back: "mock" };
     return `<div class="crumb"><a href="#mock">ข้อสอบจำลอง</a> / <span>ผลชุดที่ ${k}</span></div>
     <section class="grid g2">
       <div class="card taped stack">
@@ -807,6 +826,8 @@ function mount(root, D, opts = {}) {
   function quizNext() { if (!quiz) return; quiz.i = Math.min(quiz.ids.length, quiz.i + 1); render(); }
 
   function onClick(e) {
+    // A tap outside the phone's dropdown map or chapter list closes it.
+    if (!e.target.closest(".sheet, .notes-nav, .ctx")) root.classList.remove("map-open", "toc-open");
     const t = e.target.closest("[data-act]"); if (!t || !root.contains(t)) return;
     const act = t.dataset.act, s = SK[t.dataset.s];
     const here = (location.hash || "#home").slice(1);
@@ -844,26 +865,35 @@ function mount(root, D, opts = {}) {
       case "mock-start": S.run = { set: +t.dataset.k, start: Date.now(), ans: {}, flag: {} }; confirmOpen = false; save(); render(); break;
       case "mpick": {
         e.preventDefault();
-        const id = t.dataset.id, k = +t.dataset.k;
-        S.run.ans[id] = k; save();
+        // Tapping the chosen answer again clears it.
+        const id = t.dataset.id, k = S.run.ans[id] === +t.dataset.k ? undefined : +t.dataset.k;
+        if (k === undefined) delete S.run.ans[id]; else S.run.ans[id] = k;
+        save();
         t.parentElement.querySelectorAll(".opt").forEach((b, j) => b.classList.toggle("sel", j === k));
-        const bub = root.querySelectorAll("#bubbles a")[+t.dataset.num - 1]; if (bub) bub.classList.add("done");
-        const an = byId("answered"); if (an) an.textContent = `ตอบแล้ว ${Object.keys(S.run.ans).length}/${MOCK_Q}`;
+        const bub = root.querySelectorAll("#bubbles a")[+t.dataset.num - 1]; if (bub) bub.classList.toggle("done", k !== undefined);
+        root.querySelectorAll("#answered, .ctx .ans-n").forEach(an => { an.textContent = `ตอบแล้ว ${Object.keys(S.run.ans).length}/${MOCK_Q}`; });
         const tab = root.querySelector(".subj-tabs .chip.on .n");
         if (tab) { const xs = mockIds(S.run.set).filter(x => Q[x].s === Q[id].s); tab.textContent = `${xs.filter(x => S.run.ans[x] !== undefined).length}/${xs.length}`; }
         break;
       }
       case "mflag": { const id = t.dataset.id; if (S.run.flag[id]) delete S.run.flag[id]; else S.run.flag[id] = 1; save(); render(); break; }
+      case "map": case "toc": {
+        const on = root.classList.toggle(act === "map" ? "map-open" : "toc-open");
+        t.setAttribute("aria-expanded", on);
+        const d = root.querySelector(".notes-nav"); if (act === "toc" && d && on) d.open = true;
+        break;
+      }
       case "mpage": S.run.page = +t.dataset.p; save(); render(); window.scrollTo(0, 0); break;
       case "jump": {
         e.preventDefault();
+        root.classList.remove("map-open");
         // On a running set the question may sit on another subject's page.
         if (S.run && byId("bubbles")) {
           const p = SUBJ.indexOf(Q[mockIds(S.run.set)[+t.dataset.num - 1]].s);
           if (p !== (S.run.page || 0)) { S.run.page = p; save(); render(true); }
         }
         const el = byId("mq-" + t.dataset.num); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); break; }
-      case "mock-confirm": { confirmOpen = true; render(true); const cf = root.querySelector(".confirm"); if (cf) cf.scrollIntoView({ block: "nearest" }); break; }
+      case "mock-confirm": { confirmOpen = true; render(true); root.classList.add("map-open"); const cf = root.querySelector(".confirm"); if (cf) cf.scrollIntoView({ block: "nearest" }); break; }
       case "mock-cancel": confirmOpen = false; render(); break;
       case "mock-submit": submitMock(); break;
       case "mock-abandon": S.run = null; save(); go("mock"); break;
