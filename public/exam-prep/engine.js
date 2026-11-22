@@ -572,13 +572,13 @@ function mount(root, D, opts = {}) {
     ids.forEach(id => { const t = Q[id].topic; (topics[t] = topics[t] || []).push(id); });
     const wrong = ids.filter(id => S.att[id] && !S.att[id].ok).length;
     const fresh = ids.filter(id => !S.att[id]).length;
-    return `<section class="card s-${s.key} stack" id="pr-${s.key}" style="border-left:6px solid var(--s)">
-      <div class="row" style="justify-content:space-between"><h2 style="font-size:22px">${esc(s.name)}</h2><span class="muted num">${st.done}/${st.total} ข้อ${st.acc !== null ? ` · ถูก ${st.acc}%` : ""}</span></div>
+    return `<section class="card pr-card s-${s.key} stack" id="pr-${s.key}" style="border-left:6px solid var(--s)">
+      <div class="row" style="justify-content:space-between"><h2>${esc(s.name)}</h2><span class="muted num small">${st.done}/${st.total} ข้อ${st.acc !== null ? ` · ถูก ${st.acc}%` : ""}</span></div>
       ${bar2(st)}
-      <div class="row">
-        <button class="btn primary" data-act="quick" data-s="${s.key}" data-mode="fresh" ${fresh ? "" : "disabled"}>ข้อที่ยังไม่ทำ (${fresh})</button>
-        <button class="btn" data-act="quick" data-s="${s.key}" data-mode="random">สุ่ม 20 ข้อ</button>
-        <button class="btn" data-act="quick" data-s="${s.key}" data-mode="wrong" ${wrong ? "" : "disabled"}>ข้อที่ผิด (${wrong})</button>
+      <div class="pr-btns">
+        <button class="btn sm primary" data-act="quick" data-s="${s.key}" data-mode="fresh" ${fresh ? "" : "disabled"}>ข้อที่ยังไม่ทำ (${fresh})</button>
+        <button class="btn sm" data-act="quick" data-s="${s.key}" data-mode="random">สุ่ม 20 ข้อ</button>
+        <button class="btn sm" data-act="quick" data-s="${s.key}" data-mode="wrong" ${wrong ? "" : "disabled"}>ข้อที่ผิด (${wrong})</button>
       </div>
       <details><summary class="muted small" style="cursor:pointer">ฝึกตามหัวข้อ</summary>
         <div class="row" style="gap:8px;margin-top:10px">${Object.entries(topics).map(([t, l]) => { const ts = stats(l); return `<button class="chip subj" data-act="topic" data-s="${s.key}" data-topic="${esc(t)}">${esc(t)} <span class="n num">${ts.done}/${ts.total}${ts.acc !== null ? " · " + ts.acc + "%" : ""}</span></button>`; }).join("")}</div>
