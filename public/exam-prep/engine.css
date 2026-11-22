@@ -509,6 +509,14 @@
 .exam-prep.toc-open .dnav summary { pointer-events: none; }
 .exam-prep.map-open .sheet, .exam-prep.toc-open .notes-nav, .exam-prep.toc-open .dnav { left: 0; right: 0; max-height: calc(100dvh - 190px); border-top: 0; border-radius: 0 0 16px 16px; }
 .exam-prep.toc-open .dnav .cur-name { display: none; }
+/* While reviewing a mock result the score cards live behind the header's ผลสอบ button. */
+.exam-prep.has-ctx .res-sum.rev { display: none; }
+.exam-prep.sum-open .res-sum.rev {
+    display: flex; flex-direction: column; gap: 12px; position: fixed; z-index: 8; left: 0; right: 0;
+    max-height: calc(100dvh - 190px); overflow: auto; padding: 12px; background: var(--paper);
+    border-radius: 0 0 16px 16px; box-shadow: 0 12px 32px rgba(0, 0, 0, .18);
+  }
+.exam-prep .res-sum.rev .res-go { display: none; }
 }
 .exam-prep .plan-head { flex-direction: row; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
 .exam-prep .plan-start { display: flex; align-items: center; gap: 8px; font-family: var(--f-display); font-size: 14px; color: var(--muted); }
