@@ -782,15 +782,14 @@ function mount(root, D, opts = {}) {
     const counts = {}; REASONS.forEach(r => counts[r] = 0);
     nb.forEach(id => { const w = S.att[id].why; if (w) counts[w]++; });
     const untagged = nb.filter(id => !S.att[id].why).length;
-    return `<div class="page-head"><span class="eyebrow">สมุดข้อผิดพลาด</span><h1>สมุดข้อผิด</h1>
-      <p>หนึ่งบรรทัดต่อข้อ: รหัสข้อ / หัวข้อ / เหตุที่พลาด / วันทำซ้ำ ระบบเว้นช่วงทบทวนเป็นวันถัดไป อีก 3 วัน และอีก 7 วัน ตอบถูกครบสามรอบจึงออกจากสมุด</p></div>
+    return `<div class="page-head"><span class="eyebrow">สมุดข้อผิดพลาด</span><h1>สมุดข้อผิด</h1></div>
     <section class="card row taped" style="justify-content:space-between;background:var(--sun-soft);border-color:var(--sun)">
       <div><div style="font-family:var(--f-display);font-size:22px;font-weight:600" class="num">ครบรอบวันนี้ ${due.length} ข้อ</div><span class="muted small num">อยู่ในสมุดทั้งหมด ${nb.length} ข้อ</span></div>
       <button class="btn primary" data-act="review-due" ${due.length ? "" : "disabled"}>เริ่มทบทวน</button>
     </section>
     <section class="stack">
       <h2 style="font-size:20px">พลาดเพราะอะไร</h2>
-      <div class="reason-grid">${REASONS.map(r => `<div class="card"><span class="small">${r}</span><b class="num">${counts[r]}</b><span class="muted small">${REASON_FIX[r]}</span></div>`).join("")}</div>
+      <div class="reason-grid">${REASONS.map(r => `<div class="card ${counts[r] ? "" : "zero"}"><span>${r}</span><b class="num">${counts[r]}<small> ข้อ</small></b></div>`).join("")}</div>
       ${untagged ? `<p class="muted small">ยังไม่ระบุสาเหตุ ${untagged} ข้อ เลือกสาเหตุในตารางด้านล่างเพื่อให้รู้ว่าต้องแก้แบบไหน</p>` : ""}
     </section>
     <section class="stack">
