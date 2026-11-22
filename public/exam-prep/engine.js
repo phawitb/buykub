@@ -598,13 +598,13 @@ function mount(root, D, opts = {}) {
     const total = ids.length;
     head = { title, sub: i < total ? `ข้อ ${i + 1}/${total}` : "จบชุดฝึก", back };
     const right = Object.entries(picked).filter(([id, c]) => Q[id].ans === c).length;
-    const head = `<div class="quiz-top"><a class="btn ghost sm" href="#${back}">← ออก</a><b style="font-family:var(--f-display)">${esc(title)}</b><span class="muted num small">ถูก ${right}/${Object.keys(picked).length}</span></div>${bar(Math.min(i, total) / total * 100)}`;
+    const qtop = `<div class="quiz-top"><a class="btn ghost sm" href="#${back}">← ออก</a><b style="font-family:var(--f-display)">${esc(title)}</b><span class="muted num small">ถูก ${right}/${Object.keys(picked).length}</span></div>${bar(Math.min(i, total) / total * 100)}`;
     if (i >= total) {
       const wrongIds = ids.filter(id => picked[id] !== undefined && picked[id] !== Q[id].ans);
       const by = {};
       ids.forEach(id => { const t = Q[id].topic; by[t] = by[t] || { ok: 0, done: 0, total: 0, s: Q[id].s }; by[t].total++; if (picked[id] === undefined) return; by[t].done++; if (picked[id] === Q[id].ans) by[t].ok++; });
       const n = Object.keys(picked).length;
-      return `<div class="quiz">${head}
+      return `<div class="quiz">${qtop}
         <div class="card qcard taped" style="align-items:center;text-align:center">
           ${MASCOT ? `<img src="${MASCOT}" alt="" width="96" height="124">` : ""}
           <span class="eyebrow">จบชุดฝึก</span>
@@ -620,7 +620,7 @@ function mount(root, D, opts = {}) {
     }
     const id = ids[i], q = Q[id], ch = picked[id], answered = ch !== undefined, a = S.att[id] || {};
     const chs = (q.s.topicMap[q.topic] || []);
-    return `<div class="quiz s-${q.s.key}">${head}
+    return `<div class="quiz s-${q.s.key}">${qtop}
       <div class="card qcard">
         <div class="qmeta">${subjChip(q.s)}<span class="code">${id}</span><span class="muted small">${esc(q.topic)}</span><span class="muted small num" style="margin-left:auto">ข้อ ${i + 1}/${total}</span></div>
         <div class="stem" id="q-stem">${esc(q.stem)}</div>
