@@ -648,11 +648,12 @@ function mount(root, D, opts = {}) {
     }
     const run = S.run, ids = mockIds(k);
     const answered = Object.keys(run.ans).length;
-    let num = 0;
-    const parts = SUBJ.map(s => {
-      const list = ids.filter(id => Q[id].s === s);
-      const first = num + 1;
-      const html = list.map(id => {
+    // One subject per page, so a 150-question set never becomes one long scroll.
+    const pg = Math.min(run.page || 0, SUBJ.length - 1), s = SUBJ[pg];
+    const list = ids.filter(id => Q[id].s === s);
+    let num = ids.indexOf(list[0]);
+    const first = num + 1;
+    const html = list.map(id => {
         num++;
         const q = Q[id], c = run.ans[id];
         return `<div class="card mock-q" id="mq-${num}">
@@ -662,14 +663,16 @@ function mount(root, D, opts = {}) {
           <div class="opts">${q.opts.map((o, j) => `<button class="opt ${c === j ? "sel" : ""}" data-act="mpick" data-id="${id}" data-k="${j}" data-num="${num}"><span class="k">${CIRC[j]}</span><span>${esc(o)}</span></button>`).join("")}</div>
         </div>`;
       }).join("");
-      return `<div class="part-head s-${s.key}" id="mp-${s.key}">${esc(s.name)} · ข้อ ${first}-${num}</div>${html}`;
-    }).join("");
+    const prevS = SUBJ[pg - 1], nextS = SUBJ[pg + 1];
+    const tabs = `<div class="subj-tabs">${SUBJ.map((x, i) => { const xs = ids.filter(id => Q[id].s === x); return `<button class="chip subj s-${x.key} ${i === pg ? "on" : ""}" data-act="mpage" data-p="${i}">${esc(x.short)} <span class="n num">${xs.filter(id => run.ans[id] !== undefined).length}/${xs.length}</span></button>`; }).join("")}</div>`;
+    const parts = `${tabs}<div class="part-head s-${s.key}" id="mp-${s.key}">${esc(s.name)} · ข้อ ${first}-${num}</div>${html}
+      <div class="pager">${prevS ? `<button class="btn" data-act="mpage" data-p="${pg - 1}">← ${esc(prevS.short)}</button>` : "<span></span>"}${nextS ? `<button class="btn primary" data-act="mpage" data-p="${pg + 1}">ถัดไป: ${esc(nextS.short)} →</button>` : `<button class="btn primary" data-act="mock-confirm">ส่งคำตอบและตรวจ</button>`}</div>`;
     return `<div class="crumb"><a href="#mock">ข้อสอบจำลอง</a> / <span>ชุดที่ ${k} กำลังทำ</span></div>
     <div class="mock-shell">
       <div class="stack">${parts}</div>
       <aside class="card sheet" aria-label="กระดาษคำตอบ">
         <div class="row" style="justify-content:space-between;align-items:flex-end"><div><span class="eyebrow">เวลาที่เหลือ</span><div class="timer" id="timer">${fmtClock(LIMIT - (Date.now() - run.start))}</div></div><span class="muted num small" id="answered">ตอบแล้ว ${answered}/${MOCK_Q}</span></div>
-        <div class="bubbles" id="bubbles">${ids.map((id, j) => `<a href="#mock-${k}" data-act="jump" data-num="${j + 1}" class="${run.ans[id] !== undefined ? "done" : ""} ${run.flag[id] ? "fl" : ""}" aria-label="ข้อ ${j + 1}">${j + 1}</a>`).join("")}</div>
+        <div class="bubbles by-subj" id="bubbles">${ids.map((id, j) => `<a href="#mock-${k}" data-act="jump" data-num="${j + 1}" class="s-${Q[id].s.key} ${run.ans[id] !== undefined ? "done" : ""} ${run.flag[id] ? "fl" : ""}" aria-label="ข้อ ${j + 1}">${j + 1}</a>`).join("")}</div>
         <p class="muted small">ทึบ = ตอบแล้ว · ขอบเหลือง = ค้างไว้กลับมาดู</p>
         ${confirmOpen ? `<div class="confirm"><b>ส่งคำตอบตอนนี้?</b><span>ยังไม่ได้ตอบ ${MOCK_Q - answered} ข้อ ข้อที่ว่างนับเป็นผิด</span><div class="row"><button class="btn sm primary" data-act="mock-submit">ยืนยันส่ง</button><button class="btn sm" data-act="mock-cancel">ทำต่อ</button></div></div>`
           : `<button class="btn primary" data-act="mock-confirm">ส่งคำตอบและตรวจ</button>`}
@@ -842,11 +845,21 @@ function mount(root, D, opts = {}) {
         t.parentElement.querySelectorAll(".opt").forEach((b, j) => b.classList.toggle("sel", j === k));
         const bub = root.querySelectorAll("#bubbles a")[+t.dataset.num - 1]; if (bub) bub.classList.add("done");
         const an = byId("answered"); if (an) an.textContent = `ตอบแล้ว ${Object.keys(S.run.ans).length}/${MOCK_Q}`;
+        const tab = root.querySelector(".subj-tabs .chip.on .n");
+        if (tab) { const xs = mockIds(S.run.set).filter(x => Q[x].s === Q[id].s); tab.textContent = `${xs.filter(x => S.run.ans[x] !== undefined).length}/${xs.length}`; }
         break;
       }
       case "mflag": { const id = t.dataset.id; if (S.run.flag[id]) delete S.run.flag[id]; else S.run.flag[id] = 1; save(); render(); break; }
-      case "jump": { e.preventDefault(); const el = byId("mq-" + t.dataset.num); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); break; }
-      case "mock-confirm": confirmOpen = true; render(); break;
+      case "mpage": S.run.page = +t.dataset.p; save(); render(); window.scrollTo(0, 0); break;
+      case "jump": {
+        e.preventDefault();
+        // On a running set the question may sit on another subject's page.
+        if (S.run && byId("bubbles")) {
+          const p = SUBJ.indexOf(Q[mockIds(S.run.set)[+t.dataset.num - 1]].s);
+          if (p !== (S.run.page || 0)) { S.run.page = p; save(); render(true); }
+        }
+        const el = byId("mq-" + t.dataset.num); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); break; }
+      case "mock-confirm": { confirmOpen = true; render(true); const cf = root.querySelector(".confirm"); if (cf) cf.scrollIntoView({ block: "nearest" }); break; }
       case "mock-cancel": confirmOpen = false; render(); break;
       case "mock-submit": submitMock(); break;
       case "mock-abandon": S.run = null; save(); go("mock"); break;
