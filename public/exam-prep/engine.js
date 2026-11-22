@@ -781,8 +781,8 @@ function mount(root, D, opts = {}) {
         <button class="btn sm" data-act="rv" data-s="${s.key}" data-mode="all">ทำข้อผิดทั้งหมด (${ids.length})</button>
       </div>
       <details><summary class="muted small" style="cursor:pointer">รายการข้อ</summary>
-        <ul class="rv-list">${list.map(id => { const a = S.att[id], d = a.due <= now; return `<li><span class="t" title="${esc(Q[id].topic)}">${esc(Q[id].stem)}${isMockId(id) ? ' <span class="muted small">จำลอง</span>' : ""}</span>
-          <span class="muted small num">รอบ ${a.box}/3 · ${d ? "<b>วันนี้</b>" : thDate(a.due)}</span><button class="btn sm" data-act="one" data-id="${id}">ทำ</button></li>`; }).join("")}</ul>
+        <ul class="rv-list">${list.map(id => { const a = S.att[id], d = a.due <= now; return `<li><span class="no num">ข้อ ${+id.slice(1)}</span><span class="body"><span class="t" title="${esc(Q[id].topic)}">${esc(Q[id].stem)}${isMockId(id) ? ' <span class="muted small">จำลอง</span>' : ""}</span>
+          <span class="muted small num">รอบ ${a.box}/3 · ${d ? "<b>วันนี้</b>" : thDate(a.due)}</span></span><button class="btn sm" data-act="one" data-id="${id}">ทำ</button></li>`; }).join("")}</ul>
       </details>
     </section>`;
   }
@@ -866,8 +866,9 @@ function mount(root, D, opts = {}) {
         const on = root.classList.toggle(act === "map" ? "map-open" : "toc-open");
         t.setAttribute("aria-expanded", on);
         const d = root.querySelector(".notes-nav, .dnav"); if (act === "toc" && d && on) d.open = true;
-        // The day task list hangs straight off the header bar, whatever its height.
-        if (d && on && d.matches(".dnav")) d.style.top = $("ctx").parentElement.getBoundingClientRect().bottom + "px";
+        // The list hangs straight off the header bar, whatever its height.
+        const drop = root.querySelector(act === "map" ? ".sheet" : ".notes-nav, .dnav");
+        if (drop && on) drop.style.top = $("ctx").parentElement.getBoundingClientRect().bottom + "px";
         break;
       }
       case "mpage": S.run.page = +t.dataset.p; save(); render(); window.scrollTo(0, 0); break;
