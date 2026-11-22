@@ -207,7 +207,7 @@ function mount(root, D, opts = {}) {
   // What the phone header shows in place of the brand; views fill it in.
   let head = null;
   function renderCtx(view) {
-    const h = head || (view === "home" ? null : { title: (NAV.find(([k]) => k === view) || [, ""])[1] });
+    const h = head || (view === "home" ? null : { title: (NAV.find(([k]) => k === view) || [, ""])[1], back: "home" });
     root.classList.toggle("has-ctx", !!(h && h.title));
     root.classList.remove("map-open", "toc-open");
     $("ctx").innerHTML = h && h.title ? `${h.back ? `<a class="ctx-back" href="#${h.back}" aria-label="ย้อนกลับ">‹</a>` : ""}
