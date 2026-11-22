@@ -433,6 +433,8 @@
   color: var(--muted); border: 1px solid var(--line); background: var(--card); font-variant-numeric: tabular-nums; max-width: 100%;
 }
 .exam-prep .bubbles a.done { background: var(--brand); border-color: var(--brand); color: var(--card); }
+.exam-prep .bubbles.by-subj a { color: var(--s); border-color: var(--s); background: var(--ss); }
+.exam-prep .bubbles.by-subj a.done { background: var(--s); border-color: var(--s); color: var(--card); }
 .exam-prep .bubbles a.fl { box-shadow: 0 0 0 2px var(--sun); }
 .exam-prep .bubbles a.ok { background: var(--sage); border-color: var(--sage); color: var(--card); }
 .exam-prep .bubbles a.no { background: var(--rose); border-color: var(--rose); color: var(--card); }
