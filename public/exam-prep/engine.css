@@ -93,6 +93,8 @@
 .exam-prep .nav svg { width: 22px; height: 22px; }
 .exam-prep .nav a span:not(.badge) { white-space: normal; text-align: center; line-height: 1.25; }
 .exam-prep .nav .badge { position: absolute; top: 0; left: 55%; }
+/* Phones reach home from the header's back link instead. */
+.exam-prep .nav a[href="#home"] { display: none; }
 .exam-prep { padding-bottom: 72px; }
 
 }
