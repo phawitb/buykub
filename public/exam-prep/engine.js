@@ -358,13 +358,13 @@ function mount(root, D, opts = {}) {
     };
     const doneCount = D.plan.filter(dayDone).length;
     const phases = D.phases && D.phases.length ? D.phases : [{ from: 1, to: NDAYS, label: "" }];
+    const startIn = `<label class="plan-start"><span>เริ่มแผน</span><input class="date-in" type="date" name="start-date" value="${S.start}" aria-label="เริ่มแผนวันที่"></label>`;
+    head = { title: `แผน ${NDAYS} วัน`, sub: `เสร็จแล้ว ${doneCount}/${NDAYS} วัน · ถึง ${thDate(dayDate(NDAYS))}`, back: "home", tools: startIn };
     return `
-    <div class="page-head">
-      <h1>แผน ${NDAYS} วัน</h1>
-    </div>
-    <div class="card row" style="justify-content:space-between">
-      <label class="row" for="start-date"><span>เริ่มแผนวันที่</span><input class="date-in" type="date" id="start-date" value="${S.start}"></label>
-      <span class="muted num">เสร็จแล้ว ${doneCount}/${NDAYS} วัน · วันสุดท้ายของแผน ${thDate(dayDate(NDAYS), { day: "numeric", month: "long", year: "numeric" })}</span>
+    <div class="page-head plan-head">
+      <div class="stack" style="gap:4px"><h1>แผน ${NDAYS} วัน</h1>
+        <span class="muted num small">เสร็จแล้ว ${doneCount}/${NDAYS} วัน · วันสุดท้ายของแผน ${thDate(dayDate(NDAYS), { day: "numeric", month: "long", year: "numeric" })}</span></div>
+      ${startIn}
     </div>
     <div class="plan-grid">
       ${phases.map(ph => `${ph.label ? `<div class="phase-label">${esc(ph.label)}</div>` : ""}${D.plan.slice(ph.from - 1, ph.to).map(card).join("")}`).join("")}
@@ -519,7 +519,7 @@ function mount(root, D, opts = {}) {
     const s = SK[key];
     if (!s) {
       return `<div class="page-head"><h1>สรุปบทเรียน</h1></div>
-        <div class="grid g3">${SUBJ.map(s => `<a class="card subj-card s-${s.key}" href="#notes-${s.key}" style="text-decoration:none;color:inherit"><h3>${esc(s.name)}</h3><p class="muted small">${s.chapters.length} บท · ${s.chapters.filter(c => c.visual).length} ภาพสรุป</p><p class="small">${s.chapters.slice(0, 4).map(c => esc(c.title.split(":")[0])).join(" · ")} …</p></a>`).join("")}</div>`;
+        <div class="grid g3">${SUBJ.map(s => `<a class="card subj-card s-${s.key}" href="#notes-${s.key}" style="text-decoration:none;color:inherit"><h3>${esc(s.name)}</h3><p class="muted small">${s.chapters.length} บท · ${s.chapters.filter(c => c.visual).length} ภาพสรุป</p></a>`).join("")}</div>`;
     }
     const tabs = `<div class="subj-tabs">${SUBJ.map(x => `<a class="chip subj s-${x.key} ${x === s ? "on" : ""}" href="#notes-${x.key}">${esc(x.short)}</a>`).join("")}</div>`;
     const isX = part ? part[0] === "x" : false;
@@ -901,7 +901,7 @@ function mount(root, D, opts = {}) {
   }
   function onChange(e) {
     const t = e.target;
-    if (t.id === "start-date" && t.value) { S.start = t.value; save(); render(); }
+    if (t.name === "start-date" && t.value) { S.start = t.value; save(); render(); }
     if (t.id === "day-done") { const n = +t.dataset.day; if (t.checked) S.days[n] = 1; else delete S.days[n]; save(); render(); }
     if (t.dataset.act === "why-sel") { const a = S.att[t.dataset.id]; if (t.value) a.why = t.value; else delete a.why; save(); render(); }
   }
