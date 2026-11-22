@@ -507,7 +507,6 @@ function mount(root, D, opts = {}) {
     const tabs = `<div class="subj-tabs">${SUBJ.map(x => `<a class="chip subj s-${x.key} ${x === s ? "on" : ""}" href="#notes-${x.key}">${esc(x.short)}</a>`).join("")}</div>`;
     if (!part) {
       return `${tabs}<div class="page-head"><span class="eyebrow">Visual notes / ${s.key}</span><h1>${esc(s.name)}</h1></div>
-        ${s.intro ? `<div class="card prose">${md(s.intro)}</div>` : ""}
         <div class="ch-list s-${s.key}">${s.chapters.map(c => chLink(s, c.n)).join("")}
         ${s.extras.map((x, i) => `<a class="ch-item s-${s.key}" href="#notes-${s.key}-x${i + 1}"><span class="badge-n">★</span><span>${esc(x.title)}<small>ทบทวนท้ายบท</small></span></a>`).join("")}</div>`;
     }
