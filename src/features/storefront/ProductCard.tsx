@@ -80,7 +80,7 @@ export function ProductCard({
               aria-hidden="true"
               className="inline-flex h-8 shrink-0 items-center rounded-full bg-accent px-4 text-xs font-semibold text-on-ink transition duration-[120ms] ease-out group-hover:bg-accent-hover group-active:scale-[0.97]"
             >
-              ซื้อเลย
+              ดูรายละเอียด
             </span>
           )}
         </div>
