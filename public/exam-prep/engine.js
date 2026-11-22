@@ -210,6 +210,8 @@ function mount(root, D, opts = {}) {
   }
 
   let quiz = null, tick = null, confirmOpen = false, pFilter = null;
+  // The subject page open on a mock result, kept per set.
+  let res = { set: 0, page: 0 };
   function go(h) { if (location.hash === "#" + h) render(); else location.hash = h; }
 
   function render(keep) {
@@ -728,18 +730,30 @@ function mount(root, D, opts = {}) {
         <div class="row">${wrong.length ? `<button class="btn primary" data-act="mock-wrong" data-k="${k}">ทำข้อผิดใหม่ (${wrong.length})</button>` : ""}<a class="btn" href="#mock-${k}">ทำชุดนี้อีกครั้ง</a></div>
       </div>
       <div class="card stack"><h2 style="font-size:18px">คะแนนแยกวิชา</h2>${mockBySubject(r)}
-        <div class="bubbles" style="margin-top:6px">${ids.map((id, j) => `<a href="#mock-${k}-result" data-act="jump" data-num="${j + 1}" class="${r.ans[id] === Q[id].ans ? "ok" : "no"} ${r.flag && r.flag[id] ? "fl" : ""}" aria-label="ข้อ ${j + 1}">${j + 1}</a>`).join("")}</div>
+        <div class="bubbles" id="rbubbles" style="margin-top:6px">${ids.map((id, j) => `<a href="#mock-${k}-result" data-act="jump" data-num="${j + 1}" class="${r.ans[id] === Q[id].ans ? "ok" : "no"} ${r.flag && r.flag[id] ? "fl" : ""}" aria-label="ข้อ ${j + 1}">${j + 1}</a>`).join("")}</div>
       </div>
     </section>
     <section class="stack">
       <h2 style="font-size:20px">ข้อที่ผิดหรือเว้น พร้อมเฉลย</h2>
-      ${wrong.map(id => { const q = Q[id], j = ids.indexOf(id) + 1, c = r.ans[id]; return `<div class="card mock-q s-${q.s.key}" id="mq-${j}">
-        <div class="qmeta"><b class="num" style="font-family:var(--f-display)">${j}.</b>${subjChip(q.s)}<span class="muted small">${esc(q.topic)}</span></div>
-        <div class="stem">${esc(q.stem)}</div>
+      ${resSubject(k, r, ids)}
+    </section>`;
+  }
+  // One subject per page, coloured like the running set, so the review reads the way the set was taken.
+  function resSubject(k, r, ids) {
+    if (res.set !== k) res = { set: k, page: 0 };
+    const pg = Math.min(res.page, SUBJ.length - 1), s = SUBJ[pg];
+    const list = ids.filter(id => Q[id].s === s), first = ids.indexOf(list[0]) + 1;
+    const ok = id => r.ans[id] === Q[id].ans;
+    const tabs = `<div class="subj-tabs">${SUBJ.map((x, i) => { const xs = ids.filter(id => Q[id].s === x); return `<button class="chip subj s-${x.key} ${i === pg ? "on" : ""}" data-act="rpage" data-p="${i}">${esc(x.short)} <span class="n num">${xs.filter(ok).length}/${xs.length}</span></button>`; }).join("")}</div>`;
+    const wrong = list.filter(id => !ok(id));
+    const cards = wrong.map(id => { const q = Q[id], j = ids.indexOf(id) + 1, c = r.ans[id]; return `<div class="card mock-q s-${q.s.key}" id="mq-${j}">
+        <div class="stem"><b class="qn num">${j}.</b> ${esc(q.stem)}</div>
         <div class="opts">${q.opts.map((o, x) => `<div class="opt ${x === q.ans ? "right" : x === c ? "wrong" : ""}"><span class="k">${CIRC[x]}</span><span>${esc(o)}</span></div>`).join("")}</div>
         <div class="feedback"><div>${c === undefined || c === null ? "<b>เว้นไว้</b> · " : ""}${esc(q.ex)}</div></div>
-      </div>`; }).join("") || `<div class="card empty"><p>ไม่มีข้อผิดในชุดนี้</p></div>`}
-    </section>`;
+      </div>`; }).join("") || `<div class="card empty"><p>ถูกทุกข้อในวิชานี้</p></div>`;
+    const prevS = SUBJ[pg - 1], nextS = SUBJ[pg + 1];
+    return `${tabs}<div class="part-head s-${s.key}" id="mp-${s.key}">${esc(s.name)} · ข้อ ${first}-${first + list.length - 1} · ถูก ${list.length - wrong.length}/${list.length}</div>${cards}
+      <div class="pager">${prevS ? `<button class="btn" data-act="rpage" data-p="${pg - 1}">← ${esc(prevS.short)}</button>` : "<span></span>"}${nextS ? `<button class="btn primary" data-act="rpage" data-p="${pg + 1}">ถัดไป: ${esc(nextS.short)} →</button>` : "<span></span>"}</div>`;
   }
   function viewMockList() {
     // The set in progress, otherwise the one finished most recently.
@@ -872,6 +886,7 @@ function mount(root, D, opts = {}) {
         break;
       }
       case "mpage": S.run.page = +t.dataset.p; save(); render(); window.scrollTo(0, 0); break;
+      case "rpage": res.page = +t.dataset.p; render(); byId("mp-" + SUBJ[res.page].key).scrollIntoView({ block: "start" }); break;
       case "jump": {
         e.preventDefault();
         root.classList.remove("map-open");
@@ -879,8 +894,12 @@ function mount(root, D, opts = {}) {
         if (S.run && byId("bubbles")) {
           const p = SUBJ.indexOf(Q[mockIds(S.run.set)[+t.dataset.num - 1]].s);
           if (p !== (S.run.page || 0)) { S.run.page = p; save(); render(true); }
+        } else if (byId("rbubbles")) {
+          const p = SUBJ.indexOf(Q[mockIds(res.set)[+t.dataset.num - 1]].s);
+          if (p !== res.page) { res.page = p; render(true); }
         }
-        const el = byId("mq-" + t.dataset.num); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); break; }
+        // A right answer has no card on the result page, so land on its subject instead.
+        const el = byId("mq-" + t.dataset.num) || (byId("rbubbles") && byId("mp-" + SUBJ[res.page].key)); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); break; }
       case "mock-confirm": { confirmOpen = true; render(true); root.classList.add("map-open"); const cf = root.querySelector(".confirm"); if (cf) cf.scrollIntoView({ block: "nearest" }); break; }
       case "mock-cancel": confirmOpen = false; render(); break;
       case "mock-submit": submitMock(); break;
