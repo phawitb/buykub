@@ -206,7 +206,7 @@ function mount(root, D, opts = {}) {
     root.classList.toggle("has-ctx", !!(h && h.title));
     root.classList.remove("map-open", "toc-open");
     $("ctx").innerHTML = h && h.title ? `${h.back ? `<a class="ctx-back" href="#${h.back}" aria-label="ย้อนกลับ">‹</a>` : ""}
-      <span class="ctx-t"><b>${esc(h.title)}</b>${h.sub ? `<small>${h.sub}</small>` : ""}</span>${h.tools || ""}` : "";
+      <span class="ctx-t"><b>${esc(h.title)}</b>${h.sub ? `<small>${h.sub}</small>` : ""}</span>${h.tools || ""}${h.prog !== undefined ? `<i class="ctx-prog" style="width:${h.prog}%"></i>` : ""}` : "";
   }
 
   let quiz = null, tick = null, confirmOpen = false, pFilter = null;
@@ -581,9 +581,10 @@ function mount(root, D, opts = {}) {
     if (!quiz) { setTimeout(() => go("practice")); return ""; }
     const { ids, i, title, back, picked } = quiz;
     const total = ids.length;
-    head = { title, sub: i < total ? `ข้อ ${i + 1}/${total}` : "จบชุดฝึก", back };
+    const prog = Math.min(i, total) / total * 100;
+    head = { title, sub: i < total ? `ข้อ ${i + 1}/${total}` : "จบชุดฝึก", back, prog };
     const right = Object.entries(picked).filter(([id, c]) => Q[id].ans === c).length;
-    const qtop = `<div class="quiz-top"><a class="btn ghost sm" href="#${back}">← ออก</a><b style="font-family:var(--f-display)">${esc(title)}</b><span class="muted num small">ถูก ${right}/${Object.keys(picked).length}</span></div>${bar(Math.min(i, total) / total * 100)}`;
+    const qtop = `<div class="quiz-top"><a class="btn ghost sm" href="#${back}">← ออก</a><b style="font-family:var(--f-display)">${esc(title)}</b><span class="muted num small">${i < total ? `<span class="qpos">ข้อ ${i + 1}/${total} · </span>` : ""}ถูก ${right}/${Object.keys(picked).length}</span></div>${bar(prog, "quiz-prog")}`;
     if (i >= total) {
       const wrongIds = ids.filter(id => picked[id] !== undefined && picked[id] !== Q[id].ans);
       const by = {};
@@ -607,8 +608,7 @@ function mount(root, D, opts = {}) {
     const chs = (q.s.topicMap[q.topic] || []);
     return `<div class="quiz s-${q.s.key}">${qtop}
       <div class="card qcard">
-        <div class="qmeta">${subjChip(q.s)}<span class="muted small">${esc(q.topic)}</span><span class="muted small num" style="margin-left:auto">ข้อ ${i + 1}/${total}</span></div>
-        <div class="stem" id="q-stem">${esc(q.stem)}</div>
+        <div class="stem" id="q-stem"><b class="qn num">${i + 1}.</b> ${esc(q.stem)}</div>
         <div class="opts" role="group" aria-labelledby="q-stem">${q.opts.map((o, k) => {
           const cls = answered ? (k === q.ans ? "right" : k === ch ? "wrong" : "") : "";
           return `<button class="opt ${cls}" data-act="pick" data-k="${k}" ${answered ? "disabled" : ""}><span class="k">${CIRC[k]}</span><span>${esc(o)}</span></button>`;
