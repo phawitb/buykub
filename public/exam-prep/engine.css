@@ -490,13 +490,15 @@
 .exam-prep .mock-shell { grid-template-columns: 1fr; }
 .exam-prep .mock-q .fl-t { display: none; }
 /* The answer map and the chapter list drop down from the header instead of taking the top of the page. */
-.exam-prep.has-ctx .sheet, .exam-prep.has-ctx .notes-nav { display: none; }
-.exam-prep.map-open .sheet, .exam-prep.toc-open .notes-nav {
+.exam-prep.has-ctx .sheet, .exam-prep.has-ctx .notes-nav, .exam-prep.has-ctx .dnav { display: none; }
+.exam-prep.map-open .sheet, .exam-prep.toc-open .notes-nav, .exam-prep.toc-open .dnav {
     display: flex; flex-direction: column; position: fixed; z-index: 8; left: 8px; right: 8px;
     top: calc(env(safe-area-inset-top, 0px) + 64px); max-height: calc(100dvh - 160px); overflow: auto;
     box-shadow: 0 12px 32px rgba(0, 0, 0, .18);
   }
 .exam-prep.toc-open .notes-nav summary { display: none; }
+.exam-prep.toc-open .dnav summary { pointer-events: none; }
+.exam-prep.toc-open .dnav .cur-name { display: none; }
 }
 .exam-prep .plan-head { flex-direction: row; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
 .exam-prep .plan-start { display: flex; align-items: center; gap: 8px; font-family: var(--f-display); font-size: 14px; color: var(--muted); }
