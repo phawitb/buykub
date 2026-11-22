@@ -204,14 +204,14 @@ function mount(root, D, opts = {}) {
   function renderCtx(view) {
     const h = head || (view === "home" ? null : { title: (NAV.find(([k]) => k === view) || [, ""])[1], back: "home" });
     root.classList.toggle("has-ctx", !!(h && h.title));
-    root.classList.remove("map-open", "toc-open");
+    root.classList.remove("map-open", "toc-open", "sum-open");
     $("ctx").innerHTML = h && h.title ? `${h.back ? `<a class="ctx-back" href="#${h.back}" aria-label="ย้อนกลับ">‹</a>` : ""}
       <span class="ctx-t"><b>${esc(h.title)}</b>${h.sub ? `<small>${h.sub}</small>` : ""}</span>${h.tools || ""}${h.prog !== undefined ? `<i class="ctx-prog" style="width:${h.prog}%"></i>` : ""}` : "";
   }
 
   let quiz = null, tick = null, confirmOpen = false, pFilter = null;
-  // The subject page open on a mock result, kept per set.
-  let res = { set: 0, page: 0 };
+  // The subject page open on a mock result, kept per set. Once reviewing, the phone folds the score into the header.
+  let res = { set: 0, page: 0, review: false };
   function go(h) { if (location.hash === "#" + h) render(); else location.hash = h; }
 
   function render(keep) {
@@ -718,16 +718,18 @@ function mount(root, D, opts = {}) {
     const ids = mockIds(k);
     const wrong = ids.filter(id => r.ans[id] !== Q[id].ans);
     const guessed = ids.filter(id => r.flag && r.flag[id] && r.ans[id] === Q[id].ans);
-    head = { title: `ผลข้อสอบจำลอง ชุดที่ ${k}`, back: "mock" };
+    if (res.set !== k) res = { set: k, page: 0, review: false };
+    head = { title: `ผลข้อสอบจำลอง ชุดที่ ${k}`, sub: `<span class="num">${r.score}/${MOCK_Q}</span> คะแนน`, back: "mock",
+      tools: res.review ? `<button class="btn sm ctx-btn" data-act="sum" aria-expanded="false">ผลสอบ ▾</button>` : "" };
     return `<div class="crumb"><a href="#mock">ข้อสอบจำลอง</a> / <span>ผลชุดที่ ${k}</span></div>
-    <section class="grid g2">
+    <section class="grid g2 res-sum ${res.review ? "rev" : ""}">
       <div class="card taped stack">
         <span class="eyebrow">ข้อสอบจำลอง ชุดที่ ${k} · ${thDate(r.at, { day: "numeric", month: "long", year: "numeric" })}</span>
         <div class="score-big num">${r.score}<span class="muted" style="font-size:26px"> / ${MOCK_Q}</span></div>
         <p class="muted">ใช้เวลา ${fmtClock(r.dur)} · ผิดหรือเว้น ${wrong.length} ข้อ · เดาถูก ${guessed.length} ข้อ${hist.length > 1 ? ` · ครั้งก่อน ${hist[hist.length - 2].score}/${MOCK_Q}` : ""}</p>
         ${partsBlock(r)}
         <p class="small">${esc(M.mockResultNote)}</p>
-        <div class="row">${wrong.length ? `<button class="btn primary" data-act="mock-wrong" data-k="${k}">ทำข้อผิดใหม่ (${wrong.length})</button>` : ""}<a class="btn" href="#mock-${k}">ทำชุดนี้อีกครั้ง</a></div>
+        <div class="row">${wrong.length ? `<button class="btn primary" data-act="mock-wrong" data-k="${k}">ทำข้อผิดใหม่ (${wrong.length})</button>` : ""}<a class="btn" href="#mock-${k}">ทำชุดนี้อีกครั้ง</a><button class="btn res-go" data-act="rpage" data-p="${res.page}">ดูเฉลยแยกวิชา ↓</button></div>
       </div>
       <div class="card stack"><h2 style="font-size:18px">คะแนนแยกวิชา</h2>${mockBySubject(r)}
         <div class="bubbles" id="rbubbles" style="margin-top:6px">${ids.map((id, j) => `<a href="#mock-${k}-result" data-act="jump" data-num="${j + 1}" class="${r.ans[id] === Q[id].ans ? "ok" : "no"} ${r.flag && r.flag[id] ? "fl" : ""}" aria-label="ข้อ ${j + 1}">${j + 1}</a>`).join("")}</div>
@@ -740,7 +742,6 @@ function mount(root, D, opts = {}) {
   }
   // One subject per page, coloured like the running set, so the review reads the way the set was taken.
   function resSubject(k, r, ids) {
-    if (res.set !== k) res = { set: k, page: 0 };
     const pg = Math.min(res.page, SUBJ.length - 1), s = SUBJ[pg];
     const list = ids.filter(id => Q[id].s === s), first = ids.indexOf(list[0]) + 1;
     const ok = id => r.ans[id] === Q[id].ans;
@@ -823,7 +824,7 @@ function mount(root, D, opts = {}) {
 
   function onClick(e) {
     // A tap outside the phone's dropdown map or chapter list closes it.
-    if (!e.target.closest(".sheet, .notes-nav, .ctx")) root.classList.remove("map-open", "toc-open");
+    if (!e.target.closest(".sheet, .notes-nav, .res-sum, .ctx")) root.classList.remove("map-open", "toc-open", "sum-open");
     const t = e.target.closest("[data-act]"); if (!t || !root.contains(t)) return;
     const act = t.dataset.act, s = SK[t.dataset.s];
     const here = (location.hash || "#home").slice(1);
@@ -876,27 +877,27 @@ function mount(root, D, opts = {}) {
         break;
       }
       case "mflag": { const id = t.dataset.id; if (S.run.flag[id]) delete S.run.flag[id]; else S.run.flag[id] = 1; save(); render(); break; }
-      case "map": case "toc": {
-        const on = root.classList.toggle(act === "map" ? "map-open" : "toc-open");
+      case "map": case "toc": case "sum": {
+        const on = root.classList.toggle(act + "-open");
         t.setAttribute("aria-expanded", on);
         const d = root.querySelector(".notes-nav, .dnav"); if (act === "toc" && d && on) d.open = true;
         // The list hangs straight off the header bar, whatever its height.
-        const drop = root.querySelector(act === "map" ? ".sheet" : ".notes-nav, .dnav");
+        const drop = root.querySelector({ map: ".sheet", toc: ".notes-nav, .dnav", sum: ".res-sum" }[act]);
         if (drop && on) drop.style.top = $("ctx").parentElement.getBoundingClientRect().bottom + "px";
         break;
       }
       case "mpage": S.run.page = +t.dataset.p; save(); render(); window.scrollTo(0, 0); break;
-      case "rpage": res.page = +t.dataset.p; render(); byId("mp-" + SUBJ[res.page].key).scrollIntoView({ block: "start" }); break;
+      case "rpage": res.page = +t.dataset.p; res.review = true; render(); byId("mp-" + SUBJ[res.page].key).scrollIntoView({ block: "start" }); break;
       case "jump": {
         e.preventDefault();
-        root.classList.remove("map-open");
+        root.classList.remove("map-open", "sum-open");
         // On a running set the question may sit on another subject's page.
         if (S.run && byId("bubbles")) {
           const p = SUBJ.indexOf(Q[mockIds(S.run.set)[+t.dataset.num - 1]].s);
           if (p !== (S.run.page || 0)) { S.run.page = p; save(); render(true); }
         } else if (byId("rbubbles")) {
           const p = SUBJ.indexOf(Q[mockIds(res.set)[+t.dataset.num - 1]].s);
-          if (p !== res.page) { res.page = p; render(true); }
+          if (p !== res.page || !res.review) { res.page = p; res.review = true; render(true); }
         }
         // A right answer has no card on the result page, so land on its subject instead.
         const el = byId("mq-" + t.dataset.num) || (byId("rbubbles") && byId("mp-" + SUBJ[res.page].key)); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); break; }
