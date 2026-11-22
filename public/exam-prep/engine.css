@@ -498,6 +498,7 @@
   }
 .exam-prep.toc-open .notes-nav summary { display: none; }
 .exam-prep.toc-open .dnav summary { pointer-events: none; }
+.exam-prep.toc-open .dnav { left: 0; right: 0; max-height: calc(100dvh - 190px); border-top: 0; border-radius: 0 0 16px 16px; }
 .exam-prep.toc-open .dnav .cur-name { display: none; }
 }
 .exam-prep .plan-head { flex-direction: row; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; }

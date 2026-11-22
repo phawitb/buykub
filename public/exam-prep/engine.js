@@ -866,6 +866,8 @@ function mount(root, D, opts = {}) {
         const on = root.classList.toggle(act === "map" ? "map-open" : "toc-open");
         t.setAttribute("aria-expanded", on);
         const d = root.querySelector(".notes-nav, .dnav"); if (act === "toc" && d && on) d.open = true;
+        // The day task list hangs straight off the header bar, whatever its height.
+        if (d && on && d.matches(".dnav")) d.style.top = $("ctx").parentElement.getBoundingClientRect().bottom + "px";
         break;
       }
       case "mpage": S.run.page = +t.dataset.p; save(); render(); window.scrollTo(0, 0); break;
