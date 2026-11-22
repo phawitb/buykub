@@ -107,6 +107,9 @@ function mount(root, D, opts = {}) {
   const MOCK_LIST = Array.from({ length: MOCKS }, (_, i) => i + 1);
 
   const pid = (s, n) => s.code + String(n).padStart(3, "0");
+  // Question codes stay internal; learners see "ข้อ 1–15" instead of "M001–M015".
+  const rng = (a, b) => `ข้อ ${+a.slice(1)}–${+b.slice(1)}`;
+  const target = p => /^[A-Z]\d{3}/.test(p.target || "") ? "" : p.target || "";
   const span = (a, b) => { const s = SK[a[0]], out = []; for (let n = +a.slice(1); n <= +b.slice(1); n++) out.push(pid(s, n)); return out; };
   const practiceIds = s => Array.from({ length: s.practice }, (_, j) => pid(s, j + 1));
   const mockIds = k => SUBJ.flatMap(s => Array.from({ length: s.perSet }, (_, j) => pid(s, s.practice + (k - 1) * s.perSet + j + 1)));
@@ -265,7 +268,7 @@ function mount(root, D, opts = {}) {
           ${raw < 1 ? `<span class="chip">แผนเริ่ม ${thDate(parseIso(S.start))}</span>` : raw > NDAYS ? `<span class="chip">ครบแผน ${NDAYS} วันแล้ว</span>` : ""}
         </div>
         <h3>${esc(p.read)}</h3>
-        <p class="muted">${esc(p.target)}</p>
+        ${target(p) ? `<p class="muted">${esc(target(p))}</p>` : ""}
         ${p.ranges.length ? `<div class="stack" style="gap:8px"><div class="row" style="justify-content:space-between"><b style="font-family:var(--f-display)">ความคืบหน้าวันนี้</b><b class="num" style="font-family:var(--f-display);font-size:20px">${dayPct(p)}%</b></div>${segBar(p)}</div>` : ""}
         <div class="row">
           <a class="btn primary" href="#day-${n}">เปิดงานของวันนี้</a>
@@ -426,7 +429,7 @@ function mount(root, D, opts = {}) {
     <div class="page-head">
       <span class="eyebrow">${KIND[p.kind]} · ${thDate(dayDate(n), { weekday: "long", day: "numeric", month: "long" })}</span>
       <h1>วันที่ ${n} · ${esc(p.read)}</h1>
-      <p>${esc(p.target)}</p>
+      ${target(p) ? `<p>${esc(target(p))}</p>` : ""}
     </div>
     ${body}
     <div class="card row" style="justify-content:space-between">
@@ -440,7 +443,7 @@ function mount(root, D, opts = {}) {
       { x, i, ex: true, ref: `${x.s.key}-ex`, href: `day-${n}-${x.s.key}-ex`, done: stats(x.ids).done === x.ids.length },
     ]);
   }
-  function itemTitle(it) { return it.ex ? `แบบฝึก ${it.x.a}–${it.x.b}` : it.x.s.chapters.find(c => c.n === it.n).title; }
+  function itemTitle(it) { return it.ex ? `แบบฝึก ${rng(it.x.a, it.x.b)}` : it.x.s.chapters.find(c => c.n === it.n).title; }
   function dayNav(p, n, items, sel) {
     const pct = dayPct(p);
     const groups = dayParts(p).map((x, i) => {
@@ -489,7 +492,7 @@ function mount(root, D, opts = {}) {
     const { s, a, b, ids } = sel.x, st = stats(ids);
     const unread = items.filter(it => it.i === sel.i && !it.ex && !it.done);
     return `<div class="pane-head">${subjChip(s)}<span class="muted small">ภารกิจ ${sel.i + 1} · แบบฝึก ${ids.length} ข้อ</span></div>
-      <div class="ch-head"><span class="badge-n">✎</span><h1>แบบฝึก${esc(s.name)} ${a}–${b}</h1></div>
+      <div class="ch-head"><span class="badge-n">✎</span><h1>แบบฝึก${esc(s.name)} ${rng(a, b)}</h1></div>
       <div class="card stack" style="gap:14px">
         <div class="row" style="justify-content:space-between;align-items:baseline"><span class="score-big num" style="font-size:44px">${st.done}<span class="muted" style="font-size:22px"> / ${st.total} ข้อ</span></span><span class="muted num">${st.acc !== null ? `ถูก ${st.ok} ข้อ (${st.acc}%)` : "ยังไม่ได้เริ่ม"}</span></div>
         ${bar2(st, "lg")}
@@ -614,7 +617,7 @@ function mount(root, D, opts = {}) {
     const chs = (q.s.topicMap[q.topic] || []);
     return `<div class="quiz s-${q.s.key}">${qtop}
       <div class="card qcard">
-        <div class="qmeta">${subjChip(q.s)}<span class="code">${id}</span><span class="muted small">${esc(q.topic)}</span><span class="muted small num" style="margin-left:auto">ข้อ ${i + 1}/${total}</span></div>
+        <div class="qmeta">${subjChip(q.s)}<span class="muted small">${esc(q.topic)}</span><span class="muted small num" style="margin-left:auto">ข้อ ${i + 1}/${total}</span></div>
         <div class="stem" id="q-stem">${esc(q.stem)}</div>
         <div class="opts" role="group" aria-labelledby="q-stem">${q.opts.map((o, k) => {
           const cls = answered ? (k === q.ans ? "right" : k === ch ? "wrong" : "") : "";
@@ -741,7 +744,7 @@ function mount(root, D, opts = {}) {
     <section class="stack">
       <h2 style="font-size:20px">ข้อที่ผิดหรือเว้น พร้อมเฉลย</h2>
       ${wrong.map(id => { const q = Q[id], j = ids.indexOf(id) + 1, c = r.ans[id]; return `<div class="card mock-q s-${q.s.key}" id="mq-${j}">
-        <div class="qmeta"><b class="num" style="font-family:var(--f-display)">${j}.</b>${subjChip(q.s)}<span class="code">${id}</span><span class="muted small">${esc(q.topic)}</span></div>
+        <div class="qmeta"><b class="num" style="font-family:var(--f-display)">${j}.</b>${subjChip(q.s)}<span class="muted small">${esc(q.topic)}</span></div>
         <div class="stem">${esc(q.stem)}</div>
         <div class="opts">${q.opts.map((o, x) => `<div class="opt ${x === q.ans ? "right" : x === c ? "wrong" : ""}"><span class="k">${CIRC[x]}</span><span>${esc(o)}</span></div>`).join("")}</div>
         <div class="feedback"><div>${c === undefined || c === null ? "<b>เว้นไว้</b> · " : ""}${esc(q.ex)}</div></div>
@@ -826,7 +829,7 @@ function mount(root, D, opts = {}) {
       case "prev": if (quiz && quiz.i > 0) { quiz.i--; render(); } break;
       case "flag": { const id = quiz.ids[quiz.i]; setFlag(id, !(S.att[id] && S.att[id].flag)); render(); break; }
       case "redo-wrong": { const w = quiz.ids.filter(id => quiz.picked[id] !== undefined && quiz.picked[id] !== Q[id].ans); startQuiz(w, quiz.title + " · ข้อที่ผิด", quiz.back, quiz.nav); break; }
-      case "range": startQuiz(span(t.dataset.a, t.dataset.b), `วันที่ ${t.dataset.day} · ${t.dataset.a}–${t.dataset.b}`, here); break;
+      case "range": startQuiz(span(t.dataset.a, t.dataset.b), `วันที่ ${t.dataset.day} · ${SK[t.dataset.a[0]].short} ${rng(t.dataset.a, t.dataset.b)}`, here); break;
       case "chapter": { const n = +t.dataset.n; startQuiz(practiceIds(s).filter(id => (s.topicMap[Q[id].topic] || []).includes(n)), `${s.short} · บท ${n}`, here); break; }
       case "topic": startQuiz(practiceIds(s).filter(id => Q[id].topic === t.dataset.topic), `${s.short} · ${t.dataset.topic}`, here); break;
       case "topic-wrong": {
