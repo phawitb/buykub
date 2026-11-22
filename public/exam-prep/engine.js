@@ -582,8 +582,8 @@ function mount(root, D, opts = {}) {
     const { ids, i, title, back, picked } = quiz;
     const total = ids.length;
     const prog = Math.min(i, total) / total * 100;
-    head = { title, sub: i < total ? `ข้อ ${i + 1}/${total}` : "จบชุดฝึก", back, prog };
     const right = Object.entries(picked).filter(([id, c]) => Q[id].ans === c).length;
+    head = { title, sub: `${i < total ? `ข้อ ${i + 1}/${total}` : "จบชุดฝึก"} · ถูก ${right}/${Object.keys(picked).length}`, back, prog };
     const qtop = `<div class="quiz-top"><a class="btn ghost sm" href="#${back}">← ออก</a><b style="font-family:var(--f-display)">${esc(title)}</b><span class="muted num small">${i < total ? `<span class="qpos">ข้อ ${i + 1}/${total} · </span>` : ""}ถูก ${right}/${Object.keys(picked).length}</span></div>${bar(prog, "quiz-prog")}`;
     if (i >= total) {
       const wrongIds = ids.filter(id => picked[id] !== undefined && picked[id] !== Q[id].ans);
