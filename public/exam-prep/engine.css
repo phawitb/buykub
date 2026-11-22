@@ -472,3 +472,4 @@
 .exam-prep .part .verdict { font-family: var(--f-display); font-size: 14px; }
 .exam-prep .part.pass .verdict { color: var(--sage); }
 .exam-prep .part.fail .verdict { color: var(--rose); }
+.exam-prep .set-card.latest { border: 2px solid var(--rose); }

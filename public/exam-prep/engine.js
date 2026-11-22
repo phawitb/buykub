@@ -739,15 +739,19 @@ function mount(root, D, opts = {}) {
     </section>`;
   }
   function viewMockList() {
+    // The set in progress, otherwise the one finished most recently.
+    let latest = S.run ? S.run.set : null, at = 0;
+    if (!S.run) MOCK_LIST.forEach(k => { const r = (S.mocks[k] || []).slice(-1)[0]; if (r && r.at > at) { latest = k; at = r.at; } });
     return `<div class="page-head"><span class="eyebrow">ข้อสอบจำลอง ${MOCKS} ชุด รวม ${fmtN(MOCK_Q * MOCKS)} ข้อ</span><h1>ข้อสอบจำลอง</h1></div>
-    ${S.run ? `<div class="card row" style="justify-content:space-between;background:var(--sun-soft);border-color:var(--sun)"><span>กำลังทำชุดที่ ${S.run.set} · ตอบแล้ว ${Object.keys(S.run.ans).length}/${MOCK_Q}</span><a class="btn primary" href="#mock-${S.run.set}">ทำต่อ</a></div>` : ""}
     <div class="grid g2">${MOCK_LIST.map(k => {
       const hist = S.mocks[k] || [], r = hist[hist.length - 1];
+      const running = S.run && S.run.set === k, done = running ? Object.keys(S.run.ans).length : r ? MOCK_Q : 0;
       const when = [MOCK_DAY[k] ? `แผนวันที่ ${MOCK_DAY[k]}` : "", ANALYZE_DAY[k] ? `วิเคราะห์วันที่ ${ANALYZE_DAY[k]}` : ""].filter(Boolean).join(" · ");
-      return `<div class="card set-card ${k % 2 ? "taped" : ""}">
+      return `<div class="card set-card ${k % 2 ? "taped" : ""} ${k === latest ? "latest" : ""}">
         <div class="row" style="justify-content:space-between"><h3>ชุดที่ ${k}</h3><span class="muted small">${when}</span></div>
         ${r ? `<div class="row" style="align-items:baseline"><span class="score-big num" style="font-size:40px">${r.score}</span><span class="muted">/ ${MOCK_Q} · ทำแล้ว ${hist.length} ครั้ง</span></div>${mockBySubject(r)}` : `<p class="muted">${MOCK_Q} ข้อ · ${D.mock.minutes} นาที · ${SUBJ.map(s => s.short + " " + s.perSet).join(" · ")}</p>`}
-        <div class="row">${S.run && S.run.set === k ? `<a class="btn primary" href="#mock-${k}">ทำต่อ</a>` : `<a class="btn ${r ? "" : "primary"}" href="#mock-${k}">${r ? "ทำอีกครั้ง" : "เริ่มชุดนี้"}</a>`}${r ? `<a class="btn primary" href="#mock-${k}-result">ดูผลและเฉลย</a>` : ""}</div>
+        <div class="stack" style="gap:4px">${bar(done / MOCK_Q * 100)}<span class="muted small num">${running ? `กำลังทำ · ตอบแล้ว ${done}/${MOCK_Q}` : r ? `ทำเสร็จแล้ว ${hist.length} ครั้ง` : `ยังไม่เริ่ม · 0/${MOCK_Q}`}</span></div>
+        <div class="row">${running ? `<a class="btn primary" href="#mock-${k}">ทำต่อ</a>` : `<a class="btn ${r ? "" : "primary"}" href="#mock-${k}">${r ? "ทำอีกครั้ง" : "เริ่มชุดนี้"}</a>`}${r ? `<a class="btn primary" href="#mock-${k}-result">ดูผลและเฉลย</a>` : ""}</div>
       </div>`;
     }).join("")}</div>`;
   }
