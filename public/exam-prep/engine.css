@@ -531,6 +531,8 @@
 .exam-prep .set-card .btn { padding: 5px 14px; font-size: 14px; }
 }
 @media (max-width: 860px) {
-.exam-prep.has-ctx .ep-main { padding-top: 14px; gap: 16px; }
+.exam-prep.has-ctx .ep-main { padding-top: 12px; gap: 12px; }
+.exam-prep.has-ctx .ep-main > .page-head { margin-bottom: -4px; }
+.exam-prep.has-ctx .ep-main > .grid { gap: 12px; }
 .exam-prep.has-ctx .page-head:not(:has(> :not(h1))) { display: none; }
 }
