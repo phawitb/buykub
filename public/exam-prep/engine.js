@@ -396,7 +396,7 @@ function mount(root, D, opts = {}) {
     if (p.kind === "study") {
       const items = dayItems(p, n);
       const sel = items.find(it => it.ref === `${key}-${part}`) || items.find(it => !it.done) || items[0];
-      body = `${dayTimeline()}<div class="day-shell">${dayNav(p, n, items, sel)}<section class="pane s-${sel.x.s.key}" aria-live="polite">${sel.ex ? exPane(sel, items, n) : lessonPane(sel, items, n)}</section></div>`;
+      body = `<div class="day-shell">${dayNav(p, n, items, sel)}<section class="pane s-${sel.x.s.key}" aria-live="polite">${sel.ex ? exPane(sel, items, n) : lessonPane(sel, items, n)}</section></div>`;
     } else if (p.kind === "mock") {
       body = mockDayCard(p.mock);
     } else if (p.kind === "analyze") {
@@ -425,12 +425,7 @@ function mount(root, D, opts = {}) {
     }
     head = { title: `วันที่ ${n}`, sub: esc(p.read), back: "plan" };
     return `
-    <div class="crumb"><a href="#plan">แผน ${NDAYS} วัน</a> / <span>วันที่ ${n}</span></div>
-    <div class="page-head">
-      <span class="eyebrow">${KIND[p.kind]} · ${thDate(dayDate(n), { weekday: "long", day: "numeric", month: "long" })}</span>
-      <h1>วันที่ ${n} · ${esc(p.read)}</h1>
-      ${target(p) ? `<p>${esc(target(p))}</p>` : ""}
-    </div>
+    <div class="page-head"><h1>วันที่ ${n} · ${esc(p.read)}</h1></div>
     ${body}
     <div class="card row" style="justify-content:space-between">
       <label class="row" for="day-done"><input type="checkbox" id="day-done" data-day="${n}" ${S.days[n] ? "checked" : ""}> ทำเครื่องหมายว่าวันนี้เสร็จแล้ว ${done && !S.days[n] ? '<span class="muted small">(ระบบนับว่าครบแล้ว)</span>' : ""}</label>
@@ -500,13 +495,6 @@ function mount(root, D, opts = {}) {
         <div class="row"><button class="btn primary" data-act="range" data-a="${a}" data-b="${b}" data-day="${n}">${st.done ? (st.done === st.total ? "ทำซ้ำชุดนี้" : "ทำต่อ") : "เริ่มทำแบบฝึก"}</button><span class="muted small">ทำโดยไม่เปิดเฉลย ข้อที่ลังเลให้กดทำเครื่องหมายไว้</span></div>
       </div>
       ${paneFoot(sel, items, "")}`;
-  }
-  function dayTimeline() {
-    const t = D.dayTiming;
-    if (!t) return "";
-    return `<section class="card stack"><h2 style="font-size:18px">${esc(t.title)}</h2>
-      <div class="timeline">${t.steps.map(([time, label]) => `<div><b class="num">${esc(time)}</b>${esc(label)}</div>`).join("")}</div>
-      ${t.note ? `<p class="muted small">${esc(t.note)}</p>` : ""}</section>`;
   }
 
   /* ---------- views: notes ---------- */
