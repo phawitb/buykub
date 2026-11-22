@@ -6,14 +6,6 @@
 "use strict";
 
 const DAY = 864e5;
-const REASONS = ["ไม่รู้หลัก", "อ่านเงื่อนไขตก", "คำนวณผิด", "รู้แต่เวลาไม่พอ", "เดาถูกแต่ไม่มั่นใจ"];
-const REASON_FIX = {
-  "ไม่รู้หลัก": "กลับไปอ่านบทแล้วเล่าวิธีด้วยคำตัวเอง",
-  "อ่านเงื่อนไขตก": "ฝึกวงคำสำคัญ เช่น อย่างน้อย ไม่คืน ยกเว้น",
-  "คำนวณผิด": "ประมาณคำตอบก่อน แล้วตรวจหน่วย ฐานเทียบ และเครื่องหมาย",
-  "รู้แต่เวลาไม่พอ": "ฝึกเลือกทำ ข้ามข้อยากแล้วกลับมา",
-  "เดาถูกแต่ไม่มั่นใจ": "ทำซ้ำหลังเว้นช่วง จนอธิบายเหตุผลได้",
-};
 const CIRC = ["①", "②", "③", "④"];
 const KIND = { study: "เรียน+ฝึก", repair: "ซ่อมจุดอ่อน", mock: "จำลองสอบ", analyze: "วิเคราะห์", final: "วันสุดท้าย" };
 const ICON = {
@@ -144,7 +136,7 @@ function mount(root, D, opts = {}) {
   }
   function setFlag(id, on) {
     const a = S.att[id]; if (!a) return;
-    if (on) { a.flag = 1; a.why = a.why || "เดาถูกแต่ไม่มั่นใจ"; if (!a.box) { a.box = 1; a.due = dueIn(1); } }
+    if (on) { a.flag = 1; if (!a.box) { a.box = 1; a.due = dueIn(1); } }
     else { delete a.flag; if (a.ok && a.box === 1) { delete a.box; delete a.due; delete a.why; } }
     save();
   }
@@ -214,7 +206,7 @@ function mount(root, D, opts = {}) {
       <span class="ctx-t"><b>${esc(h.title)}</b>${h.sub ? `<small>${h.sub}</small>` : ""}</span>${h.tools || ""}` : "";
   }
 
-  let quiz = null, tick = null, confirmOpen = false, pFilter = null, rvFilter = "all";
+  let quiz = null, tick = null, confirmOpen = false, pFilter = null;
   function go(h) { if (location.hash === "#" + h) render(); else location.hash = h; }
 
   function render(keep) {
@@ -632,7 +624,6 @@ function mount(root, D, opts = {}) {
           <div class="verdict ${ch === q.ans ? "ok" : "no"}">${ch === q.ans ? "ถูกต้อง" : `ยังไม่ถูก คำตอบคือ ${CIRC[q.ans]}`}</div>
           <div>${esc(q.ex)}</div>
           ${q.src ? `<div class="muted small">แหล่งอ้างอิง [${esc(q.src)}] ดูได้ใน<a href="#guide">คู่มือ</a></div>` : ""}
-          ${ch !== q.ans ? `<div class="why"><span class="muted">พลาดเพราะ</span>${REASONS.slice(0, 4).map(r => `<button class="chip ${a.why === r ? "on" : ""}" data-act="why" data-r="${r}">${r}</button>`).join("")}</div>` : ""}
           ${chs.length ? `<div class="small">อ่านทวน: ${chs.map(n => `<a href="#notes-${q.s.key}-${n}">บท ${n} ${esc(q.s.chapters.find(c => c.n === n).title.split(":")[0])}</a>`).join(" · ")}</div>` : ""}
         </div>` : ""}
       </div>
@@ -716,7 +707,7 @@ function mount(root, D, opts = {}) {
       by[q.s.key] = by[q.s.key] || [0, 0]; by[q.s.key][1]++;
       if (ok) { score++; by[q.s.key][0]++; }
       if (c !== undefined) record(id, c);
-      else { const a = S.att[id] || (S.att[id] = { n: 0, c: 0 }); a.n++; a.ok = false; a.ch = null; a.t = Date.now(); a.box = 1; a.due = dueIn(1); a.why = a.why || "รู้แต่เวลาไม่พอ"; }
+      else { const a = S.att[id] || (S.att[id] = { n: 0, c: 0 }); a.n++; a.ok = false; a.ch = null; a.t = Date.now(); a.box = 1; a.due = dueIn(1); }
       if (run.flag[id] && S.att[id]) { S.att[id].flag = 1; if (!S.att[id].box) { S.att[id].box = 1; S.att[id].due = dueIn(1); } }
     });
     (S.mocks[k] = S.mocks[k] || []).push({ at: Date.now(), dur: Math.min(LIMIT, Date.now() - run.start), ans: run.ans, flag: run.flag, score, by });
@@ -778,32 +769,31 @@ function mount(root, D, opts = {}) {
   /* ---------- review notebook ---------- */
   function viewReview() {
     const due = dueList(), nb = notebook();
-    const list = nb.filter(id => rvFilter === "all" || Q[id].s.key === rvFilter).sort((a, b) => S.att[a].due - S.att[b].due);
-    const counts = {}; REASONS.forEach(r => counts[r] = 0);
-    nb.forEach(id => { const w = S.att[id].why; if (w) counts[w]++; });
-    const untagged = nb.filter(id => !S.att[id].why).length;
-    return `<div class="page-head"><span class="eyebrow">สมุดข้อผิดพลาด</span><h1>สมุดข้อผิด</h1></div>
+    return `<div class="page-head"><h1>สมุดข้อผิด</h1></div>
     <section class="card row taped" style="justify-content:space-between;background:var(--sun-soft);border-color:var(--sun)">
       <div><div style="font-family:var(--f-display);font-size:22px;font-weight:600" class="num">ครบรอบวันนี้ ${due.length} ข้อ</div><span class="muted small num">อยู่ในสมุดทั้งหมด ${nb.length} ข้อ</span></div>
       <button class="btn primary" data-act="review-due" ${due.length ? "" : "disabled"}>เริ่มทบทวน</button>
     </section>
-    <section class="stack">
-      <h2 style="font-size:20px">พลาดเพราะอะไร</h2>
-      <div class="reason-grid">${REASONS.map(r => `<div class="card ${counts[r] ? "" : "zero"}"><span>${r}</span><b class="num">${counts[r]}<small> ข้อ</small></b></div>`).join("")}</div>
-      ${untagged ? `<p class="muted small">ยังไม่ระบุสาเหตุ ${untagged} ข้อ เลือกสาเหตุในตารางด้านล่างเพื่อให้รู้ว่าต้องแก้แบบไหน</p>` : ""}
-    </section>
-    <section class="stack">
-      <div class="sec-title"><h2>รายการในสมุด</h2>
-        <div class="row" style="gap:6px"><button class="chip ${rvFilter === "all" ? "on" : ""}" data-act="rv-filter" data-s="all">ทั้งหมด</button>${SUBJ.map(s => `<button class="chip subj s-${s.key} ${rvFilter === s.key ? "on" : ""}" data-act="rv-filter" data-s="${s.key}">${esc(s.short)}</button>`).join("")}</div></div>
-      ${list.length ? `<div class="tbl nb"><table><thead><tr><th>รหัสข้อ</th><th>หัวข้อ</th><th>สาเหตุที่พลาด</th><th class="r">รอบ</th><th>วันทวน</th><th></th></tr></thead><tbody>
-        ${list.map(id => { const a = S.att[id], q = Q[id]; return `<tr><td><span class="code">${id}</span>${isMockId(id) ? ' <span class="muted small">จำลอง</span>' : ""}</td><td>${esc(q.topic)}</td>
-          <td><label for="why-${id}" hidden>สาเหตุ ${id}</label><select id="why-${id}" data-act="why-sel" data-id="${id}"><option value="">— เลือก —</option>${REASONS.map(r => `<option ${a.why === r ? "selected" : ""}>${r}</option>`).join("")}</select></td>
-          <td class="r num">${a.box}/3</td><td class="num ${a.due <= Date.now() ? "" : "muted"}" style="white-space:nowrap">${a.due <= Date.now() ? "<b>วันนี้</b>" : thDate(a.due)}</td>
-          <td><button class="btn sm" data-act="one" data-id="${id}">ทำ</button></td></tr>`; }).join("")}
-      </tbody></table></div>`
-        : `<div class="card empty">${MASCOT ? `<img src="${MASCOT}" alt="">` : ""}<p>ยังไม่มีข้อในสมุด ข้อที่ตอบผิดหรือทำเครื่องหมายลังเลจะถูกบันทึกที่นี่อัตโนมัติ</p><a class="btn" href="#practice">ไปฝึกโจทย์</a></div>`}
+    ${nb.length ? SUBJ.map(s => reviewCard(s, nb.filter(id => Q[id].s === s))).join("")
+      : `<div class="card empty">${MASCOT ? `<img src="${MASCOT}" alt="">` : ""}<p>ยังไม่มีข้อในสมุด ข้อที่ตอบผิดหรือทำเครื่องหมายลังเลจะถูกบันทึกที่นี่อัตโนมัติ</p><a class="btn" href="#practice">ไปฝึกโจทย์</a></div>`}`;
+  }
+  function reviewCard(s, ids) {
+    if (!ids.length) return "";
+    const now = Date.now(), list = ids.slice().sort((a, b) => S.att[a].due - S.att[b].due);
+    const dueN = ids.filter(id => S.att[id].due <= now).length;
+    return `<section class="card pr-card s-${s.key} stack" style="border-left:6px solid var(--s)">
+      <div class="row" style="justify-content:space-between"><h2>${esc(s.name)}</h2><span class="muted num small">ผิด ${ids.length} ข้อ${dueN ? ` · ครบรอบ ${dueN}` : ""}</span></div>
+      <div class="pr-btns">
+        <button class="btn sm primary" data-act="rv" data-s="${s.key}" data-mode="due" ${dueN ? "" : "disabled"}>ครบรอบวันนี้ (${dueN})</button>
+        <button class="btn sm" data-act="rv" data-s="${s.key}" data-mode="all">ทำข้อผิดทั้งหมด (${ids.length})</button>
+      </div>
+      <details><summary class="muted small" style="cursor:pointer">รายการข้อ</summary>
+        <ul class="rv-list">${list.map(id => { const a = S.att[id], d = a.due <= now; return `<li><span class="t" title="${esc(Q[id].topic)}">${esc(Q[id].stem)}${isMockId(id) ? ' <span class="muted small">จำลอง</span>' : ""}</span>
+          <span class="muted small num">รอบ ${a.box}/3 · ${d ? "<b>วันนี้</b>" : thDate(a.due)}</span><button class="btn sm" data-act="one" data-id="${id}">ทำ</button></li>`; }).join("")}</ul>
+      </details>
     </section>`;
   }
+
 
   /* ---------- guide ---------- */
   function viewGuide() {
@@ -835,7 +825,6 @@ function mount(root, D, opts = {}) {
       case "next": quizNext(); break;
       case "prev": if (quiz && quiz.i > 0) { quiz.i--; render(); } break;
       case "flag": { const id = quiz.ids[quiz.i]; setFlag(id, !(S.att[id] && S.att[id].flag)); render(); break; }
-      case "why": { const id = quiz.ids[quiz.i]; S.att[id].why = t.dataset.r; save(); render(); break; }
       case "redo-wrong": { const w = quiz.ids.filter(id => quiz.picked[id] !== undefined && quiz.picked[id] !== Q[id].ans); startQuiz(w, quiz.title + " · ข้อที่ผิด", quiz.back, quiz.nav); break; }
       case "range": startQuiz(span(t.dataset.a, t.dataset.b), `วันที่ ${t.dataset.day} · ${t.dataset.a}–${t.dataset.b}`, here); break;
       case "chapter": { const n = +t.dataset.n; startQuiz(practiceIds(s).filter(id => (s.topicMap[Q[id].topic] || []).includes(n)), `${s.short} · บท ${n}`, here); break; }
@@ -859,7 +848,11 @@ function mount(root, D, opts = {}) {
         if (S.read[k] && t.dataset.next) go(t.dataset.next); else render(true);
         break;
       }
-      case "rv-filter": rvFilter = t.dataset.s; render(); break;
+      case "rv": {
+        const ids = notebook().filter(id => Q[id].s === s), now = Date.now();
+        const list = t.dataset.mode === "due" ? ids.filter(id => S.att[id].due <= now) : ids;
+        startQuiz(shuffle(list), `${s.short} · ${t.textContent.replace(/\s*\(\d+\)/, "")}`, "review", "review"); break;
+      }
       case "mock-wrong": { const k = +t.dataset.k, r = (S.mocks[k] || []).slice(-1)[0]; if (r) startQuiz(mockIds(k).filter(id => r.ans[id] !== Q[id].ans), `จำลองชุด ${k} · ข้อที่ผิด`, `mock-${k}-result`, "mock"); break; }
       case "mock-start": S.run = { set: +t.dataset.k, start: Date.now(), ans: {}, flag: {} }; confirmOpen = false; save(); render(); break;
       case "mpick": {
@@ -902,7 +895,6 @@ function mount(root, D, opts = {}) {
     const t = e.target;
     if (t.name === "start-date" && t.value) { S.start = t.value; save(); render(); }
     if (t.id === "day-done") { const n = +t.dataset.day; if (t.checked) S.days[n] = 1; else delete S.days[n]; save(); render(); }
-    if (t.dataset.act === "why-sel") { const a = S.att[t.dataset.id]; if (t.value) a.why = t.value; else delete a.why; save(); render(); }
   }
   function onKey(e) {
     if (location.hash !== "#quiz" || !quiz || e.metaKey || e.ctrlKey || e.altKey) return;
