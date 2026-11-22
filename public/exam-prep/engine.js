@@ -736,9 +736,7 @@ function mount(root, D, opts = {}) {
     </section>`;
   }
   function viewMockList() {
-    const tip = M.mockGuide && D.guide.find(g => g.title.startsWith(M.mockGuide));
-    return `<div class="page-head"><span class="eyebrow">ข้อสอบจำลอง ${MOCKS} ชุด รวม ${fmtN(MOCK_Q * MOCKS)} ข้อ</span><h1>ข้อสอบจำลอง</h1>
-      <p>วันจำลองใช้เวลา ${D.mock.minutes} นาทีโดยไม่เปิดเฉลย ตรวจคะแนนแยกวิชาและบันทึกข้อที่เดาทันทีหลังจบ${ANALYZE_DAY[1] ? " ส่วนการวิเคราะห์เชิงลึกทำวันถัดไป" : ""}</p></div>
+    return `<div class="page-head"><span class="eyebrow">ข้อสอบจำลอง ${MOCKS} ชุด รวม ${fmtN(MOCK_Q * MOCKS)} ข้อ</span><h1>ข้อสอบจำลอง</h1></div>
     ${S.run ? `<div class="card row" style="justify-content:space-between;background:var(--sun-soft);border-color:var(--sun)"><span>กำลังทำชุดที่ ${S.run.set} · ตอบแล้ว ${Object.keys(S.run.ans).length}/${MOCK_Q}</span><a class="btn primary" href="#mock-${S.run.set}">ทำต่อ</a></div>` : ""}
     <div class="grid g2">${MOCK_LIST.map(k => {
       const hist = S.mocks[k] || [], r = hist[hist.length - 1];
@@ -748,8 +746,7 @@ function mount(root, D, opts = {}) {
         ${r ? `<div class="row" style="align-items:baseline"><span class="score-big num" style="font-size:40px">${r.score}</span><span class="muted">/ ${MOCK_Q} · ทำแล้ว ${hist.length} ครั้ง</span></div>${mockBySubject(r)}` : `<p class="muted">${MOCK_Q} ข้อ · ${D.mock.minutes} นาที · ${SUBJ.map(s => s.short + " " + s.perSet).join(" · ")}</p>`}
         <div class="row">${S.run && S.run.set === k ? `<a class="btn primary" href="#mock-${k}">ทำต่อ</a>` : `<a class="btn ${r ? "" : "primary"}" href="#mock-${k}">${r ? "ทำอีกครั้ง" : "เริ่มชุดนี้"}</a>`}${r ? `<a class="btn primary" href="#mock-${k}-result">ดูผลและเฉลย</a>` : ""}</div>
       </div>`;
-    }).join("")}</div>
-    <div class="card stack"><h2 style="font-size:18px">บริหารเวลา ${D.mock.minutes} นาที</h2><div class="prose">${tip ? md(tip.md) : `<p>${esc(M.mockTip)}</p>`}</div></div>`;
+    }).join("")}</div>`;
   }
 
   /* ---------- review notebook ---------- */
