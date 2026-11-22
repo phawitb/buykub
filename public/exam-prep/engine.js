@@ -193,8 +193,7 @@ function mount(root, D, opts = {}) {
   root.innerHTML = `<header class="topbar"><div class="topbar-in">
       <a class="brand" href="#home" aria-label="หน้าหลัก"><span class="brand-30">${esc(M.brandBig)}</span><span class="brand-t">${esc(M.brandAfter)}<small>${esc(M.brandSub)}</small></span></a>
       <nav class="nav" data-ep="nav" aria-label="เมนูหลัก"></nav></div></header>
-    <main class="ep-main" data-ep="app" tabindex="-1"></main>
-    <footer class="foot">${esc(M.footer)}</footer>`;
+    <main class="ep-main" data-ep="app" tabindex="-1"></main>`;
   const $ = k => root.querySelector(`[data-ep="${k}"]`);
   const byId = id => root.querySelector("#" + id);
 
@@ -342,21 +341,15 @@ function mount(root, D, opts = {}) {
         <span class="read">${esc(p.read)}</span>${p.ranges.length ? `<div style="margin-top:auto">${segBar(p, false)}</div>` : ""}</a>`;
     };
     const doneCount = D.plan.filter(dayDone).length;
-    const kinds = new Set(D.plan.map(p => p.kind));
     const phases = D.phases && D.phases.length ? D.phases : [{ from: 1, to: NDAYS, label: "" }];
-    const ex = examAt();
     return `
     <div class="page-head">
-      <span class="eyebrow">${esc(M.planEyebrow)}</span>
       <h1>แผน ${NDAYS} วัน</h1>
-      <p>${esc(D.planNote)}</p>
     </div>
     <div class="card row" style="justify-content:space-between">
       <label class="row" for="start-date"><span>เริ่มแผนวันที่</span><input class="date-in" type="date" id="start-date" value="${S.start}"></label>
-      <label class="row" for="exam-date"><span>วันสอบของฉัน</span><input class="date-in" type="date" id="exam-date" value="${S.exam || (ex ? isoDate(ex.getTime()) : "")}"></label>
       <span class="muted num">เสร็จแล้ว ${doneCount}/${NDAYS} วัน · วันสุดท้ายของแผน ${thDate(dayDate(NDAYS), { day: "numeric", month: "long", year: "numeric" })}</span>
     </div>
-    <div class="legend"><span><i style="background:var(--card)"></i>วัน 1-${STUDY_DAYS} เรียนและฝึกแยกวิชา ${fmtN(PRACTICE_Q)} ข้อ</span>${kinds.has("repair") || kinds.has("analyze") ? `<span><i style="background:var(--sage-soft)"></i>ซ่อมจุดอ่อน${kinds.has("analyze") ? " / วิเคราะห์" : ""}</span>` : ""}<span><i style="background:var(--rose-soft)"></i>จำลองสอบ ${MOCKS} ชุด ${fmtN(MOCK_Q * MOCKS)} ข้อ</span>${kinds.has("final") ? `<span><i style="background:var(--sun-soft)"></i>วันสุดท้าย</span>` : ""}</div>
     <div class="plan-grid">
       ${phases.map(ph => `${ph.label ? `<div class="phase-label">${esc(ph.label)}</div>` : ""}${D.plan.slice(ph.from - 1, ph.to).map(card).join("")}`).join("")}
     </div>`;
@@ -861,7 +854,6 @@ function mount(root, D, opts = {}) {
   function onChange(e) {
     const t = e.target;
     if (t.id === "start-date" && t.value) { S.start = t.value; save(); render(); }
-    if (t.id === "exam-date") { S.exam = t.value || null; save(); render(); }
     if (t.id === "day-done") { const n = +t.dataset.day; if (t.checked) S.days[n] = 1; else delete S.days[n]; save(); render(); }
     if (t.dataset.act === "why-sel") { const a = S.att[t.dataset.id]; if (t.value) a.why = t.value; else delete a.why; save(); render(); }
   }
