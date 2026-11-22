@@ -504,8 +504,8 @@ function mount(root, D, opts = {}) {
   function viewNotes(key, part) {
     const s = SK[key];
     if (!s) {
-      return `<div class="page-head"><span class="eyebrow">Visual notes · ${SUBJ.length} วิชา ${SUBJ.reduce((n, s) => n + s.chapters.length, 0)} บท</span><h1>สรุปบทเรียน</h1><p>อ่านภาพสรุปก่อน แล้วปิดหน้าจออธิบายด้วยคำของตัวเอง ถ้าอธิบายไม่ได้ให้กลับไปดูตัวอย่าง</p></div>
-        <div class="grid g3">${SUBJ.map(s => `<a class="card subj-card s-${s.key}" href="#notes-${s.key}" style="text-decoration:none;color:inherit"><div class="row" style="justify-content:space-between"><h3>${esc(s.name)}</h3><span class="code">${s.code}</span></div><p class="muted small">${s.chapters.length} บท · ${s.chapters.filter(c => c.visual).length} ภาพสรุป</p><p class="small">${s.chapters.slice(0, 4).map(c => esc(c.title.split(":")[0])).join(" · ")} …</p></a>`).join("")}</div>`;
+      return `<div class="page-head"><h1>สรุปบทเรียน</h1></div>
+        <div class="grid g3">${SUBJ.map(s => `<a class="card subj-card s-${s.key}" href="#notes-${s.key}" style="text-decoration:none;color:inherit"><h3>${esc(s.name)}</h3><p class="muted small">${s.chapters.length} บท · ${s.chapters.filter(c => c.visual).length} ภาพสรุป</p><p class="small">${s.chapters.slice(0, 4).map(c => esc(c.title.split(":")[0])).join(" · ")} …</p></a>`).join("")}</div>`;
     }
     const tabs = `<div class="subj-tabs">${SUBJ.map(x => `<a class="chip subj s-${x.key} ${x === s ? "on" : ""}" href="#notes-${x.key}">${esc(x.short)}</a>`).join("")}</div>`;
     const isX = part ? part[0] === "x" : false;
