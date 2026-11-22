@@ -147,6 +147,9 @@
 .exam-prep .chip.on { background: var(--brand); color: var(--card); }
 .exam-prep .chip .n { color: var(--muted); font-family: var(--f-body); font-size: 12.5px; }
 .exam-prep .chip.on .n { color: inherit; opacity: .8; }
+/* Long topic names wrap inside the card instead of running past it. */
+.exam-prep .topic-chip { max-width: 100%; white-space: normal; text-align: left; line-height: 1.45; }
+.exam-prep .topic-chip .n { white-space: nowrap; }
 .exam-prep .code { font-family: var(--f-body); font-weight: 700; font-size: 13px; letter-spacing: .03em; color: var(--muted); }
 /* subject colouring */
 .exam-prep .s-math { --s: var(--s-math); --ss: var(--s-math-soft); }
