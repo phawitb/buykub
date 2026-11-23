@@ -44,10 +44,9 @@ export function ReferralButton({ productId, rateBp, priceCents, name }: { produc
       </button>
       {url && (
         <div className="flex min-w-0 basis-full items-center gap-2 rounded-xl border border-line bg-paper-dim py-1.5 pl-4 pr-1.5">
-          <code className="min-w-0 flex-1 break-all font-mono text-xs text-ink sm:text-sm" title={url}>{url}</code>
-          <button type="button" onClick={() => copy(url)} aria-label={copied ? "คัดลอกลิงก์แล้ว" : "คัดลอกลิงก์"} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line bg-paper px-3 text-xs font-medium text-ink transition duration-[120ms] ease-out hover:bg-paper-dim active:scale-[0.98]">
+          <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-xs text-ink sm:text-sm" title={url}>{url}</code>
+          <button type="button" onClick={() => copy(url)} aria-label={copied ? "คัดลอกลิงก์แล้ว" : "คัดลอกลิงก์"} title={copied ? "คัดลอกแล้ว" : "คัดลอก"} className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-line bg-paper text-ink transition duration-[120ms] ease-out hover:bg-paper-dim active:scale-[0.98]">
             {copied ? <CheckIcon className="size-4 text-success" /> : <CopyIcon className="size-4" />}
-            <span aria-hidden>{copied ? "คัดลอกแล้ว" : "คัดลอก"}</span>
           </button>
           <span role="status" className="sr-only">{copied ? "คัดลอกลิงก์แล้ว" : ""}</span>
         </div>
