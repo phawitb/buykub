@@ -936,3 +936,6 @@ Only someone who bought that product, and whose order is still paid, gets a link
   amount and status of their own commissions (`my_affiliate_commissions`), never the buyer.
 
 Migration: `20261123100000_affiliates.sql`, with `supabase/tests/affiliates.sql`.
+**Applied to `buykub-th`** on 2026-11-23 through the SQL editor, then confirmed from the
+service role (new columns and tables present, no product has referrals on, `get_affiliate_link`
+refuses a caller who is not signed in).
