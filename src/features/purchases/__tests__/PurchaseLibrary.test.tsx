@@ -15,7 +15,7 @@ describe("purchase library", () => {
   });
   it("links the shop name to its storefront while the shop is published", () => {
     render(<PurchaseLibrary purchases={[purchase({ shopHref: "/studio" }), purchase({ id: "closed", name: "Old guide", shopName: "Closed shop" })]} />);
-    expect(screen.getByRole("link", { name: "Studio" })).toHaveAttribute("href", "/studio");
+    expect(screen.getByRole("link", { name: "ไปหน้าร้าน Studio" })).toHaveAttribute("href", "/studio");
     expect(screen.queryByRole("link", { name: "Closed shop" })).toBeNull();
   });
 

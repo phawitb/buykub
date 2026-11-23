@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Purchase, PurchaseProgress, ShopTryout } from "@/lib/purchases/types";
-import { ArrowRightIcon, DocumentIcon, LibraryIcon } from "@/components/icons";
+import { ArrowRightIcon, ChevronRightIcon, DocumentIcon, LibraryIcon, ShopIcon } from "@/components/icons";
 import { ReferralButton } from "./ReferralButton";
 
 const kindLabels = { course: "คอร์สเรียน", file: "ไฟล์ดิจิทัล", key: "คีย์ / สิทธิ์ใช้งาน", other: "สินค้า" };
@@ -102,7 +102,7 @@ export function PurchaseLibrary({ purchases, failed = false, tryouts = [] }: { p
                   <span className={`text-xs ${purchase.status === "paid" ? "text-emerald-700" : "text-muted"}`}>{statusLabels[purchase.status]}</span>
                 </div>
                 <h2 className="mt-2 break-words text-base font-semibold leading-6 sm:text-lg sm:leading-7">{purchase.name}</h2>
-                <p className="mt-0.5 text-xs text-muted">{purchase.shopHref ? <Link href={purchase.shopHref} className="underline-offset-4 hover:text-ink hover:underline">{purchase.shopName}</Link> : purchase.shopName}</p>
+                {purchase.shopHref ? <Link href={purchase.shopHref} aria-label={`ไปหน้าร้าน ${purchase.shopName}`} className="mt-1 inline-flex max-w-full items-center gap-1.5 text-sm font-medium text-accent-text underline-offset-4 hover:underline"><ShopIcon className="size-4 shrink-0" /><span className="truncate">{purchase.shopName}</span><ChevronRightIcon className="size-3.5 shrink-0" /></Link> : <p className="mt-0.5 text-xs text-muted">{purchase.shopName}</p>}
                 <p className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted">
                   <span>{dateLabel(purchase.purchasedAt)}</span>
                   <span aria-hidden>·</span>
