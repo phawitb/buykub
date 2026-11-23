@@ -38,7 +38,7 @@ export default async function EditProductPage({
   const row = () => supabase.from("products").select(PRODUCT_FIELDS).eq("id", id).eq("shop_id", shop.id).maybeSingle();
   const rowWithPages = () => supabase.from("products").select(PRODUCT_FIELDS_WITH_PAGES).eq("id", id).eq("shop_id", shop.id).maybeSingle();
 
-  const [productResult, { data: slugRows }, { data: keyRows }, previewResult, preferences] = await Promise.all([
+  const [productResult, { data: slugRows }, { data: keyRows }, previewResult, preferences, affiliateResult] = await Promise.all([
     // The page count is newer than some databases this runs against, and the
     // editor has to open whether or not that migration has been applied.
     rowWithPages().then(async (result) => {
@@ -62,6 +62,8 @@ export default async function EditProductPage({
       .select("preview_page_count, watermark_enabled, watermark_text, blur_strength, watermark_opacity")
       .eq("user_id", user.id)
       .maybeSingle(),
+    // Read on its own so a database without referral links still opens the editor.
+    supabase.from("products").select("affiliate_rate_bp").eq("id", id).eq("shop_id", shop.id).maybeSingle<{ affiliate_rate_bp: number | null }>(),
   ]);
   if (previewResult.error && !isMissingColumnError(previewResult.error, "preview_images")) throw previewResult.error;
   const product = productResult.data;
@@ -89,6 +91,7 @@ export default async function EditProductPage({
   const initialValue: ProductEditorValue = {
     deliveryType: product.delivery_type === "course" ? "course" : product.delivery_type === "key" ? "key" : "file",
     courseAccessDays: product.course_access_days == null ? "" : String(product.course_access_days),
+    affiliateRate: affiliateResult.data?.affiliate_rate_bp ? String(affiliateResult.data.affiliate_rate_bp / 100) : "",
     keyInput: "",
     keyInventory: {
       available: (keyRows ?? []).filter((row) => row.status === "available").length,

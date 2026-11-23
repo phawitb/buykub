@@ -4,6 +4,7 @@ import { formatTHB } from "@/features/products/format";
 import { formatBangkokDateTime } from "@/lib/bangkok-date";
 import { getSellerContext } from "@/lib/supabase/seller-context";
 import { OrderActions } from "./OrderActions";
+import { ratePercent } from "@/lib/affiliates/referral";
 
 export default async function OrderDetailPage({
   params,
@@ -24,12 +25,20 @@ export default async function OrderDetailPage({
 
   const product = order.products as unknown as { name: string } | null;
   const status = order.status as "pending" | "paid" | "refunded" | "failed";
-  const { data: assignedKey } = await supabase
-    .from("product_keys")
-    .select("key_value")
-    .eq("assigned_order_id", order.id)
-    .eq("status", "assigned")
-    .maybeSingle();
+  const [{ data: assignedKey }, { data: referral }] = await Promise.all([
+    supabase
+      .from("product_keys")
+      .select("key_value")
+      .eq("assigned_order_id", order.id)
+      .eq("status", "assigned")
+      .maybeSingle(),
+    // Shops see what a referral withholds, never who referred.
+    supabase
+      .from("affiliate_commissions")
+      .select("rate_bp, amount_cents, status")
+      .eq("order_id", order.id)
+      .maybeSingle<{ rate_bp: number; amount_cents: number; status: string }>(),
+  ]);
 
   return (
     <div className="max-w-2xl">
@@ -59,6 +68,12 @@ export default async function OrderDetailPage({
           </div>
           <p className="text-lg font-bold text-ink">{formatTHB(order.price_cents)}</p>
         </div>
+        {referral && (
+          <p className="mt-4 flex justify-between gap-4 border-t border-line pt-4 text-sm">
+            <span className="text-muted">ผ่านลิงก์แนะนำ ({ratePercent(referral.rate_bp)}) {referral.status === "void" ? "· ยกเลิกเพราะคืนเงิน" : "· หักจากยอดโอนให้ร้าน"}</span>
+            <span className={referral.status === "void" ? "text-muted line-through" : "font-semibold text-ink"}>−{formatTHB(Number(referral.amount_cents))}</span>
+          </p>
+        )}
       </section>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">

@@ -10,6 +10,7 @@ import { getSellerContext } from "@/lib/supabase/seller-context";
 const initialValue: ProductEditorValue = {
   deliveryType: "file",
   courseAccessDays: "",
+  affiliateRate: "",
   keyInput: "",
   keyInventory: { available: 0, assigned: 0, disabled: 0 },
   name: "",

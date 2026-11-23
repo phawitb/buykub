@@ -50,7 +50,23 @@ export function validateProductEditor(
     errors.courseAccessDays = "ระบุจำนวนวันเต็ม 1–36500 วัน หรือเลือกตลอดชีพ";
   }
 
+  if (value.affiliateRate && !validAffiliateRate(value.affiliateRate)) {
+    errors.affiliateRate = "ค่าคอมต้องอยู่ระหว่าง 1–50% (ทศนิยมได้ 2 ตำแหน่ง)";
+  }
+
   return errors;
+}
+
+/** A referral rate from 1% to 50%, at most two decimals, as basis points allow. */
+export function validAffiliateRate(value: string): boolean {
+  if (!/^\d{1,2}(\.\d{1,2})?$/.test(value.trim())) return false;
+  const rate = Number(value);
+  return rate >= 1 && rate <= 50;
+}
+
+/** The stored rate in basis points, or null when referral links are off. */
+export function affiliateRateBasisPoints(value: string | undefined): number | null {
+  return value?.trim() ? Math.round(Number(value) * 100) : null;
 }
 
 /**

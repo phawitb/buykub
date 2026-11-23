@@ -4,7 +4,7 @@ import { getSellerContext } from "@/lib/supabase/seller-context";
 import { isReceiptId } from "@/lib/payments/receipt";
 import type { CourseAccess } from "@/features/courses/model";
 import { readExamSummary } from "@/features/courses/exam-prep/pack";
-import type { Purchase, PurchaseProgress, ShopTryout } from "./types";
+import type { Purchase, PurchaseProgress, PurchaseReferral, ShopTryout } from "./types";
 
 type PurchaseRow = {
   id: string;
@@ -115,10 +115,18 @@ export async function getPurchaseLibrary(): Promise<Purchase[]> {
     };
   }));
   const open = purchases.filter(purchase => purchase.kind === "course" && purchase.href).map(purchase => purchase.productId);
-  const progress = await readExamProgress(admin, user.id, [...new Set(open)]).catch(() => new Map<string, PurchaseProgress>());
+  // Only a still-paid purchase bound to this account can refer; the database checks again.
+  const referrers = rows.filter(row => row.status === "paid" && row.buyer_user_id === user.id).map(row => row.product_id);
+  const [progress, referralRates] = await Promise.all([
+    readExamProgress(admin, user.id, [...new Set(open)]).catch(() => new Map<string, PurchaseProgress>()),
+    readReferralRates(admin, [...new Set(referrers)]).catch(() => new Map<string, number>()),
+  ]);
+  const referable = new Set(referrers);
   return purchases.map(({ productId, ...purchase }) => {
     const answered = purchase.href ? progress.get(productId) : undefined;
-    return answered ? { ...purchase, progress: answered } : purchase;
+    const rateBp = purchase.status === "paid" && referable.has(productId) ? referralRates.get(productId) : undefined;
+    const referral: PurchaseReferral | null = rateBp ? { productId, rateBp } : null;
+    return { ...purchase, ...(answered ? { progress: answered } : {}), ...(referral ? { referral } : {}) };
   });
 }
 
@@ -146,6 +154,19 @@ export async function getShopTryouts(): Promise<ShopTryout[]> {
   const courses = tryouts.filter(tryout => tryout.kind === "course").map(tryout => tryout.id);
   const progress = await readExamProgress(createAdminClient(), user.id, courses).catch(() => new Map<string, PurchaseProgress>());
   return tryouts.map(tryout => progress.has(tryout.id) ? { ...tryout, progress: progress.get(tryout.id) } : tryout);
+}
+
+/** Referral rates of published products in published shops. Best effort, like progress. */
+async function readReferralRates(admin: ReturnType<typeof createAdminClient>, productIds: string[]) {
+  const rates = new Map<string, number>();
+  if (!productIds.length) return rates;
+  const { data, error } = await admin.from("products").select("id, affiliate_rate_bp, published, shops(published)")
+    .in("id", productIds).not("affiliate_rate_bp", "is", null);
+  if (error) return rates;
+  for (const row of (data ?? []) as unknown as { id: string; affiliate_rate_bp: number; published: boolean; shops: { published: boolean } | null }[]) {
+    if (row.published && row.shops?.published) rates.set(row.id, row.affiliate_rate_bp);
+  }
+  return rates;
 }
 
 /** Questions attempted in each open exam-prep course. Best effort: the library never fails over it. */

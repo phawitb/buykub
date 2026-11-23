@@ -43,7 +43,7 @@ import {
   uniqueProductSlug,
 } from "@/features/products/slug";
 import { productCategory } from "@/features/products/category";
-import { isBlankProductValue, MIN_PRICE_BAHT, validateProductEditor } from "@/features/products/validation";
+import { affiliateRateBasisPoints, isBlankProductValue, MIN_PRICE_BAHT, validateProductEditor } from "@/features/products/validation";
 import { parseProductKeys } from "@/features/products/product-keys";
 import { createClient } from "@/lib/supabase/client";
 import { isMissingColumnError, writeWithoutMissingColumn } from "@/lib/supabase/missing-column";
@@ -409,6 +409,7 @@ function ProductEditorSession({
       images_v2: value.images,
       preview_images: previews,
       delivery_type: value.deliveryType,
+      affiliate_rate_bp: affiliateRateBasisPoints(value.affiliateRate),
       course_access_days: value.deliveryType === "course" && value.courseAccessDays ? Number(value.courseAccessDays) : null,
       file_path: deliveredFile?.path ?? null,
       file_name: deliveredFile?.fileName ?? null,
@@ -772,6 +773,27 @@ function ProductEditorSession({
         />
         </>
       )}
+
+      <section className="product-section">
+        <h2 className="product-section-title">ลิงก์แนะนำ</h2>
+        <p className="product-help">ให้คนที่ซื้อสินค้านี้แล้วได้ลิงก์ไปชวนเพื่อน เมื่อมีคนซื้อผ่านลิงก์ ผู้แนะนำได้ค่าคอมตาม % นี้ โดยหักจากยอดโอนให้ร้าน ผู้ซื้อจ่ายราคาเท่าเดิม</p>
+        <label className="mt-4 flex items-center gap-3 text-sm font-medium">
+          <input type="checkbox" className="size-4 accent-[var(--color-ink)]" checked={Boolean(value.affiliateRate)} onChange={e => update({affiliateRate: e.target.checked ? "10" : ""})} />
+          เปิดลิงก์แนะนำ
+        </label>
+        {value.affiliateRate !== undefined && value.affiliateRate !== "" && (
+          <label className="field-label mt-4">ค่าคอมผู้แนะนำ (% ของราคาขาย)
+            <span className="relative mt-2 block max-w-40">
+              <input type="number" min="1" max="50" step="0.5" inputMode="decimal" className="field-input pr-9" value={value.affiliateRate} onChange={e => update({affiliateRate: e.target.value})} aria-invalid={Boolean(errors.affiliateRate)} />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted">%</span>
+            </span>
+          </label>
+        )}
+        {errors.affiliateRate && <p role="alert" className="field-error">{errors.affiliateRate}</p>}
+        {value.affiliateRate && Number(value.price) > 0 && !errors.affiliateRate && (
+          <p className="mt-3 text-sm text-muted">ขาย ฿{Number(value.price).toLocaleString("th-TH")} ผ่านลิงก์ ผู้แนะนำได้ ฿{(Math.floor(Number(value.price) * 100 * Math.round(Number(value.affiliateRate) * 100) / 10000) / 100).toLocaleString("th-TH")} · การแก้ % มีผลเฉพาะออเดอร์ใหม่</p>
+        )}
+      </section>
 
       <ProductImageUploader
         userId={userId}
