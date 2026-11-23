@@ -120,13 +120,13 @@ export async function getPurchaseLibrary(): Promise<Purchase[]> {
   const referrers = rows.filter(row => row.status === "paid" && row.buyer_user_id === user.id).map(row => row.product_id);
   const [progress, referralRates] = await Promise.all([
     readExamProgress(admin, user.id, [...new Set(open)]).catch(() => new Map<string, PurchaseProgress>()),
-    readReferralRates(admin, [...new Set(referrers)]).catch(() => new Map<string, number>()),
+    readReferralRates(admin, [...new Set(referrers)]).catch(() => new Map<string, { rateBp: number; priceCents: number }>()),
   ]);
   const referable = new Set(referrers);
   return purchases.map(({ productId, ...purchase }) => {
     const answered = purchase.href ? progress.get(productId) : undefined;
-    const rateBp = purchase.status === "paid" && referable.has(productId) ? referralRates.get(productId) : undefined;
-    const referral: PurchaseReferral | null = rateBp ? { productId, rateBp } : null;
+    const rate = purchase.status === "paid" && referable.has(productId) ? referralRates.get(productId) : undefined;
+    const referral: PurchaseReferral | null = rate ? { productId, ...rate } : null;
     return { ...purchase, ...(answered ? { progress: answered } : {}), ...(referral ? { referral } : {}) };
   });
 }
@@ -159,13 +159,13 @@ export async function getShopTryouts(): Promise<ShopTryout[]> {
 
 /** Referral rates of published products in published shops. Best effort, like progress. */
 async function readReferralRates(admin: ReturnType<typeof createAdminClient>, productIds: string[]) {
-  const rates = new Map<string, number>();
+  const rates = new Map<string, { rateBp: number; priceCents: number }>();
   if (!productIds.length) return rates;
-  const { data, error } = await admin.from("products").select("id, affiliate_rate_bp, published, shops(published)")
+  const { data, error } = await admin.from("products").select("id, affiliate_rate_bp, price_cents, published, shops(published)")
     .in("id", productIds).not("affiliate_rate_bp", "is", null);
   if (error) return rates;
-  for (const row of (data ?? []) as unknown as { id: string; affiliate_rate_bp: number; published: boolean; shops: { published: boolean } | null }[]) {
-    if (row.published && row.shops?.published) rates.set(row.id, row.affiliate_rate_bp);
+  for (const row of (data ?? []) as unknown as { id: string; affiliate_rate_bp: number; price_cents: number; published: boolean; shops: { published: boolean } | null }[]) {
+    if (row.published && row.shops?.published) rates.set(row.id, { rateBp: row.affiliate_rate_bp, priceCents: row.price_cents });
   }
   return rates;
 }
