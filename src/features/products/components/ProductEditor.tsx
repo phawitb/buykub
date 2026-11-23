@@ -51,6 +51,8 @@ import { deleteShopAsset } from "@/lib/supabase/upload";
 import type { UploadDestination } from "@/lib/supabase/upload";
 import { formatUsd } from "@/lib/agent/pricing";
 import { ArrowRightIcon } from "@/components/icons";
+import { BRAND_NAME } from "@/lib/brand";
+import { saleSplit } from "@/lib/payouts/split";
 
 /** One object, so showing nothing never re-renders the fields. */
 const NO_FIELD_ERRORS: ProductFieldErrors = {};
@@ -893,11 +895,52 @@ function IntakeSummaryCard({
   );
 }
 
+function baht(cents: number) {
+  return `฿${(cents / 100).toLocaleString("th-TH", { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 })}`;
+}
+
+/** Who gets what from one sale at this price, with and without a referral. */
+function RevenueSplit({ cents, rateBp }: { cents: number; rateBp: number }) {
+  const direct = saleSplit(cents);
+  const referred = rateBp > 0 ? saleSplit(cents, rateBp) : null;
+  const rows: { label: string; pick: (split: typeof direct) => number; strong?: boolean }[] = [
+    { label: "ร้านค้าได้รับ", pick: (split) => split.shopCents, strong: true },
+    { label: `ค่าธรรมเนียม ${BRAND_NAME} 5%`, pick: (split) => split.feeCents },
+    ...(referred ? [{ label: `ผู้แนะนำ ${(rateBp / 100).toLocaleString("th-TH")}%`, pick: (split: typeof direct) => split.referralCents }] : []),
+  ];
+  return (
+    <div className="mt-4 border-t border-line pt-4">
+      <table className="w-full text-sm" aria-label="รายได้ต่อการซื้อ 1 ครั้ง">
+        <caption className="mb-2 text-left text-xs font-semibold text-ink">รายได้ต่อการซื้อ 1 ครั้ง (ราคา {baht(cents)})</caption>
+        {referred && (
+          <thead>
+            <tr className="text-xs text-muted">
+              <th scope="col" className="pb-1.5 text-left font-normal"><span className="sr-only">ส่วน</span></th>
+              <th scope="col" className="pb-1.5 text-right font-normal">ซื้อผ่านลิงก์แนะนำ</th>
+              <th scope="col" className="pb-1.5 pl-4 text-right font-normal">ซื้อตรง</th>
+            </tr>
+          </thead>
+        )}
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.label} className={row.strong ? "font-semibold text-ink" : "text-ink-soft"}>
+              <th scope="row" className={`py-1 text-left ${row.strong ? "font-semibold" : "font-normal"}`}>{row.label}</th>
+              {referred && <td className="py-1 text-right tabular-nums">{baht(row.pick(referred))}</td>}
+              <td className="py-1 pl-4 text-right tabular-nums">{referred && row.label.startsWith("ผู้แนะนำ") ? "—" : baht(row.pick(direct))}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="mt-2 text-xs text-muted">ถ้าผู้ซื้อใช้โค้ดส่วนลด ทุกส่วนคิดจากราคาหลังหักส่วนลด</p>
+    </div>
+  );
+}
+
 /** Referral commission for this product, a switch with the % beside the price it applies to. */
 function AffiliateRateField({ rate, price, error, onChange }: { rate: string; price: string; error?: string; onChange: (rate: string) => void }) {
   const [enabled, setEnabled] = useState(rate !== "");
-  const baht = Number(price);
-  const earns = rate && baht > 0 && !error ? Math.floor(baht * 100 * Math.round(Number(rate) * 100) / 10000) / 100 : null;
+  const cents = Math.round(Number(price) * 100);
+  const rateBp = enabled && rate && !error ? Math.round(Number(rate) * 100) : 0;
   function toggle() {
     setEnabled(!enabled);
     onChange(enabled ? "" : rate || "10");
@@ -940,15 +983,11 @@ function AffiliateRateField({ rate, price, error, onChange }: { rate: string; pr
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted">%</span>
             </span>
           </label>
-          {earns !== null && (
-            <p className="text-sm text-muted">
-              ผู้แนะนำได้ <span className="font-semibold text-ink">฿{earns.toLocaleString("th-TH")}</span> ต่อการซื้อ
-            </p>
-          )}
           <p className="w-full text-xs text-muted">ตั้งได้ 1–50% · การแก้ % มีผลเฉพาะออเดอร์ใหม่</p>
         </div>
       )}
       {error && <p role="alert" className="field-error mt-2">{error}</p>}
+      {Number.isSafeInteger(cents) && cents > 0 && <RevenueSplit cents={cents} rateBp={rateBp} />}
     </div>
   );
 }

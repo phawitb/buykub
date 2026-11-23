@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProductEditorValue } from "@/features/products/model";
@@ -159,7 +159,10 @@ describe("ProductEditor", () => {
     expect(toggle).toHaveAttribute("aria-checked", "false");
     expect(screen.getByLabelText(/ราคา \(บาท\)/).compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     await userEvent.click(toggle);
-    expect(screen.getByText("฿19.9")).toBeInTheDocument();
+    const split = screen.getByRole("table", { name: "รายได้ต่อการซื้อ 1 ครั้ง" });
+    expect(within(split).getByRole("row", { name: /ร้านค้าได้รับ/ })).toHaveTextContent("ร้านค้าได้รับ฿169.15฿189.05");
+    expect(within(split).getByRole("row", { name: /ค่าธรรมเนียม BUYKUB 5%/ })).toHaveTextContent("฿9.95฿9.95");
+    expect(within(split).getByRole("row", { name: /ผู้แนะนำ 10%/ })).toHaveTextContent("฿19.90—");
     await userEvent.click(screen.getByRole("button", { name: "บันทึกการเปลี่ยนแปลง" }));
     await vi.waitFor(() => expect(saveProduct).toHaveBeenCalledWith(expect.objectContaining({ affiliate_rate_bp: 1000 })));
   });
