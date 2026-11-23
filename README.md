@@ -914,3 +914,28 @@ progress endpoints answer 401 to an anonymous request.
 **Not verified:** no browser automation was available, so the classroom has not been
 opened on buykub.com by the owner or a buyer, cross-device sync has not been watched end
 to end, and no real purchase has been made.
+
+## Referral links (affiliates), database — 2026-11-23
+
+A shop can turn on referral links per product (`products.affiliate_rate_bp`, 1–50%, null = off).
+Only someone who bought that product, and whose order is still paid, gets a link
+(`get_affiliate_link`, one code per buyer and product). The buyer pays the normal price.
+
+- **Attribution** happens at checkout: `attach_checkout_referral(reference, code)` copies the
+  referrer and the rate into the checkout context. Unknown codes, the buyer's own link, the
+  shop owner's link and referrers whose purchase was refunded are ignored silently and never
+  block a purchase. The order trigger `record_affiliate_commission` then records a `pending`
+  commission at the rate in force at checkout.
+- **The shop pays.** `prepare_seller_payout_batch` withholds the commission from the shop's
+  transfer (`seller_payout_allocations.affiliate_cents`); completing that transfer makes the
+  commission `payable`. A full refund before then voids it.
+- **Affiliate payouts are manual**, like shop payouts: an admin prepares a batch per person
+  (`prepare_affiliate_payout_batch`), transfers by hand, attaches a slip and completes it.
+  The database never moves money. Payout profiles reuse the shop validators.
+- Shops see what each order withholds, never who referred. Referrers see product, date,
+  amount and status of their own commissions (`my_affiliate_commissions`), never the buyer.
+
+Migration: `20261123100000_affiliates.sql`, with `supabase/tests/affiliates.sql`.
+**Applied to `buykub-th`** on 2026-11-23 through the SQL editor, then confirmed from the
+service role (new columns and tables present, no product has referrals on, `get_affiliate_link`
+refuses a caller who is not signed in).
