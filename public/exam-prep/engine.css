@@ -2,7 +2,7 @@
 /* Layout: grid-paper study notebook — sticky tab bar, one centred column of taped note cards, subject-coloured side tabs */
 .exam-prep {
   --paper: #fbfaf6; --grid: rgba(128, 112, 160, .085); --card: #fffefb; --card-2: #f7f4ee;
-  --ink: #4a4250; --muted: #7c7383; --line: #e1d9cf; --line-strong: #bdb0a2;
+  --ink: #2e2833; --muted: #5a5260; --line: #e1d9cf; --line-strong: #bdb0a2;
   --brand: #7f6ca8; --brand-ink: #5d4d87; --brand-soft: #e8e1f3;
   --sun: #f4e09a; --sun-soft: #fcf4d4; --rose: #c43f4a; --rose-soft: #f9e2e5;
   --sage: #4f8a55; --sage-soft: #e7f0e3; --sky-soft: #e0edf0; --tape: rgba(226, 205, 168, .78);
@@ -22,7 +22,7 @@
 @media (prefers-color-scheme: dark) {
 :root:not([data-theme="light"]) .exam-prep {
     --paper: #1c1a21; --grid: rgba(200, 188, 235, .05); --card: #25222b; --card-2: #2c2833;
-    --ink: #ece6f1; --muted: #aaa1b3; --line: #3a3443; --line-strong: #5a5064;
+    --ink: #ece6f1; --muted: #c9c1d1; --line: #3a3443; --line-strong: #5a5064;
     --brand: #b6a4e2; --brand-ink: #d2c6f2; --brand-soft: #352d48;
     --sun: #6d5a22; --sun-soft: #3a3222; --rose: #f08b93; --rose-soft: #47262c;
     --sage: #96c58f; --sage-soft: #24332a; --sky-soft: #1f3237; --tape: rgba(150, 130, 100, .45);
@@ -37,7 +37,7 @@
 }
 :root[data-theme="dark"] .exam-prep {
   --paper: #1c1a21; --grid: rgba(200, 188, 235, .05); --card: #25222b; --card-2: #2c2833;
-  --ink: #ece6f1; --muted: #aaa1b3; --line: #3a3443; --line-strong: #5a5064;
+  --ink: #ece6f1; --muted: #c9c1d1; --line: #3a3443; --line-strong: #5a5064;
   --brand: #b6a4e2; --brand-ink: #d2c6f2; --brand-soft: #352d48;
   --sun: #6d5a22; --sun-soft: #3a3222; --rose: #f08b93; --rose-soft: #47262c;
   --sage: #96c58f; --sage-soft: #24332a; --sky-soft: #1f3237; --tape: rgba(150, 130, 100, .45);
