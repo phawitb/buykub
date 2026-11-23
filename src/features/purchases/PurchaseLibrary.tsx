@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Purchase, PurchaseProgress, ShopTryout } from "@/lib/purchases/types";
 import { ArrowRightIcon, DocumentIcon, LibraryIcon } from "@/components/icons";
+import { ReferralButton } from "./ReferralButton";
 
 const kindLabels = { course: "คอร์สเรียน", file: "ไฟล์ดิจิทัล", key: "คีย์ / สิทธิ์ใช้งาน", other: "สินค้า" };
 const statusLabels = { paid: "ชำระแล้ว", pending: "รอชำระเงิน", refunded: "คืนเงินแล้ว", expired: "หมดอายุ", unavailable: "ยังไม่พร้อมใช้งาน" };
@@ -92,7 +93,10 @@ export function PurchaseLibrary({ purchases, failed = false, tryouts = [] }: { p
         </section>
       ) : (
         <>
-          <p className="mb-4 text-xs text-muted">ประวัติการสั่งซื้อ {purchases.length} รายการ</p>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-muted">ประวัติการสั่งซื้อ {purchases.length} รายการ</p>
+            {purchases.some(purchase => purchase.referral) && <Link href="/learn/affiliate" className="text-xs font-semibold text-accent">รายได้จากลิงก์แนะนำ ›</Link>}
+          </div>
           <div className="grid gap-4 xl:grid-cols-2">
             {purchases.map(purchase => (
               <ProductCard key={purchase.id} coverUrl={purchase.coverUrl}>
@@ -113,7 +117,10 @@ export function PurchaseLibrary({ purchases, failed = false, tryouts = [] }: { p
                   <div className={actionRow}>
                     <Link href={purchase.href} className="primary-button group">{actionLabels[purchase.kind]}<ArrowRightIcon className="size-4 transition-transform duration-[200ms] ease-out group-hover:translate-x-0.5" /></Link>
                     {purchase.pdfHref && <PdfButton href={purchase.pdfHref} />}
+                    {purchase.referral && <ReferralButton productId={purchase.referral.productId} rateBp={purchase.referral.rateBp} name={purchase.name} />}
                   </div>
+                ) : purchase.referral ? (
+                  <div className={actionRow}><ReferralButton productId={purchase.referral.productId} rateBp={purchase.referral.rateBp} name={purchase.name} /></div>
                 ) : (
                   <p className="mt-4 text-xs leading-6 text-muted sm:mt-auto sm:pt-4">{purchase.status === "refunded" ? "รายการนี้คืนเงินแล้ว สิทธิ์เข้าถึงสินค้าสิ้นสุดลง" : purchase.status === "expired" ? "สิทธิ์ของรายการนี้หมดอายุแล้ว" : "ยังไม่สามารถเปิดสินค้าจากรายการนี้ได้"}</p>
                 )}

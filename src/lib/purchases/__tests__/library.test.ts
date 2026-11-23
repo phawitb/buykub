@@ -44,7 +44,18 @@ describe("purchase library authorization", () => {
     mocks.context.mockResolvedValue({ user: { ...user, email_confirmed_at: null, user_metadata: { email: "victim@example.com", email_verified: true } }, supabase: { rpc: mocks.rpc } });
     const { from } = database();
     await getPurchaseLibrary();
-    expect(from).toHaveBeenCalledTimes(1);
+    expect(from.mock.calls.filter(([table]) => table === "orders")).toHaveLength(1);
+  });
+  it("offers a referral link only on a paid purchase bound to this account", async () => {
+    const rates = { select: vi.fn(), in: vi.fn(), not: vi.fn() };
+    rates.select.mockReturnValue(rates); rates.in.mockReturnValue(rates);
+    rates.not.mockResolvedValue({ data: [{ id: "product", affiliate_rate_bp: 1000, published: true, shops: { published: true } }], error: null });
+    const { from } = database([order(), order({ id: "refunded", product_id: "other", status: "refunded" })]);
+    from.mockReturnValueOnce(rates);
+    const purchases = await getPurchaseLibrary();
+    expect(rates.in).toHaveBeenCalledWith("id", ["product"]);
+    expect(purchases.find(purchase => purchase.status === "paid")?.referral).toEqual({ productId: "product", rateBp: 1000 });
+    expect(purchases.find(purchase => purchase.status !== "paid")?.referral).toBeUndefined();
   });
   it("treats filter punctuation as an exact email value", async () => {
     const email = "buyer+(),*@example.com";

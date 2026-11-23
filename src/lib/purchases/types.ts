@@ -14,7 +14,11 @@ export type Purchase = {
   pdfHref?: string | null;
   /** Exam-prep courses only: distinct questions attempted out of the whole bank. */
   progress?: PurchaseProgress | null;
+  /** Set when the shop pays for referrals and this paid purchase lets the buyer share a link. */
+  referral?: PurchaseReferral | null;
 };
+
+export type PurchaseReferral = { productId: string; rateBp: number };
 
 export type PurchaseProgress = { answered: number; total: number };
 

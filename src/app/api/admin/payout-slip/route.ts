@@ -2,6 +2,7 @@ import { AdminAccessError, getAdminContext } from "@/lib/admin/access";
 import { ADMIN_RESPONSE_HEADERS, AdminInputError, assertSameOrigin } from "@/lib/admin/validation";
 import { payoutId } from "@/lib/admin/payout-actions";
 import { getPayoutSlipUrl, uploadPayoutSlip } from "@/lib/payouts/slips";
+import { getAffiliatePayoutSlipUrl, uploadAffiliatePayoutSlip } from "@/lib/affiliates/payouts";
 import { PayoutError } from "@/lib/payouts/errors";
 
 export const runtime = "nodejs";
@@ -40,12 +41,15 @@ export async function POST(request: Request) {
     const batchId = payoutId(form.get("batchId"));
     const file = form.get("file");
     if (!file || typeof file === "string" || form.getAll("file").length !== 1 || form.getAll("batchId").length !== 1) throw new AdminInputError("กรุณาแนบสลิปหนึ่งไฟล์");
-    return Response.json(await uploadPayoutSlip(user.id, batchId, file), { headers: ADMIN_RESPONSE_HEADERS });
+    const upload = form.get("kind") === "affiliate" ? uploadAffiliatePayoutSlip : uploadPayoutSlip;
+    return Response.json(await upload(user.id, batchId, file), { headers: ADMIN_RESPONSE_HEADERS });
   } catch (error) { return failure(error); }
 }
 export async function GET(request: Request) {
   try {
     await getAdminContext();
-    return Response.json(await getPayoutSlipUrl(payoutId(new URL(request.url).searchParams.get("batchId"))), { headers: ADMIN_RESPONSE_HEADERS });
+    const params = new URL(request.url).searchParams;
+    const slipUrl = params.get("kind") === "affiliate" ? getAffiliatePayoutSlipUrl : getPayoutSlipUrl;
+    return Response.json(await slipUrl(payoutId(params.get("batchId"))), { headers: ADMIN_RESPONSE_HEADERS });
   } catch (error) { return failure(error); }
 }

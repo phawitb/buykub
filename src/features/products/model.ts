@@ -57,6 +57,8 @@ export type ProductKeyRecord = {
 export type ProductEditorValue = {
   deliveryType: ProductDeliveryType;
   courseAccessDays?: string;
+  /** Referral commission in percent, "" when referral links are off. */
+  affiliateRate?: string;
   keyInput: string;
   keyInventory: ProductKeyInventorySummary;
   name: string;
@@ -74,7 +76,7 @@ export type ProductEditorValue = {
 };
 
 export type ProductFieldErrors = Partial<
-  Record<"name" | "price" | "comparePrice" | "productFile" | "productKeys" | "courseAccessDays", string>
+  Record<"name" | "price" | "comparePrice" | "productFile" | "productKeys" | "courseAccessDays" | "affiliateRate", string>
 >;
 
 export type ProductImageValidationError = {

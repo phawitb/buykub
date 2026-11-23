@@ -20,7 +20,7 @@ import { ShopImageUploader } from "../settings/ShopImageUploader";
 
 type Shop = ShopAppearance & { id: string; published?: boolean };
 type Product = ProductListItem & { availableStock?: number };
-const RESERVED_SLUGS = new Set(["dashboard", "learn", "login", "auth", "api", "checkout", "privacy", "terms", "_next"]);
+const RESERVED_SLUGS = new Set(["dashboard", "learn", "r", "login", "auth", "api", "checkout", "privacy", "terms", "_next"]);
 type EditingSection = "create" | "name" | "bio" | "avatar" | "cover";
 const EDITOR_COPY: Record<EditingSection, { title: string; description: string }> = {
   create: { title: "สร้างร้านของคุณ", description: "เริ่มจากชื่อร้านและลิงก์ แล้วแต่งหน้าร้านได้ทันที" },

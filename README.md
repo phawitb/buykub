@@ -939,3 +939,17 @@ Migration: `20261123100000_affiliates.sql`, with `supabase/tests/affiliates.sql`
 **Applied to `buykub-th`** on 2026-11-23 through the SQL editor, then confirmed from the
 service role (new columns and tables present, no product has referrals on, `get_affiliate_link`
 refuses a caller who is not signed in).
+
+## Referral links (affiliates), web — 2026-11-23
+
+- **Shops** turn it on in the product editor ("ลิงก์แนะนำ", 1–50%). The order page shows
+  "ผ่านลิงก์แนะนำ −฿x" but never who referred.
+- **Buyers** see "ชวนเพื่อน รับ x%" on a paid purchase in `/learn` (copies the link, or opens the
+  phone's share sheet). `/learn/affiliate` lists commissions and holds the referrer's payout details
+  (`affiliate_payout_profiles`, same validation as a shop's).
+- **Links** are `/r/<code>`: the route sets the httpOnly cookie `bk_ref` for 30 days (last link
+  wins) and redirects to the product. `/api/stripe/checkout` passes the cookie to
+  `attach_checkout_referral`; a failure there never blocks the sale. `r` is a reserved shop slug.
+- **Admin → จ่ายเงิน → ค่าคอมผู้แนะนำ**: prepare one transfer per referrer, transfer by hand,
+  attach the slip (`seller-payout-slips` bucket, `affiliate/<batch>/…`), then record it.
+- Not yet tested with a real-money purchase through a link.

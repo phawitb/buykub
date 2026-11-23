@@ -115,7 +115,7 @@ export default async function AnalyticsPage({ searchParams }: {
             </div>
           ))}
         </div>
-        <p className="mt-4 text-xs leading-relaxed text-muted">ตัวเลขนี้ประมาณจากยอดขายที่ชำระแล้วก่อนหักค่าธรรมเนียมและอายุออเดอร์ ไม่ใช่ยอดโอนจริงหรือยอดคงเหลือที่ถอนได้ และยังไม่ได้หักเงินที่เคยโอนไปแล้ว</p>
+        <p className="mt-4 text-xs leading-relaxed text-muted">ตัวเลขนี้ประมาณจากยอดขายที่ชำระแล้วก่อนหักค่าธรรมเนียม ค่าคอมลิงก์แนะนำ และอายุออเดอร์ ไม่ใช่ยอดโอนจริงหรือยอดคงเหลือที่ถอนได้ และยังไม่ได้หักเงินที่เคยโอนไปแล้ว</p>
       </section>
 
       <section className="mt-6 rounded-2xl border border-line bg-paper p-6">

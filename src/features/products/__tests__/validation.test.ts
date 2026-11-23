@@ -6,6 +6,7 @@ import {
 } from "@/features/products/format";
 import type { ProductEditorValue } from "@/features/products/model";
 import {
+  affiliateRateBasisPoints,
   validateProductEditor,
   validateProductFile,
   validateProductImages,
@@ -158,5 +159,14 @@ describe("product formatting", () => {
 
   it("rounds the reference discount down to a whole percentage", () => {
     expect(discountPercent(38900, 54900)).toBe(29);
+  });
+});
+
+describe("affiliateRateBasisPoints", () => {
+  it("turns a percent into basis points, or null when off", () => {
+    expect(affiliateRateBasisPoints("")).toBeNull();
+    expect(affiliateRateBasisPoints("10")).toBe(1000);
+    expect(affiliateRateBasisPoints("12.5")).toBe(1250);
+    expect(affiliateRateBasisPoints("1.05")).toBe(105);
   });
 });

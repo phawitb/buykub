@@ -6,6 +6,7 @@ import { isGoogleUser } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe";
 import { cleanupExpiredPromptpay } from "@/lib/payments/promptpay";
 import { MIN_PRICE_BAHT } from "@/features/products/validation";
+import { referralFromCookies } from "@/lib/affiliates/referral";
 
 export const runtime = "nodejs";
 const headers = { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" };
@@ -42,6 +43,9 @@ export async function POST(request: Request) {
       // Cookie-authenticated RPC binds course identity at the database boundary.
       const { error: beginError } = await supabase.rpc("begin_stripe_product_checkout", { p_product_id: body.productId, p_checkout_reference: reference });
       if (beginError) return error(beginError.message.includes("sold_out") ? "สินค้าหมดแล้ว กรุณารีเฟรชหน้า" : "สินค้านี้ไม่พร้อมจำหน่าย", 409);
+      // The database decides whether the link qualifies; a referral never blocks a purchase.
+      const referral = referralFromCookies(request.headers.get("cookie"));
+      if (referral) await supabase.rpc("attach_checkout_referral", { p_checkout_reference: reference, p_code: referral }).then(() => undefined, () => undefined);
     }
     ({ data: context, error: readError } = await admin.from("stripe_checkout_contexts").select("*").eq("checkout_reference", reference).maybeSingle());
     if (readError || !context) throw new Error("Checkout unavailable");

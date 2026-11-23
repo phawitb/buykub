@@ -118,6 +118,22 @@ describe("PromptPay checkout start", () => {
     expect(mocks.rpc).toHaveBeenCalledWith("attach_promptpay_intent", { p_checkout_reference: reference, p_payment_intent_id: "pi_test" });
     expect(mocks.rpc.mock.invocationCallOrder.at(-1)).toBeLessThan(mocks.confirm.mock.invocationCallOrder[0]);
   });
+  it("attaches a referral cookie to the new checkout, and still sells when it does not qualify", async () => {
+    mocks.userRpc.mockImplementation(async (name: string) => name === "attach_checkout_referral" ? { error: { message: "boom" } } : { error: null });
+    const response = await POST(new Request("https://shop.example/api/stripe/checkout", {
+      method: "POST", headers: { cookie: "other=1; bk_ref=abcde12345" },
+      body: JSON.stringify({ kind: "product", productId: context.product_id, requestId: reference }),
+    }));
+    expect(response.status).toBe(200);
+    expect(mocks.userRpc).toHaveBeenCalledWith("attach_checkout_referral", { p_checkout_reference: reference, p_code: "abcde12345" });
+  });
+  it("ignores a malformed referral cookie", async () => {
+    await POST(new Request("https://shop.example/api/stripe/checkout", {
+      method: "POST", headers: { cookie: "bk_ref=../x" },
+      body: JSON.stringify({ kind: "product", productId: context.product_id, requestId: reference }),
+    }));
+    expect(mocks.userRpc).not.toHaveBeenCalledWith("attach_checkout_referral", expect.anything());
+  });
   it("reuses an existing QR on retry without reserving, confirming or creating another charge", async () => {
     mocks.context.mockReset().mockResolvedValue({ data: { ...context, stripe_payment_intent_id: "pi_existing" } });
     mocks.retrieve.mockResolvedValue({ id: "pi_existing", status: "requires_action" });
