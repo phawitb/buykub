@@ -964,3 +964,5 @@ Shops create their own codes at `/dashboard/products/promo-codes`. A code is eit
 - Discounts are rounded down to whole baht. A discounted price between ฿0 and ฿10 is refused, because of the PromptPay minimum.
 - The order page shows the code and the discount to the shop owner, through the `shop_order_discount` RPC.
 - Tests: `supabase/tests/promo_codes.sql`.
+
+**Applied to prod** on 2026-11-23 through the SQL editor, then checked with the service role: the table and the new context columns exist, the RPCs answer, and anon cannot read `promo_codes`. A real-money purchase with a code has not been tested.
