@@ -1,5 +1,6 @@
 import { validatePayoutIdentity, type PayoutIdentity } from "@/app/dashboard/settings/payout-profile";
 import { parseBankDetails, getThaiBank } from "@/app/dashboard/settings/thai-banks";
+import { saleSplit } from "./split";
 
 export type PayoutOrder = { id:string; shop_id:string; status:string; mock:boolean; price_cents:number; payment_method:string|null; stripe_payment_intent_id:string|null; paid_at:string|null };
 type RecordValue = Record<string, unknown>;
@@ -12,9 +13,7 @@ export type Assessment = { eligible:boolean; reason:string; netCents:number; ref
 // A referral commission is withheld too, matching prepare_seller_payout_batch.
 export function payoutAmount(gross:number, refunded:number, referralRateBp=0):number {
   if(!cents(gross)||!cents(refunded)||refunded>gross) return 0;
-  const retained=gross-refunded;
-  const referral=refunded<gross&&Number.isSafeInteger(referralRateBp)&&referralRateBp>0?Math.floor(retained*referralRateBp/10000):0;
-  return Math.max(0,retained-Math.floor((retained*5+50)/100)-referral);
+  return saleSplit(gross-refunded,referralRateBp).shopCents;
 }
 export function assessPayment(order:PayoutOrder, rawPayment:unknown, rawRefunds:unknown[], now=Date.now()):Assessment {
   const result:Assessment={eligible:false,reason:"unverified_payment",netCents:0,refundedCents:0,chargeId:null,balanceTransactionId:null};
