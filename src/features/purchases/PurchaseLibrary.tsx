@@ -114,10 +114,10 @@ export function PurchaseLibrary({ purchases, failed = false, tryouts = [] }: { p
                   <div className={actionRow}>
                     <Link href={purchase.href} className="primary-button group">{actionLabels[purchase.kind]}<ArrowRightIcon className="size-4 transition-transform duration-[200ms] ease-out group-hover:translate-x-0.5" /></Link>
                     {purchase.pdfHref && <PdfButton href={purchase.pdfHref} />}
-                    {purchase.referral && <ReferralButton productId={purchase.referral.productId} rateBp={purchase.referral.rateBp} name={purchase.name} />}
+                    {purchase.referral && <ReferralButton productId={purchase.referral.productId} rateBp={purchase.referral.rateBp} priceCents={purchase.referral.priceCents} name={purchase.name} />}
                   </div>
                 ) : purchase.referral ? (
-                  <div className={actionRow}><ReferralButton productId={purchase.referral.productId} rateBp={purchase.referral.rateBp} name={purchase.name} /></div>
+                  <div className={actionRow}><ReferralButton productId={purchase.referral.productId} rateBp={purchase.referral.rateBp} priceCents={purchase.referral.priceCents} name={purchase.name} /></div>
                 ) : (
                   <p className="mt-4 text-xs leading-6 text-muted sm:mt-auto sm:pt-4">{purchase.status === "refunded" ? "รายการนี้คืนเงินแล้ว สิทธิ์เข้าถึงสินค้าสิ้นสุดลง" : purchase.status === "expired" ? "สิทธิ์ของรายการนี้หมดอายุแล้ว" : "ยังไม่สามารถเปิดสินค้าจากรายการนี้ได้"}</p>
                 )}

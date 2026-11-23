@@ -20,7 +20,8 @@ export type Purchase = {
   referral?: PurchaseReferral | null;
 };
 
-export type PurchaseReferral = { productId: string; rateBp: number };
+/** priceCents is the product's current list price, for the commission one sale earns. */
+export type PurchaseReferral = { productId: string; rateBp: number; priceCents: number };
 
 export type PurchaseProgress = { answered: number; total: number };
 
