@@ -8,6 +8,8 @@ import { ratePercent } from "@/lib/affiliates/referral";
 export function ReferralButton({ productId, rateBp, priceCents, name }: { productId: string; rateBp: number; priceCents: number; name: string }) {
   const [state, setState] = useState<"idle" | "busy" | "copied" | "error">("idle");
   const [message, setMessage] = useState("");
+  // The how-to opens once the buyer has the link in hand, and stays open.
+  const [explained, setExplained] = useState(false);
 
   async function share() {
     setState("busy");
@@ -15,6 +17,7 @@ export function ReferralButton({ productId, rateBp, priceCents, name }: { produc
       const response = await fetch("/api/affiliate/link", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId }) });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || typeof body.url !== "string") throw new Error(body.error || "สร้างลิงก์ไม่สำเร็จ กรุณาลองใหม่");
+      setExplained(true);
       if (typeof navigator.share === "function" && window.matchMedia("(pointer: coarse)").matches) {
         try { await navigator.share({ title: name, url: body.url }); setState("idle"); return; }
         catch (error) { if ((error as Error).name === "AbortError") { setState("idle"); return; } }
@@ -35,7 +38,7 @@ export function ReferralButton({ productId, rateBp, priceCents, name }: { produc
       </button>
       {state === "copied" && <p role="status" className="basis-full break-all text-xs text-emerald-700">คัดลอกลิงก์แล้ว · {message}</p>}
       {state === "error" && <p role="alert" className="basis-full text-xs text-red-600">{message}</p>}
-      <ReferralHowTo rateBp={rateBp} priceCents={priceCents} />
+      {explained && <ReferralHowTo rateBp={rateBp} priceCents={priceCents} />}
     </>
   );
 }
