@@ -152,6 +152,17 @@ describe("ProductEditor", () => {
     expect(screen.queryByRole("heading", { name: "ไฟล์สินค้า *" })).not.toBeInTheDocument();
   });
 
+  it("turns on referral links under the price and saves the rate in basis points", async () => {
+    const saveProduct = vi.fn().mockResolvedValue(undefined);
+    render(<ProductEditor mode="edit" shopId="shop-123" userId="user-123" productId="product-123" existingSlugs={[]} initialValue={validValue} saveProduct={saveProduct} />);
+    const toggle = screen.getByRole("switch", { name: "ลิงก์แนะนำ" });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByLabelText(/ราคา \(บาท\)/).compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await userEvent.click(toggle);
+    expect(screen.getByText("฿19.9")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "บันทึกการเปลี่ยนแปลง" }));
+    await vi.waitFor(() => expect(saveProduct).toHaveBeenCalledWith(expect.objectContaining({ affiliate_rate_bp: 1000 })));
+  });
   it("saves how many pages the PDF has, so the storefront can say it", async () => {
     const saveProduct = vi.fn().mockResolvedValue(undefined);
     render(<ProductEditor mode="edit" shopId="shop-123" userId="user-123" productId="product-123" existingSlugs={[]} initialValue={{ ...validValue, productFile: { path: "user-123/guide.pdf", fileName: "guide.pdf", size: 2048, mimeType: "application/pdf", pageCount: 42 } }} saveProduct={saveProduct} />);
