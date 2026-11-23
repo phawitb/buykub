@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { DashboardLayoutContent } from "@/app/dashboard/DashboardLayoutContent";
 import { getSellerContext } from "@/lib/supabase/seller-context";
 import { ratePercent } from "@/lib/affiliates/referral";
@@ -32,8 +31,7 @@ export default async function AffiliatePage() {
       shop={shop ? { name: shop.name, slug: shop.slug, avatarUrl: shop.avatar_url } : null}
     >
       <div className="mx-auto max-w-4xl">
-        <Link href="/learn" className="text-sm text-muted">‹ รายการที่สั่งซื้อ</Link>
-        <h1 className="mt-3 text-2xl font-bold text-ink sm:text-3xl">รายได้จากลิงก์แนะนำ</h1>
+        <h1 className="text-2xl font-bold text-ink sm:text-3xl">รายได้จากลิงก์แนะนำ</h1>
         <p className="mt-3 text-sm leading-7 text-muted">กดปุ่ม “ชวนเพื่อน” ที่สินค้าซึ่งคุณซื้อแล้วเพื่อคัดลอกลิงก์ เมื่อมีคนซื้อผ่านลิงก์ภายใน 30 วัน คุณจะได้ค่าคอมตาม % ที่ร้านค้ากำหนด ผู้ซื้อจ่ายราคาปกติ</p>
 
         <div className="mt-6 grid grid-cols-3 gap-3">

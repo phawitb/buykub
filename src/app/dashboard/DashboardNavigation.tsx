@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const sellerItems = [
   { href: "/dashboard/products", label: "ร้านค้าของฉัน", icon: "product" },
   { href: "/learn", label: "รายการที่สั่งซื้อ", icon: "order" },
+  { href: "/learn/affiliate", label: "รายได้จากลิงก์แนะนำ", shortLabel: "ลิงก์แนะนำ", icon: "referral" },
   { href: "/dashboard/analytics", label: "Analytics", icon: "analytics" },
   { href: "/dashboard/settings", label: "ตั้งค่า", icon: "settings" },
 ];
@@ -24,6 +25,7 @@ function NavIcon({ name }: { name: string }) {
       {name === "product" && <><path {...common} d="m12 3 8 4.5-8 4.5-8-4.5L12 3Z" /><path {...common} d="m4 7.5 8 4.5 8-4.5V17l-8 4-8-4V7.5Z" /></>}
       {name === "course" && <><path {...common} d="M12 5C9 3 5 3 3 4v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-2-1-6-1-9 1ZM12 5v15" /></>}
       {name === "order" && <><rect {...common} x="4" y="3" width="16" height="18" rx="2" /><path {...common} d="M8 8h8M8 12h8M8 16h5" /></>}
+      {name === "referral" && <><path {...common} d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1" /><path {...common} d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1" /></>}
       {name === "analytics" && <><path {...common} d="M4 20V10M10 20V4M16 20v-7M22 20V7" /><path {...common} d="M2 20h21" /></>}
       {name === "settings" && <><circle {...common} cx="12" cy="12" r="3" /><path {...common} d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8.5 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.5-1H3v-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.5V3h4v.1A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.5 1h.1v4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></>}
     </svg>
@@ -32,22 +34,27 @@ function NavIcon({ name }: { name: string }) {
 
 export function DashboardNavigation({ mobile = false, hasShop, isAdmin = false }: { mobile?: boolean; hasShop: boolean; isAdmin?: boolean }) {
   const pathname = usePathname();
-  const items = [...(hasShop ? sellerItems : [
+  const items: { href: string; label: string; shortLabel?: string; icon: string }[] = [...(hasShop ? sellerItems : [
     { href: "/learn", label: "รายการที่สั่งซื้อ", icon: "order" },
+    { href: "/learn/affiliate", label: "รายได้จากลิงก์แนะนำ", shortLabel: "ลิงก์แนะนำ", icon: "referral" },
     { href: "/dashboard/products?create=1", label: "เปิดร้าน", icon: "product" },
   ]), ...(isAdmin ? [{ href: "/dashboard/admin", label: "แอดมิน", icon: "settings" }] : [])];
+  // The most specific match wins, so /learn/affiliate does not also light up /learn.
+  const matches = (href: string) => pathname === href.split("?")[0] || pathname.startsWith(`${href.split("?")[0]}/`);
+  const current = items.map(item => item.href).filter(matches).sort((a, b) => b.length - a.length)[0];
 
   return (
     <nav
       aria-label={mobile ? "เมนูหลักมือถือ" : "เมนูหลัก"}
       className={
         mobile
-          ? (hasShop ? (isAdmin ? "grid grid-cols-5" : "grid grid-cols-4") : (isAdmin ? "grid grid-cols-3" : "grid grid-cols-2"))
+          ? "grid"
           : "flex flex-1 flex-col gap-1"
       }
+      style={mobile ? { gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` } : undefined}
     >
       {items.map((item) => {
-        const active = pathname.startsWith(item.href.split("?")[0]) ||
+        const active = item.href === current ||
           (item.href === "/dashboard/analytics" && pathname.startsWith("/dashboard/orders"));
         return (
           <Link
@@ -67,7 +74,7 @@ export function DashboardNavigation({ mobile = false, hasShop, isAdmin = false }
             }
           >
             <NavIcon name={item.icon} />
-            <span className="truncate">{item.label}</span>
+            <span className="truncate">{mobile ? item.shortLabel ?? item.label : item.label}</span>
             {mobile && active && (
               <span className="absolute bottom-0 h-0.5 w-6 rounded-full bg-accent" />
             )}

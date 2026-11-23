@@ -20,7 +20,7 @@ describe("DashboardNavigation", () => {
     );
     expect(screen.queryByRole("link", { name: "จองบริการ" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "สถิติ" })).not.toBeInTheDocument();
-    expect(screen.getAllByRole("link")).toHaveLength(4);
+    expect(screen.getAllByRole("link")).toHaveLength(5);
     expect(screen.getByRole("link", { name: "ร้านค้าของฉัน" })).toHaveAttribute("href", "/dashboard/products");
     expect(screen.queryByRole("link", { name: "หน้าแรก" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "ออเดอร์" })).not.toBeInTheDocument();
@@ -52,3 +52,10 @@ for (const mobile of [false, true]) {
     expect(screen.queryByRole("link", { name: "ตั้งค่า" })).not.toBeInTheDocument();
   });
 }
+
+it.each([false, true])("highlights only the referral tab on /learn/affiliate (hasShop=%s)", (hasShop) => {
+  route.pathname = "/learn/affiliate";
+  render(<DashboardNavigation hasShop={hasShop} />);
+  expect(screen.getByRole("link", { name: "รายได้จากลิงก์แนะนำ" })).toHaveAttribute("aria-current", "page");
+  expect(screen.getByRole("link", { name: "รายการที่สั่งซื้อ" })).not.toHaveAttribute("aria-current");
+});
