@@ -93,10 +93,7 @@ export function PurchaseLibrary({ purchases, failed = false, tryouts = [] }: { p
         </section>
       ) : (
         <>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-muted">ประวัติการสั่งซื้อ {purchases.length} รายการ</p>
-            {purchases.some(purchase => purchase.referral) && <Link href="/learn/affiliate" className="text-xs font-semibold text-accent">รายได้จากลิงก์แนะนำ ›</Link>}
-          </div>
+          <p className="mb-4 text-xs text-muted">ประวัติการสั่งซื้อ {purchases.length} รายการ</p>
           <div className="grid gap-4 xl:grid-cols-2">
             {purchases.map(purchase => (
               <ProductCard key={purchase.id} coverUrl={purchase.coverUrl}>

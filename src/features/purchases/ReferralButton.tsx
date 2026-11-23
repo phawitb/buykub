@@ -28,12 +28,12 @@ export function ReferralButton({ productId, rateBp, name }: { productId: string;
   }
 
   return (
-    <div className="w-full">
-      <button type="button" onClick={share} disabled={state === "busy"} className="secondary-button disabled:opacity-60">
+    <>
+      <button type="button" onClick={share} disabled={state === "busy"} className="inline-flex h-11 items-center justify-center rounded-full border border-red-600 bg-paper px-5 text-sm font-medium text-red-600 transition duration-[120ms] ease-out hover:bg-red-50 active:scale-[0.98] disabled:opacity-60">
         {state === "busy" ? "กำลังสร้างลิงก์..." : `ชวนเพื่อน รับ ${ratePercent(rateBp)}`}
       </button>
-      {state === "copied" && <p role="status" className="mt-2 break-all text-xs text-emerald-700">คัดลอกลิงก์แล้ว · {message}</p>}
-      {state === "error" && <p role="alert" className="mt-2 text-xs text-red-600">{message}</p>}
-    </div>
+      {state === "copied" && <p role="status" className="basis-full break-all text-xs text-emerald-700">คัดลอกลิงก์แล้ว · {message}</p>}
+      {state === "error" && <p role="alert" className="basis-full text-xs text-red-600">{message}</p>}
+    </>
   );
 }
