@@ -17,11 +17,11 @@
 
   /* Text. */
   --ink: #171717;               /* fastwork --color-text-primary */
-  --ink-soft: #404040;
-  --muted: #6e6e6e;             /* theirs is #737373 = 4.35:1 on #f5f5f5, under AA;
-                                   #6e6e6e is 4.51:1 on the tightest ground */
+  --ink-soft: #2b2b2b;
+  --muted: #525252;             /* darker than AA needs (7.2:1 on #f1f1f1):
+                                   lighter greys read as too faint */
   --on-ink: #ffffff;
-  --on-ink-soft: #a3a3a3;       /* fastwork --color-icon-secondary */
+  --on-ink-soft: #cfcfcf;       /* grey text on dark bands */
 
   /* Lines. */
   --line: #ebebeb;              /* fastwork --color-border */
