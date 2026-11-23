@@ -101,3 +101,14 @@ it("shows the seller's sample images under what the buyer gets, each whole", asy
   expect([...images].map((image) => image.getAttribute("src"))).toEqual(["https://cdn.example/a.png", "https://cdn.example/b.png"]);
   expect(images[0]).toHaveClass("object-contain");
 });
+
+it("previews a shared product link with the product's own name, text and first image", async () => {
+  const { generateMetadata } = await import("./page");
+  mocks.getPublicProduct.mockResolvedValue({
+    id: "product-1", slug: "my-product", name: "My product", description: "Line one\nline two", category: "OTHER", delivery_type: "file",
+    price_cents: 9900, compare_price_cents: null, images: [], images_v2: [{ publicUrl: "https://cdn.test/p.jpg" }], faq: [], highlights: [],
+  });
+  const meta = await generateMetadata({ params: Promise.resolve({ slug: "demo", productSlug: "my-product" }) });
+  expect(meta.title).toBe("My product — Demo shop");
+  expect(meta.openGraph).toMatchObject({ title: "My product — Demo shop", description: "Line one line two", url: "https://buykub.com/demo/my-product", images: [{ url: "https://cdn.test/p.jpg" }] });
+});

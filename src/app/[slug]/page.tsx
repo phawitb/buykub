@@ -9,7 +9,23 @@ import { ShopShell } from "@/features/storefront/ShopShell";
 import { createPublicClient } from "@/lib/supabase/public";
 import { ShareButton } from "./ShareButton";
 import { DashboardShortcut } from "@/components/DashboardShortcut";
-import { shopUrl } from "@/lib/brand";
+import { BRAND_NAME, shopUrl } from "@/lib/brand";
+import type { Metadata } from "next";
+import { previewText, shareMetadata } from "@/lib/storefront/share-meta";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  await connection();
+  const shop = await getPublicShop(slug);
+  if (!shop) return { title: `ไม่พบร้าน — ${BRAND_NAME}` };
+  return shareMetadata({
+    title: shop.name,
+    description: previewText(shop.bio) || `ร้าน ${shop.name} บน ${BRAND_NAME}`,
+    url: shopUrl(shop.slug),
+    image: shop.cover_url ?? shop.avatar_url,
+    siteName: shop.name,
+  });
+}
 
 export default async function ShopPage({
   params,

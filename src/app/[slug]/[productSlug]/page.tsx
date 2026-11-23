@@ -16,6 +16,7 @@ import { BRAND_NAME, productUrl } from "@/lib/brand";
 import { ShareButton } from "../ShareButton";
 import { createPublicClient } from "@/lib/supabase/public";
 import { ProductPurchase } from "./ProductPurchase";
+import { previewText, shareMetadata } from "@/lib/storefront/share-meta";
 import { getPublicExamSummary } from "@/lib/storefront/exam-summary";
 import { getCourseHasPdf } from "@/lib/storefront/course-pdf";
 import { getPublicPreviewImages } from "@/lib/storefront/previews";
@@ -65,12 +66,15 @@ export async function generateMetadata({
   const { slug, productSlug } = await params;
   const result = await loadProduct(slug, productSlug);
   if (!result) return { title: `ไม่พบสินค้า — ${BRAND_NAME}` };
-  return {
-    title: `${result.product.name} — ${result.shop.name}`,
-    description:
-      result.product.description?.slice(0, 155) ||
-      `ซื้อ ${result.product.name} จาก ${result.shop.name}`,
-  };
+  const { shop, product } = result;
+  const imagesV2 = Array.isArray(product.images_v2) ? (product.images_v2 as Array<{ publicUrl?: string }>) : [];
+  return shareMetadata({
+    title: `${product.name} — ${shop.name}`,
+    description: previewText(product.description) || `ซื้อ ${product.name} จาก ${shop.name}`,
+    url: productUrl(shop.slug, productSlug),
+    image: imagesV2[0]?.publicUrl ?? product.images?.[0] ?? shop.cover_url ?? shop.avatar_url,
+    siteName: shop.name,
+  });
 }
 
 export default async function ProductDetailPage({ params }: { params: Params }) {
