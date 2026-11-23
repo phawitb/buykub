@@ -15,7 +15,9 @@ describe("ReferralButton", () => {
     await user.click(screen.getByRole("button", { name: "ชวนเพื่อน รับ 10%" }));
 
     expect(await screen.findByText("฿18.90")).toBeInTheDocument();
-    expect(screen.getByText(/https:\/\/buykub.com\/r\/abc/)).toBeInTheDocument();
+    expect(screen.getByText("https://buykub.com/r/abc").tagName).toBe("CODE");
+    expect(screen.getByRole("button", { name: "คัดลอกลิงก์แล้ว" })).toBeInTheDocument();
+    expect(await navigator.clipboard.readText()).toBe("https://buykub.com/r/abc");
     expect(screen.getByText(/ซื้อภายใน 30 วัน/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /ดูยอดและตั้งบัญชีรับเงิน/ })).toHaveAttribute("href", "/learn/affiliate");
   });

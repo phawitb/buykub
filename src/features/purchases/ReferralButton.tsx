@@ -2,14 +2,21 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { CheckIcon, CopyIcon } from "@/components/icons";
 import { ratePercent } from "@/lib/affiliates/referral";
 
 /** Copies the buyer's referral link, or opens the phone's share sheet when there is one. */
 export function ReferralButton({ productId, rateBp, priceCents, name }: { productId: string; rateBp: number; priceCents: number; name: string }) {
-  const [state, setState] = useState<"idle" | "busy" | "copied" | "error">("idle");
+  const [state, setState] = useState<"idle" | "busy" | "error">("idle");
   const [message, setMessage] = useState("");
-  // The how-to opens once the buyer has the link in hand, and stays open.
-  const [explained, setExplained] = useState(false);
+  // The link and the how-to open once the buyer has the link in hand, and stay open.
+  const [url, setUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function copy(link: string) {
+    try { await navigator.clipboard.writeText(link); setCopied(true); }
+    catch { setCopied(false); }
+  }
 
   async function share() {
     setState("busy");
@@ -17,14 +24,13 @@ export function ReferralButton({ productId, rateBp, priceCents, name }: { produc
       const response = await fetch("/api/affiliate/link", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId }) });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || typeof body.url !== "string") throw new Error(body.error || "สร้างลิงก์ไม่สำเร็จ กรุณาลองใหม่");
-      setExplained(true);
+      setUrl(body.url);
       if (typeof navigator.share === "function" && window.matchMedia("(pointer: coarse)").matches) {
         try { await navigator.share({ title: name, url: body.url }); setState("idle"); return; }
         catch (error) { if ((error as Error).name === "AbortError") { setState("idle"); return; } }
       }
-      await navigator.clipboard.writeText(body.url);
-      setMessage(body.url);
-      setState("copied");
+      await copy(body.url);
+      setState("idle");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "สร้างลิงก์ไม่สำเร็จ กรุณาลองใหม่");
       setState("error");
@@ -36,9 +42,18 @@ export function ReferralButton({ productId, rateBp, priceCents, name }: { produc
       <button type="button" onClick={share} disabled={state === "busy"} className="inline-flex h-11 items-center justify-center rounded-full border border-red-600 bg-paper px-5 text-sm font-medium text-red-600 transition duration-[120ms] ease-out hover:bg-red-50 active:scale-[0.98] disabled:opacity-60">
         {state === "busy" ? "กำลังสร้างลิงก์..." : `ชวนเพื่อน รับ ${ratePercent(rateBp)}`}
       </button>
-      {state === "copied" && <p role="status" className="basis-full break-all text-xs text-emerald-700">คัดลอกลิงก์แล้ว · {message}</p>}
+      {url && (
+        <div className="flex min-w-0 basis-full items-center gap-2 rounded-xl border border-line bg-paper-dim py-1.5 pl-4 pr-1.5">
+          <code className="min-w-0 flex-1 break-all font-mono text-xs text-ink sm:text-sm" title={url}>{url}</code>
+          <button type="button" onClick={() => copy(url)} aria-label={copied ? "คัดลอกลิงก์แล้ว" : "คัดลอกลิงก์"} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line bg-paper px-3 text-xs font-medium text-ink transition duration-[120ms] ease-out hover:bg-paper-dim active:scale-[0.98]">
+            {copied ? <CheckIcon className="size-4 text-success" /> : <CopyIcon className="size-4" />}
+            <span aria-hidden>{copied ? "คัดลอกแล้ว" : "คัดลอก"}</span>
+          </button>
+          <span role="status" className="sr-only">{copied ? "คัดลอกลิงก์แล้ว" : ""}</span>
+        </div>
+      )}
       {state === "error" && <p role="alert" className="basis-full text-xs text-red-600">{message}</p>}
-      {explained && <ReferralHowTo rateBp={rateBp} priceCents={priceCents} />}
+      {url && <ReferralHowTo rateBp={rateBp} priceCents={priceCents} />}
     </>
   );
 }
