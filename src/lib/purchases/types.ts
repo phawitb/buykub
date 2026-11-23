@@ -2,6 +2,8 @@ export type Purchase = {
   id: string;
   name: string;
   shopName: string;
+  /** The shop's storefront, while it is published. */
+  shopHref?: string | null;
   kind: "course" | "file" | "key" | "other";
   priceCents: number;
   purchasedAt: string;

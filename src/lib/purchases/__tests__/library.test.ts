@@ -80,7 +80,7 @@ describe("purchase library authorization", () => {
   it("projects display data and paid receipt links without private fields", async () => {
     database([], [order({ buyer_user_id: null, private_file_path: "secret", key_value: "secret", delivery_token: "secret" })]);
     const list = await getPurchaseLibrary();
-    expect(list[0]).toEqual({ id: "order", name: "Guide", shopName: "Shop", kind: "file", priceCents: 12900, purchasedAt: "2026-01-01", status: "paid", expiresAt: null, href: `/checkout/success?session_id=${receipt}`, coverUrl: null });
+    expect(list[0]).toEqual({ id: "order", name: "Guide", shopName: "Shop", shopHref: null, kind: "file", priceCents: 12900, purchasedAt: "2026-01-01", status: "paid", expiresAt: null, href: `/checkout/success?session_id=${receipt}`, coverUrl: null });
     expect(JSON.stringify(list)).not.toContain("secret");
     expect(JSON.stringify(list)).not.toContain("buyer@example.com");
   });

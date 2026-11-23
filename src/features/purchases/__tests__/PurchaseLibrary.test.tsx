@@ -13,6 +13,12 @@ describe("purchase library", () => {
     expect(screen.getByRole("link", { name: "เปิดไฟล์ที่ซื้อ" })).toHaveAttribute("href", "/checkout/success?session_id=receipt");
     expect(screen.getByRole("link", { name: "ดูคีย์ที่ซื้อ" })).toBeInTheDocument();
   });
+  it("links the shop name to its storefront while the shop is published", () => {
+    render(<PurchaseLibrary purchases={[purchase({ shopHref: "/studio" }), purchase({ id: "closed", name: "Old guide", shopName: "Closed shop" })]} />);
+    expect(screen.getByRole("link", { name: "Studio" })).toHaveAttribute("href", "/studio");
+    expect(screen.queryByRole("link", { name: "Closed shop" })).toBeNull();
+  });
+
   it("shows each product's cover on its card", () => {
     const { container } = render(<PurchaseLibrary purchases={[purchase({ id: "course", kind: "course", href: "/learn/course", coverUrl: "https://cdn/cover.png" }), purchase()]} />);
     const covers = container.querySelectorAll("article img");

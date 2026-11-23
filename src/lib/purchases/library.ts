@@ -19,12 +19,12 @@ type PurchaseRow = {
   price_cents: number;
   stripe_checkout_session_id: string | null;
   products: { name: string; delivery_type: string; file_path: string | null; images: unknown; images_v2: unknown } | null;
-  shops: { name: string } | null;
+  shops: { name: string; slug: string; published: boolean } | null;
 };
 
 // Explicit projection excludes delivery tokens, credentials and payment details;
 // file_path only decides whether a PDF button exists and never leaves the server.
-const fields = "id, product_id, buyer_user_id, buyer_email, course_purchase, course_expires_at, status, paid_at, created_at, price_cents, stripe_checkout_session_id, products(name, delivery_type, file_path, images, images_v2), shops(name)";
+const fields = "id, product_id, buyer_user_id, buyer_email, course_purchase, course_expires_at, status, paid_at, created_at, price_cents, stripe_checkout_session_id, products(name, delivery_type, file_path, images, images_v2), shops(name, slug, published)";
 const pageSize = 1000;
 
 /** The first public product image, newest image list first. */
@@ -103,6 +103,7 @@ export async function getPurchaseLibrary(): Promise<Purchase[]> {
       id: row.id,
       name: row.products?.name ?? "สินค้าที่ไม่พร้อมแสดง",
       shopName: row.shops?.name ?? "ร้านค้า",
+      shopHref: row.shops?.published && row.shops.slug ? `/${encodeURIComponent(row.shops.slug)}` : null,
       kind,
       priceCents: row.price_cents,
       purchasedAt: row.created_at,

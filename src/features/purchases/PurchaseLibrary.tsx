@@ -102,7 +102,7 @@ export function PurchaseLibrary({ purchases, failed = false, tryouts = [] }: { p
                   <span className={`text-xs ${purchase.status === "paid" ? "text-emerald-700" : "text-muted"}`}>{statusLabels[purchase.status]}</span>
                 </div>
                 <h2 className="mt-2 break-words text-base font-semibold leading-6 sm:text-lg sm:leading-7">{purchase.name}</h2>
-                <p className="mt-0.5 text-xs text-muted">{purchase.shopName}</p>
+                <p className="mt-0.5 text-xs text-muted">{purchase.shopHref ? <Link href={purchase.shopHref} className="underline-offset-4 hover:text-ink hover:underline">{purchase.shopName}</Link> : purchase.shopName}</p>
                 <p className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted">
                   <span>{dateLabel(purchase.purchasedAt)}</span>
                   <span aria-hidden>·</span>
