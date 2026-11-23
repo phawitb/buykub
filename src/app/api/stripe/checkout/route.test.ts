@@ -173,3 +173,30 @@ describe("prices Stripe cannot charge", () => {
     expect(mocks.create).not.toHaveBeenCalled();
   });
 });
+
+describe("promo codes", () => {
+  it("starts the checkout with the normalised code", async () => {
+    const response = await POST(request({ promoCode: " save20 " }));
+    expect(response.status).toBe(200);
+    expect(mocks.userRpc).toHaveBeenCalledWith("begin_product_checkout_with_promo", { p_product_id: context.product_id, p_checkout_reference: reference, p_promo_code: "SAVE20" });
+    expect(mocks.userRpc).not.toHaveBeenCalledWith("begin_stripe_product_checkout", expect.anything());
+  });
+  it("explains a refused code in Thai and creates no charge", async () => {
+    mocks.userRpc.mockResolvedValue({ error: { message: "promo_used_up" } });
+    const response = await POST(request({ promoCode: "SAVE20" }));
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: "promo_rejected", error: "โค้ดนี้ถูกใช้ครบจำนวนแล้ว" });
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+  it("rejects a malformed code before reserving anything", async () => {
+    expect((await POST(request({ promoCode: "x" }))).status).toBe(400);
+    expect(mocks.userRpc).not.toHaveBeenCalled();
+  });
+  it("does not let a retry swap the code on an existing checkout", async () => {
+    mocks.context.mockReset().mockResolvedValue({ data: { ...context, promo_code: "SAVE20" } });
+    const response = await POST(request({ promoCode: "OTHER" }));
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: "checkout_expired" });
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+});

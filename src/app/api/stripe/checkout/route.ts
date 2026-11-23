@@ -7,6 +7,7 @@ import { getStripe } from "@/lib/stripe";
 import { cleanupExpiredPromptpay } from "@/lib/payments/promptpay";
 import { MIN_PRICE_BAHT } from "@/features/products/validation";
 import { referralFromCookies } from "@/lib/affiliates/referral";
+import { normalizePromoCode, promoErrorMessage } from "@/lib/promo/codes";
 
 export const runtime = "nodejs";
 const headers = { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" };
@@ -20,6 +21,8 @@ export async function POST(request: Request) {
   if (body?.kind === "service") return error("ระบบจองบริการพักให้บริการชั่วคราว", 410);
   if (body?.kind !== "product" || typeof body.productId !== "string" || !uuid.test(body.productId)) return error("Invalid product", 400);
   if (body.requestId !== undefined && (typeof body.requestId !== "string" || !uuid.test(body.requestId))) return error("Invalid request ID", 400);
+  if (body.promoCode !== undefined && body.promoCode !== null && !normalizePromoCode(body.promoCode)) return error("รูปแบบโค้ดไม่ถูกต้อง", 400);
+  const promoCode = normalizePromoCode(body.promoCode);
   const reference = body.requestId || randomUUID();
   try {
     const supabase = await createClient();
@@ -39,10 +42,18 @@ export async function POST(request: Request) {
     let { data: context, error: readError } = await admin.from("stripe_checkout_contexts").select("*").eq("checkout_reference", reference).maybeSingle();
     if (readError) throw readError;
     if (context && (context.product_id !== body.productId || (context.promptpay_buyer_email && context.promptpay_buyer_email !== normalizedEmail) || (context.buyer_user_id && context.buyer_user_id !== user?.id))) return error("รายการชำระเงินไม่ตรงกับผู้ซื้อ", 409);
+    // A retry must carry the same code; a different code starts a new checkout.
+    if (context && (context.promo_code ?? null) !== promoCode) return error("โค้ดส่วนลดเปลี่ยนไป กรุณากดซื้ออีกครั้ง", 409, "checkout_expired");
     if (!context) {
       // Cookie-authenticated RPC binds course identity at the database boundary.
-      const { error: beginError } = await supabase.rpc("begin_stripe_product_checkout", { p_product_id: body.productId, p_checkout_reference: reference });
-      if (beginError) return error(beginError.message.includes("sold_out") ? "สินค้าหมดแล้ว กรุณารีเฟรชหน้า" : "สินค้านี้ไม่พร้อมจำหน่าย", 409);
+      const { error: beginError } = promoCode
+        ? await supabase.rpc("begin_product_checkout_with_promo", { p_product_id: body.productId, p_checkout_reference: reference, p_promo_code: promoCode })
+        : await supabase.rpc("begin_stripe_product_checkout", { p_product_id: body.productId, p_checkout_reference: reference });
+      if (beginError) {
+        const promoMessage = promoErrorMessage(beginError.message);
+        if (promoMessage) return error(promoMessage, 409, "promo_rejected");
+        return error(beginError.message.includes("sold_out") ? "สินค้าหมดแล้ว กรุณารีเฟรชหน้า" : "สินค้านี้ไม่พร้อมจำหน่าย", 409);
+      }
       // The database decides whether the link qualifies; a referral never blocks a purchase.
       const referral = referralFromCookies(request.headers.get("cookie"));
       if (referral) await supabase.rpc("attach_checkout_referral", { p_checkout_reference: reference, p_code: referral }).then(() => undefined, () => undefined);

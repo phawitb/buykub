@@ -145,4 +145,43 @@ describe("StripeCheckout", () => {
     render(<StripeCheckout product={{ ...product, deliveryType: "key", availableStock: 0 }} />);
     expect(screen.getByRole("button", { name: "สินค้าหมด" })).toBeDisabled();
   });
+
+  it("applies a promo code, shows the new price and sends the code to checkout", async () => {
+    const fetchMock = vi.fn(async (...[url]: [string, RequestInit?]) => url === "/api/promo/quote"
+      ? { ok: true, json: async () => ({ code: "SAVE20", listCents: 38900, discountCents: 7700, finalCents: 31200 }) }
+      : { ok: true, json: async () => ({ url: "/checkout/promptpay/pp_1" }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const redirect = vi.fn();
+    const user = userEvent.setup();
+    render(<StripeCheckout product={product} redirectToCheckout={redirect} />);
+    await user.click(screen.getByRole("button", { name: "มีโค้ดส่วนลด?" }));
+    await user.type(screen.getByLabelText("โค้ดส่วนลด"), "save20");
+    await user.click(screen.getByRole("button", { name: "ใช้โค้ด" }));
+    expect(await screen.findByText(/ลด ฿77/)).toBeInTheDocument();
+    const buy = screen.getByRole("button", { name: /ซื้อเลย ฿312/ });
+    await user.click(buy);
+    const checkoutBody = JSON.parse(String(fetchMock.mock.calls.find(([url]) => url === "/api/stripe/checkout")?.[1]?.body));
+    expect(checkoutBody).toMatchObject({ promoCode: "SAVE20" });
+    expect(redirect).toHaveBeenCalledWith("/checkout/promptpay/pp_1");
+  });
+
+  it("shows why a code was refused and keeps the normal price", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, json: async () => ({ error: "โค้ดนี้หมดอายุแล้ว" }) }));
+    const user = userEvent.setup();
+    render(<StripeCheckout product={product} />);
+    await user.click(screen.getByRole("button", { name: "มีโค้ดส่วนลด?" }));
+    await user.type(screen.getByLabelText("โค้ดส่วนลด"), "OLD10");
+    await user.click(screen.getByRole("button", { name: "ใช้โค้ด" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("โค้ดนี้หมดอายุแล้ว");
+    expect(screen.getByRole("button", { name: /ซื้อเลย ฿389/ })).toBeInTheDocument();
+  });
+
+  it("fills in a code from the link", async () => {
+    window.history.replaceState(null, "", "/shop/book?code=save20");
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ code: "SAVE20", listCents: 38900, discountCents: 7700, finalCents: 31200 }) });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<StripeCheckout product={product} />);
+    expect(await screen.findByRole("button", { name: /ซื้อเลย ฿312/ })).toBeInTheDocument();
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ productId: "product-123", code: "SAVE20" });
+  });
 });

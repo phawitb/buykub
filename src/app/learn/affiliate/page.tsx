@@ -32,7 +32,7 @@ export default async function AffiliatePage() {
     >
       <div className="mx-auto max-w-4xl">
         <h1 className="text-2xl font-bold text-ink sm:text-3xl">รายได้จากลิงก์แนะนำ</h1>
-        <p className="mt-3 text-sm leading-7 text-muted">กดปุ่ม “ชวนเพื่อน” ที่สินค้าซึ่งคุณซื้อแล้วเพื่อคัดลอกลิงก์ เมื่อมีคนซื้อผ่านลิงก์ภายใน 30 วัน คุณจะได้ค่าคอมตาม % ที่ร้านค้ากำหนด ผู้ซื้อจ่ายราคาปกติ</p>
+        <p className="mt-3 text-sm leading-7 text-muted">กดปุ่ม “ชวนเพื่อน” ที่สินค้าซึ่งคุณซื้อแล้วเพื่อคัดลอกลิงก์ เมื่อมีคนซื้อผ่านลิงก์ภายใน 30 วัน คุณจะได้ค่าคอมตาม % ที่ร้านค้ากำหนด ถ้าผู้ซื้อใช้โค้ดส่วนลดของร้าน ค่าคอมคิดจากราคาหลังหักส่วนลด</p>
 
         <div className="mt-6 grid grid-cols-3 gap-3">
           {([["รอร้านค้ารับเงิน", total("pending")], ["รอโอน", total("payable")], ["โอนแล้ว", total("paid")]] as const).map(([label, cents]) => (

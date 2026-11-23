@@ -25,7 +25,7 @@ export default async function OrderDetailPage({
 
   const product = order.products as unknown as { name: string } | null;
   const status = order.status as "pending" | "paid" | "refunded" | "failed";
-  const [{ data: assignedKey }, { data: referral }] = await Promise.all([
+  const [{ data: assignedKey }, { data: referral }, { data: discount }] = await Promise.all([
     supabase
       .from("product_keys")
       .select("key_value")
@@ -38,6 +38,10 @@ export default async function OrderDetailPage({
       .select("rate_bp, amount_cents, status")
       .eq("order_id", order.id)
       .maybeSingle<{ rate_bp: number; amount_cents: number; status: string }>(),
+    supabase
+      .rpc("shop_order_discount", { p_order: order.id })
+      .maybeSingle<{ promo_code: string | null; list_cents: number | null; discount_cents: number }>()
+      .then((result) => result, () => ({ data: null })),
   ]);
 
   return (
@@ -68,6 +72,15 @@ export default async function OrderDetailPage({
           </div>
           <p className="text-lg font-bold text-ink">{formatTHB(order.price_cents)}</p>
         </div>
+        {discount && (
+          <p className="mt-4 flex justify-between gap-4 border-t border-line pt-4 text-sm">
+            <span className="text-muted">
+              โค้ดส่วนลด{discount.promo_code ? ` ${discount.promo_code}` : ""}
+              {discount.list_cents != null && ` · ราคาปกติ ${formatTHB(discount.list_cents)}`}
+            </span>
+            <span className="font-semibold text-ink">−{formatTHB(discount.discount_cents)}</span>
+          </p>
+        )}
         {referral && (
           <p className="mt-4 flex justify-between gap-4 border-t border-line pt-4 text-sm">
             <span className="text-muted">ผ่านลิงก์แนะนำ ({ratePercent(referral.rate_bp)}) {referral.status === "void" ? "· ยกเลิกเพราะคืนเงิน" : "· หักจากยอดโอนให้ร้าน"}</span>
