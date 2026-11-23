@@ -953,3 +953,14 @@ refuses a caller who is not signed in).
 - **Admin → จ่ายเงิน → ค่าคอมผู้แนะนำ**: prepare one transfer per referrer, transfer by hand,
   attach the slip (`seller-payout-slips` bucket, `affiliate/<batch>/…`), then record it.
 - Not yet tested with a real-money purchase through a link.
+
+## Shop promo codes — 2026-11-23
+
+Shops create their own codes at `/dashboard/products/promo-codes`. A code is either a percentage (1–100) or a whole-baht amount. It can be limited to chosen products, a total number of uses, one use per account, and an expiry date.
+
+- Buyers enter a code under the buy button. They can also open a product link with `?code=SAVE20` to apply it automatically.
+- `begin_product_checkout_with_promo` checks the code and lowers `stripe_checkout_contexts.amount_cents` in the same transaction that starts the checkout. Because the order, the 5% fee, the payout and the referral commission all follow that amount, they are calculated on the discounted price.
+- A checkout that is open or paid holds one use of its code. A cancelled checkout gives the use back.
+- Discounts are rounded down to whole baht. A discounted price between ฿0 and ฿10 is refused, because of the PromptPay minimum.
+- The order page shows the code and the discount to the shop owner, through the `shop_order_discount` RPC.
+- Tests: `supabase/tests/promo_codes.sql`.

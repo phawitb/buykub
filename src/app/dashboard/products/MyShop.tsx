@@ -182,6 +182,7 @@ export function MyShop({ initial, userId, products, desiredSlug = "", saveAppear
           <button type="button" aria-pressed={!managing} disabled={avatarUploading || coverUploading || saving} onClick={() => setMode("customer")} className={`h-9 whitespace-nowrap px-3 text-xs font-medium transition focus-visible:-outline-offset-2 disabled:opacity-50 sm:px-4 ${!managing ? "bg-paper-dim text-ink" : "bg-paper text-muted hover:text-ink"}`}>มุมมองลูกค้า</button>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          {managing && <Link href="/dashboard/products/promo-codes" className="inline-flex h-9 items-center whitespace-nowrap rounded-lg border border-line bg-paper px-3 text-xs font-medium text-ink-soft transition hover:bg-paper-dim hover:text-ink">โค้ดส่วนลด</Link>}
           <ShareButton url={shopUrl(persistedSlug)} title={name || "ร้านของฉัน"} />
           <Link href={shopUrl(persistedSlug)} target="_blank" rel="noopener noreferrer" aria-label="เปิดหน้าร้านจริง" title="เปิดหน้าร้านจริง" className="inline-flex size-9 items-center justify-center rounded-lg border border-line bg-paper text-muted transition hover:bg-paper-dim hover:text-ink"><ShopIcon name="external" /></Link>
         </div>
