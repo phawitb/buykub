@@ -719,6 +719,13 @@ function ProductEditorSession({
             </label>
           </div>
 
+          <AffiliateRateField
+            rate={value.affiliateRate ?? ""}
+            price={value.price}
+            error={errors.affiliateRate}
+            onChange={(affiliateRate) => update({ affiliateRate })}
+          />
+
           <div>
             <p className="field-label mb-2">รายละเอียด</p>
             <RichTextEditor
@@ -773,27 +780,6 @@ function ProductEditorSession({
         />
         </>
       )}
-
-      <section className="product-section">
-        <h2 className="product-section-title">ลิงก์แนะนำ</h2>
-        <p className="product-help">ให้คนที่ซื้อสินค้านี้แล้วได้ลิงก์ไปชวนเพื่อน เมื่อมีคนซื้อผ่านลิงก์ ผู้แนะนำได้ค่าคอมตาม % นี้ โดยหักจากยอดโอนให้ร้าน ผู้ซื้อจ่ายราคาเท่าเดิม</p>
-        <label className="mt-4 flex items-center gap-3 text-sm font-medium">
-          <input type="checkbox" className="size-4 accent-[var(--color-ink)]" checked={Boolean(value.affiliateRate)} onChange={e => update({affiliateRate: e.target.checked ? "10" : ""})} />
-          เปิดลิงก์แนะนำ
-        </label>
-        {value.affiliateRate !== undefined && value.affiliateRate !== "" && (
-          <label className="field-label mt-4">ค่าคอมผู้แนะนำ (% ของราคาขาย)
-            <span className="relative mt-2 block max-w-40">
-              <input type="number" min="1" max="50" step="0.5" inputMode="decimal" className="field-input pr-9" value={value.affiliateRate} onChange={e => update({affiliateRate: e.target.value})} aria-invalid={Boolean(errors.affiliateRate)} />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted">%</span>
-            </span>
-          </label>
-        )}
-        {errors.affiliateRate && <p role="alert" className="field-error">{errors.affiliateRate}</p>}
-        {value.affiliateRate && Number(value.price) > 0 && !errors.affiliateRate && (
-          <p className="mt-3 text-sm text-muted">ขาย ฿{Number(value.price).toLocaleString("th-TH")} ผ่านลิงก์ ผู้แนะนำได้ ฿{(Math.floor(Number(value.price) * 100 * Math.round(Number(value.affiliateRate) * 100) / 10000) / 100).toLocaleString("th-TH")} · การแก้ % มีผลเฉพาะออเดอร์ใหม่</p>
-        )}
-      </section>
 
       <ProductImageUploader
         userId={userId}
@@ -903,6 +889,66 @@ function IntakeSummaryCard({
           ปิด
         </button>
       </div>
+    </div>
+  );
+}
+
+/** Referral commission for this product, a switch with the % beside the price it applies to. */
+function AffiliateRateField({ rate, price, error, onChange }: { rate: string; price: string; error?: string; onChange: (rate: string) => void }) {
+  const [enabled, setEnabled] = useState(rate !== "");
+  const baht = Number(price);
+  const earns = rate && baht > 0 && !error ? Math.floor(baht * 100 * Math.round(Number(rate) * 100) / 10000) / 100 : null;
+  function toggle() {
+    setEnabled(!enabled);
+    onChange(enabled ? "" : rate || "10");
+  }
+  return (
+    <div className="rounded-2xl border border-line bg-paper-dim p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p id="affiliate-rate-title" className="text-sm font-semibold text-ink">ลิงก์แนะนำ</p>
+          <p className="mt-1 text-xs leading-5 text-muted">ให้คนที่ซื้อแล้วชวนเพื่อนมาซื้อ ผู้แนะนำได้ค่าคอมตาม % นี้ หักจากยอดโอนให้ร้าน ผู้ซื้อจ่ายราคาเท่าเดิม</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          aria-labelledby="affiliate-rate-title"
+          onClick={toggle}
+          className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${enabled ? "bg-accent" : "bg-line"}`}
+        >
+          <span className={`inline-block size-5 rounded-full bg-white shadow transition-transform ${enabled ? "translate-x-5.5" : "translate-x-0.5"}`} />
+        </button>
+      </div>
+      {enabled && (
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-4">
+          <label className="flex items-center gap-2 text-sm text-ink">
+            ค่าคอม
+            <span className="relative block w-24">
+              <input
+                type="number"
+                min="1"
+                max="50"
+                step="0.5"
+                inputMode="decimal"
+                className="field-input pr-8"
+                value={rate}
+                onChange={(event) => onChange(event.target.value)}
+                onBlur={() => { if (rate === "") { setEnabled(false); } }}
+                aria-invalid={Boolean(error)}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted">%</span>
+            </span>
+          </label>
+          {earns !== null && (
+            <p className="text-sm text-muted">
+              ผู้แนะนำได้ <span className="font-semibold text-ink">฿{earns.toLocaleString("th-TH")}</span> ต่อการซื้อ
+            </p>
+          )}
+          <p className="w-full text-xs text-muted">ตั้งได้ 1–50% · การแก้ % มีผลเฉพาะออเดอร์ใหม่</p>
+        </div>
+      )}
+      {error && <p role="alert" className="field-error mt-2">{error}</p>}
     </div>
   );
 }
