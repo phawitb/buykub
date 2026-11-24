@@ -95,4 +95,12 @@ describe("ProductCard", () => {
     expect(link).toContainElement(screen.getByText("ดูรายละเอียด"));
     expect(link).toHaveAttribute("href", "/demo-shop/e-book-audio-book");
   });
+
+  it("shows how many people have bought in the corner, only after a sale", () => {
+    const { unmount } = render(<ProductCard shopSlug="demo-shop" product={{ ...product, buyerCount: 23 }} />);
+    expect(screen.getByText((_, el) => el?.tagName === "SPAN" && el.textContent === "ซื้อแล้ว 23 คน")).toBeInTheDocument();
+    unmount();
+    render(<ProductCard shopSlug="demo-shop" product={{ ...product, buyerCount: 0 }} />);
+    expect(screen.queryByText(/ซื้อแล้ว/)).toBeNull();
+  });
 });

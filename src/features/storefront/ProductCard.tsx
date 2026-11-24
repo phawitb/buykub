@@ -2,6 +2,7 @@ import { productCategoryLabel } from "@/features/products/category";
 import Link from "next/link";
 import { ProductPlaceholder } from "./ProductPlaceholder";
 import { formatTHB } from "@/features/products/format";
+import { UsersIcon } from "@/components/icons";
 
 export type StorefrontProductCard = {
   name: string;
@@ -12,6 +13,8 @@ export type StorefrontProductCard = {
   thumbnailUrl: string | null;
   deliveryType?: "file" | "key" | "course";
   availableStock?: number;
+  /** People who have bought; shown only once there is at least one. */
+  buyerCount?: number;
 };
 
 /**
@@ -52,6 +55,12 @@ export function ProductCard({
         <span className="absolute left-2.5 top-2.5 rounded-full bg-paper/90 px-2.5 py-1 text-[10px] font-medium text-ink backdrop-blur">
           {productCategoryLabel(product.deliveryType)}
         </span>
+        {(product.buyerCount ?? 0) > 0 && (
+          <span className="absolute right-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-paper/90 px-2.5 py-1 text-[10px] font-medium text-ink backdrop-blur">
+            <UsersIcon className="size-3" />
+            ซื้อแล้ว <span className="font-semibold" data-numeric>{product.buyerCount!.toLocaleString("th-TH")}</span> คน
+          </span>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col px-2 pb-1.5 pt-3">
