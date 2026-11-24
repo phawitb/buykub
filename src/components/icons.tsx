@@ -124,6 +124,16 @@ export const LinkIcon = glyph(
   "LinkIcon",
 );
 
+export const UsersIcon = glyph(
+  <>
+    <circle cx="9" cy="8" r="3.25" />
+    <path d="M3 19.5c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" />
+    <path d="M15.5 4.9a3.25 3.25 0 0 1 0 6.2" />
+    <path d="M17.5 14.3c2.1.6 3.5 2.6 3.5 5.2" />
+  </>,
+  "UsersIcon",
+);
+
 export const ShareIcon = glyph(
   <>
     <path d="M12 15.5V4m0 0 4 4m-4-4-4 4" />

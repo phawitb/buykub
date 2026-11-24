@@ -10,11 +10,13 @@ const mocks = vi.hoisted(() => ({
   purchase: vi.fn(),
   examSummary: vi.fn(),
   previews: vi.fn(async () => [] as unknown[]),
+  buyerCount: vi.fn(async () => 0),
 }));
 
 vi.mock("next/server", () => ({ connection: vi.fn(async () => undefined) }));
 vi.mock("@/lib/storefront/catalog", () => ({ getPublicShop: mocks.getPublicShop, getPublicProduct: mocks.getPublicProduct }));
 vi.mock("@/lib/storefront/previews", () => ({ getPublicPreviewImages: mocks.previews }));
+vi.mock("@/lib/storefront/buyer-count", () => ({ getProductBuyerCount: mocks.buyerCount }));
 vi.mock("@/lib/storefront/exam-summary", () => ({ getPublicExamSummary: mocks.examSummary }));
 vi.mock("@/lib/supabase/public", () => ({ createPublicClient: () => ({ rpc: mocks.rpc }) }));
 vi.mock("@/components/DashboardShortcut", () => ({ DashboardShortcut: () => null }));
@@ -28,6 +30,7 @@ beforeEach(() => {
   mocks.getPublicShop.mockResolvedValue({ id: "shop-1", slug: "demo", name: "Demo shop", avatar_url: null });
   mocks.rpc.mockResolvedValue({ data: 3 });
   mocks.examSummary.mockResolvedValue(null);
+  mocks.buyerCount.mockResolvedValue(0);
 });
 
 describe("product detail category", () => {
@@ -111,4 +114,20 @@ it("previews a shared product link with the product's own name, text and first i
   const meta = await generateMetadata({ params: Promise.resolve({ slug: "demo", productSlug: "my-product" }) });
   expect(meta.title).toBe("My product — Demo shop");
   expect(meta.openGraph).toMatchObject({ title: "My product — Demo shop", description: "Line one line two", url: "https://buykub.com/demo/my-product", images: [{ url: "https://cdn.test/p.jpg" }] });
+});
+
+it("says how many people have bought, and stays quiet before the first sale", async () => {
+  mocks.getPublicProduct.mockResolvedValue({
+    id: "product-1", slug: "my-product", name: "My product", delivery_type: "course",
+    price_cents: 8900, images: [], images_v2: [], faq: [], highlights: [],
+  });
+  mocks.buyerCount.mockResolvedValue(1234);
+  const { unmount } = render(await ProductDetailPage({ params: Promise.resolve({ slug: "demo", productSlug: "my-product" }) }));
+  expect(mocks.buyerCount).toHaveBeenCalledWith("product-1");
+  expect(screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "ซื้อแล้ว 1,234 คน")).toBeInTheDocument();
+  unmount();
+
+  mocks.buyerCount.mockRejectedValue(new Error("down"));
+  render(await ProductDetailPage({ params: Promise.resolve({ slug: "demo", productSlug: "my-product-2" }) }));
+  expect(screen.queryByText(/ซื้อแล้ว/)).toBeNull();
 });
