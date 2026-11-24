@@ -8,6 +8,7 @@ import { Pricing } from "@/components/Pricing";
 import { FAQ } from "@/components/FAQ";
 import { ClosingCTA } from "@/components/ClosingCTA";
 import { Footer } from "@/components/Footer";
+import { ShopPromo } from "@/components/ShopPromo";
 import { getPublicSiteSettings } from "@/lib/admin/site";
 
 /**
@@ -40,6 +41,7 @@ export default async function Home() {
       </main>
 
       <Footer supportEmail={site.support_email} />
+      <ShopPromo />
     </div>
   );
 }
