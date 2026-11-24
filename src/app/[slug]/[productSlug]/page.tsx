@@ -19,10 +19,11 @@ import { ProductPurchase } from "./ProductPurchase";
 import { previewText, shareMetadata } from "@/lib/storefront/share-meta";
 import { getPublicExamSummary } from "@/lib/storefront/exam-summary";
 import { getCourseHasPdf } from "@/lib/storefront/course-pdf";
+import { getProductBuyerCount } from "@/lib/storefront/buyer-count";
 import { getPublicPreviewImages } from "@/lib/storefront/previews";
 import { ProductPreviewGallery } from "@/features/storefront/ProductPreviewGallery";
 import { ExamCourseOverview } from "@/features/storefront/ExamCourseOverview";
-import { ArrowRightIcon, CheckIcon } from "@/components/icons";
+import { ArrowRightIcon, CheckIcon, UsersIcon } from "@/components/icons";
 
 type Params = Promise<{ slug: string; productSlug: string }>;
 
@@ -41,10 +42,11 @@ const loadProduct = cache(async (slug: string, productSlug: string) => {
         })
       : { data: null };
 
-  const [examSummary, previews, hasPdf] = await Promise.all([
+  const [examSummary, previews, hasPdf, buyerCount] = await Promise.all([
     product.delivery_type === "course" ? getPublicExamSummary(product.id) : null,
     getPublicPreviewImages(product.id),
     product.delivery_type === "course" ? getCourseHasPdf(product.id).catch(() => false) : false,
+    getProductBuyerCount(product.id).catch(() => 0),
   ]);
 
   return {
@@ -53,6 +55,7 @@ const loadProduct = cache(async (slug: string, productSlug: string) => {
     examSummary,
     previews,
     hasPdf,
+    buyerCount,
     availableStock:
       product.delivery_type === "key" ? Number(availableStock ?? 0) : undefined,
   };
@@ -81,7 +84,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
   const { slug, productSlug } = await params;
   const result = await loadProduct(slug, productSlug);
   if (!result) notFound();
-  const { shop, product, examSummary, previews, hasPdf, availableStock } = result;
+  const { shop, product, examSummary, previews, hasPdf, buyerCount, availableStock } = result;
 
   const imagesV2 = Array.isArray(product.images_v2)
     ? (product.images_v2 as ProductImage[])
@@ -172,6 +175,12 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
               </span>
             )}
           </div>
+          {buyerCount > 0 && (
+            <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted">
+              <UsersIcon className="size-4" />
+              ซื้อแล้ว <span className="font-semibold text-ink" data-numeric>{buyerCount.toLocaleString("th-TH")}</span> คน
+            </p>
+          )}
 
           <div className="mt-5">
             <ProductPurchase
