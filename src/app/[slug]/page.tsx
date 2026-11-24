@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { getPublicShop, getPublicProducts } from "@/lib/storefront/catalog";
+import { getProductBuyerCount } from "@/lib/storefront/buyer-count";
 import { ShopViewTracker } from "@/features/analytics/ShopViewTracker";
 import Link from "next/link";
 import { ProductCard } from "@/features/storefront/ProductCard";
@@ -51,6 +52,9 @@ export default async function ShopPage({
       }),
   );
   const stockByProduct = new Map(stockEntries);
+  const buyerCounts = new Map(await Promise.all(
+    (products ?? []).map(async (product) => [product.id, await getProductBuyerCount(product.id).catch(() => 0)] as const),
+  ));
 
   const productCards = (products ?? []).map((product) => {
     const imagesV2 = Array.isArray(product.images_v2)
@@ -68,6 +72,7 @@ export default async function ShopPage({
         product.delivery_type === "key"
           ? stockByProduct.get(product.id) ?? 0
           : undefined,
+      buyerCount: buyerCounts.get(product.id) ?? 0,
     };
   });
 
