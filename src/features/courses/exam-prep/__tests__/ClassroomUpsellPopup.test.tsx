@@ -1,7 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { busyHash, ClassroomUpsellPopup, UPSELL_AGAIN_MS, UPSELL_FIRST_MS, UPSELL_POLL_MS } from "../ClassroomUpsellPopup";
+import { busyHash, ClassroomUpsellPopup, UPSELL_AGAIN_MS, UPSELL_FIRST_MS, UPSELL_POLL_MS, TRIAL_END } from "../ClassroomUpsellPopup";
 import type { ClassroomUpsell } from "../upsell";
 
 const full = { id: "full", name: "ข้อสอบเสมือนจริง (ตัวเต็ม)", href: "/mysheet/full", priceCents: 5900, compareCents: 12900, cover: null };
@@ -57,5 +57,15 @@ describe("ClassroomUpsellPopup", () => {
     expect(busyHash("#mock-2")).toBe(true);
     expect(busyHash("#mock")).toBe(false);
     expect(busyHash("#practice-math")).toBe(false);
+  });
+  it("opens at once when the free round ends, with the full version's counts", async () => {
+    const withDetails = { ...upsell, upgradeDetails: ["ฝึกแยกวิชา 600 ข้อ", "ข้อสอบจำลองเสมือนจริง 4 ชุด ชุดละ 150 ข้อ"] };
+    render(<ClassroomUpsellPopup upsell={withDetails} />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const room = document.createElement("div");
+    document.body.append(room);
+    act(() => { room.dispatchEvent(new CustomEvent(TRIAL_END, { bubbles: true })); });
+    expect(await screen.findByRole("dialog")).toHaveTextContent("ทำครบชุดทดลองแล้ว");
+    expect(screen.getAllByRole("link")[0]).toHaveTextContent("ข้อสอบจำลองเสมือนจริง 4 ชุด ชุดละ 150 ข้อ");
   });
 });

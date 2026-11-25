@@ -144,12 +144,6 @@ function mount(root, D, opts = {}) {
     }
     return ok;
   }
-  function setFlag(id, on) {
-    const a = S.att[id]; if (!a) return;
-    if (on) { a.flag = 1; if (!a.box) { a.box = 1; a.due = dueIn(1); } }
-    else { delete a.flag; if (a.ok && a.box === 1) { delete a.box; delete a.due; delete a.why; } }
-    save();
-  }
   const dueList = () => Object.keys(S.att).filter(id => Q[id] && S.att[id].box && S.att[id].due <= Date.now());
   const notebook = () => Object.keys(S.att).filter(id => Q[id] && S.att[id].box);
 
@@ -326,6 +320,7 @@ function mount(root, D, opts = {}) {
       <span class="eyebrow">ตัวเต็ม</span>
       <h2 style="font-size:22px">${esc(title)}</h2>
       ${UPGRADE.text ? `<p class="muted">${esc(UPGRADE.text)}</p>` : ""}
+      ${Array.isArray(UPGRADE.details) && UPGRADE.details.length ? `<ul class="muted" style="margin:0;padding-left:20px;line-height:1.75">${UPGRADE.details.map(line => `<li>${esc(line)}</li>`).join("")}</ul>` : ""}
       <div class="row" style="align-items:baseline">
         <a class="btn primary" href="${esc(UPGRADE.href)}" target="_top">${esc(UPGRADE.label || "ดูตัวเต็ม")}</a>
         ${UPGRADE.price ? `<b class="num" style="font-family:var(--f-display);font-size:22px">${esc(UPGRADE.price)}</b>` : ""}
@@ -522,7 +517,7 @@ function mount(root, D, opts = {}) {
         <div class="row" style="justify-content:space-between;align-items:baseline"><span class="score-big num" style="font-size:44px">${st.done}<span class="muted" style="font-size:22px"> / ${st.total} ข้อ</span></span><span class="muted num">${st.acc !== null ? `ถูก ${st.ok} ข้อ (${st.acc}%)` : "ยังไม่ได้เริ่ม"}</span></div>
         ${bar2(st, "lg")}
         ${unread.length ? `<p class="small trap">ยังไม่ได้อ่าน ${unread.map(it => `<a href="#${it.href}">บท ${it.n}</a>`).join(", ")} แนะนำให้ทบทวนก่อนฝึก</p>` : ""}
-        <div class="row"><button class="btn primary" data-act="range" data-a="${a}" data-b="${b}" data-day="${n}">${st.done ? (st.done === st.total ? "ทำซ้ำชุดนี้" : "ทำต่อ") : "เริ่มทำแบบฝึก"}</button><span class="muted small">ทำโดยไม่เปิดเฉลย ข้อที่ลังเลให้กดทำเครื่องหมายไว้</span></div>
+        <div class="row"><button class="btn primary" data-act="range" data-a="${a}" data-b="${b}" data-day="${n}">${st.done ? (st.done === st.total ? "ทำซ้ำชุดนี้" : "ทำต่อ") : "เริ่มทำแบบฝึก"}</button><span class="muted small">ทำโดยไม่เปิดเฉลย ข้อที่ผิดจะถูกเก็บไว้ทบทวน</span></div>
       </div>
       ${paneFoot(sel, items, "")}`;
   }
@@ -639,7 +634,7 @@ function mount(root, D, opts = {}) {
           ${MASCOT ? `<img src="${MASCOT}" alt="" width="96" height="124">` : ""}
           <span class="eyebrow">จบชุดฝึก</span>
           <div class="score-big num">${right}<span class="muted" style="font-size:28px"> / ${n}</span></div>
-          <p class="muted">${n ? (right / n >= .8 ? "แม่นแล้ว เว้นช่วงแล้วกลับมาทำข้อที่ลังเลอีกครั้ง" : "อ่านเฉลยแล้วเขียนเหตุผลสั้น ๆ ว่าทำไมคำตอบนั้นถูกและพลาดตรงไหน") : "ยังไม่ได้ตอบข้อใด"}</p>
+          <p class="muted">${n ? (right / n >= .8 ? "แม่นแล้ว เว้นช่วงแล้วกลับมาทำอีกครั้ง" : "อ่านเฉลยแล้วเขียนเหตุผลสั้น ๆ ว่าทำไมคำตอบนั้นถูกและพลาดตรงไหน") : "ยังไม่ได้ตอบข้อใด"}</p>
         </div>
         ${trialEnd ? upgradeCard("ทำครบชุดทดลองแล้ว ฝึกต่อให้ครบด้วยตัวเต็ม") : ""}
         <div class="row" style="justify-content:center">
@@ -667,10 +662,9 @@ function mount(root, D, opts = {}) {
       </div>
       <div class="quiz-foot">
         <button class="btn sm" data-act="prev" ${i === 0 ? "disabled" : ""}>← ก่อนหน้า</button>
-        <button class="btn sm ${a.flag ? "flag-on" : ""}" data-act="flag" ${answered ? "" : "disabled"} aria-pressed="${!!a.flag}">${a.flag ? "★ ลังเล (จะทบทวน)" : "☆ ข้อนี้ลังเล"}</button>
         <button class="btn sm ${answered ? "primary" : ""}" data-act="next">${i === total - 1 ? "ดูสรุป" : answered ? "ข้อถัดไป →" : "ข้าม →"}</button>
       </div>
-      <p class="kbd">แป้น 1-4 เลือกคำตอบ · Enter ข้อถัดไป · F ทำเครื่องหมายลังเล</p>
+      <p class="kbd">แป้น 1-4 เลือกคำตอบ · Enter ข้อถัดไป</p>
     </div>`;
   }
 
@@ -827,7 +821,7 @@ function mount(root, D, opts = {}) {
       <button class="btn primary" data-act="review-due" ${due.length ? "" : "disabled"}>เริ่มทบทวน</button>
     </section>
     ${nb.length ? SUBJ.map(s => reviewCard(s, nb.filter(id => Q[id].s === s))).join("")
-      : `<div class="card empty">${MASCOT ? `<img src="${MASCOT}" alt="">` : ""}<p>ยังไม่มีข้อในสมุด ข้อที่ตอบผิดหรือทำเครื่องหมายลังเลจะถูกบันทึกที่นี่อัตโนมัติ</p><a class="btn" href="#practice">ไปฝึกโจทย์</a></div>`}`;
+      : `<div class="card empty">${MASCOT ? `<img src="${MASCOT}" alt="">` : ""}<p>ยังไม่มีข้อในสมุด ข้อที่ตอบผิดจะถูกบันทึกที่นี่อัตโนมัติ</p><a class="btn" href="#practice">ไปฝึกโจทย์</a></div>`}`;
   }
   function reviewCard(s, ids) {
     if (!ids.length) return "";
@@ -864,7 +858,14 @@ function mount(root, D, opts = {}) {
     if (quiz.picked[id] !== undefined) return;
     quiz.picked[id] = k; record(id, k); save(); render();
   }
-  function quizNext() { if (!quiz) return; quiz.i = Math.min(quiz.ids.length, quiz.i + 1); render(); }
+  function quizNext() {
+    if (!quiz) return;
+    const ending = quiz.i < quiz.ids.length && quiz.i + 1 >= quiz.ids.length;
+    quiz.i = Math.min(quiz.ids.length, quiz.i + 1);
+    render();
+    // The host page may follow the end of a free round with its own offer.
+    if (ending && quiz.drill && !MOCKS && UPGRADE) root.dispatchEvent(new CustomEvent("exam-prep:trial-end", { bubbles: true }));
+  }
 
   function onClick(e) {
     // A tap outside the phone's dropdown map or chapter list closes it.
@@ -877,7 +878,6 @@ function mount(root, D, opts = {}) {
       case "next": quizNext(); break;
       case "drill-new": quiz = null; render(); break;
       case "prev": if (quiz && quiz.i > 0) { quiz.i--; render(); } break;
-      case "flag": { const id = quiz.ids[quiz.i]; setFlag(id, !(S.att[id] && S.att[id].flag)); render(); break; }
       case "redo-wrong": { const w = quiz.ids.filter(id => quiz.picked[id] !== undefined && quiz.picked[id] !== Q[id].ans); startQuiz(w, quiz.title + " · ข้อที่ผิด", quiz.back, quiz.nav); break; }
       case "range": startQuiz(span(t.dataset.a, t.dataset.b), `วันที่ ${t.dataset.day} · ${SK[t.dataset.a[0]].short} ${rng(t.dataset.a, t.dataset.b)}`, here); break;
       case "chapter": { const n = +t.dataset.n; startQuiz(practiceIds(s).filter(id => (s.topicMap[Q[id].topic] || []).includes(n)), `${s.short} · บท ${n}`, here); break; }
@@ -963,7 +963,6 @@ function mount(root, D, opts = {}) {
     if (["1", "2", "3", "4"].includes(e.key)) { quizPick(+e.key - 1); e.preventDefault(); }
     else if (e.key === "Enter" || e.key === "ArrowRight") { if (document.activeElement.tagName === "BUTTON" && e.key === "Enter") return; quizNext(); e.preventDefault(); }
     else if (e.key === "ArrowLeft" && quiz.i > 0) { quiz.i--; render(); }
-    else if ((e.key === "f" || e.key === "F") && quiz.i < quiz.ids.length) { const id = quiz.ids[quiz.i]; if (quiz.picked[id] !== undefined) { setFlag(id, !(S.att[id] && S.att[id].flag)); render(); } }
   }
   function onHash() { confirmOpen = false; render(); }
 

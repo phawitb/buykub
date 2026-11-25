@@ -7,7 +7,7 @@ import { createRemoteStore, type ProgressState, type RemoteStore } from "./remot
 import type { ClassroomUpsell } from "./upsell";
 
 type EngineApp = { setState(state: ProgressState): void; getState(): ProgressState; destroy(): void };
-type Upgrade = { href: string; label: string; price: string; compare?: string; text?: string };
+type Upgrade = { href: string; label: string; price: string; compare?: string; text?: string; details?: string[] };
 type Engine = { mount(root: HTMLElement, pack: unknown, options: { store: RemoteStore; mascot: string; upgrade?: Upgrade }): EngineApp };
 declare global { interface Window { ExamPrep?: Engine } }
 
@@ -39,6 +39,7 @@ export function ExamPrepClassroom({productId, name, expiresAt, owner, upsell}:{p
   const [attempt, setAttempt] = useState(0);
   const full = upsell?.upgrade ?? null;
   // Plain strings only: the engine renders them into its own markup.
+  const details = upsell?.upgradeDetails?.join("\n") ?? "";
   const upgradeHref = full?.href, upgradePrice = full ? formatTHB(full.priceCents) : "", upgradeCompare = full?.compareCents && full.compareCents > full.priceCents ? formatTHB(full.compareCents) : undefined;
 
   useEffect(() => {
@@ -59,7 +60,8 @@ export function ExamPrepClassroom({productId, name, expiresAt, owner, upsell}:{p
         store.pull(), // the newest copy from any device is in place before the engine reads it
       ]);
       if (cancelled || !rootRef.current) return;
-      const upgrade = upgradeHref ? {href:upgradeHref, label:"ดูตัวเต็ม", price:upgradePrice, compare:upgradeCompare, text:"คลังข้อสอบเต็มชุด ข้อสอบจำลองจับเวลา และเฉลยทุกข้อ"} : undefined;
+      const upgrade = upgradeHref ? {href:upgradeHref, label:"ดูตัวเต็ม", price:upgradePrice, compare:upgradeCompare,
+        ...(details ? {details:details.split("\n")} : {text:"คลังข้อสอบเต็มชุด ข้อสอบจำลองจับเวลา และเฉลยทุกข้อ"})} : undefined;
       app = engine.mount(rootRef.current, pack, {store, mascot:"/exam-prep/mascot.png", upgrade});
       setPhase("ready");
     })().catch(() => { if (!cancelled) setPhase("error"); });
@@ -80,7 +82,7 @@ export function ExamPrepClassroom({productId, name, expiresAt, owner, upsell}:{p
       app?.destroy();
       if (previousTheme === undefined) delete html.dataset.theme; else html.dataset.theme = previousTheme;
     };
-  }, [productId, attempt, upgradeHref, upgradePrice, upgradeCompare]);
+  }, [productId, attempt, upgradeHref, upgradePrice, upgradeCompare, details]);
 
   const access = owner ? "ตัวอย่างสำหรับผู้สอน" : expiresAt ? `เข้าเรียนได้ถึง ${new Date(expiresAt).toLocaleDateString("th-TH",{timeZone:"Asia/Bangkok",day:"numeric",month:"short",year:"numeric"})}` : "สิทธิ์ตลอดชีพ";
   return <div className="min-h-screen bg-[#fbfaf6] text-ink">
