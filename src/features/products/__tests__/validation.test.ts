@@ -49,10 +49,10 @@ describe("validateProductEditor", () => {
     expect(validateProductEditor(validValue)).toEqual({});
   });
 
-  it("keeps every price at Stripe's ฿10 minimum, free included", () => {
-    expect(validateProductEditor({ ...validValue, price: "1", comparePrice: "" }).price).toBe("ราคาขั้นต่ำ ฿10");
-    expect(validateProductEditor({ ...validValue, price: "0", comparePrice: "" }).price).toBe("ราคาขั้นต่ำ ฿10");
+  it("keeps paid prices at Stripe's ฿10 minimum and still allows free products", () => {
+    expect(validateProductEditor({ ...validValue, price: "1", comparePrice: "" }).price).toBe("ราคาขั้นต่ำ ฿10 (หรือ 0 สำหรับสินค้าฟรี)");
     expect(validateProductEditor({ ...validValue, price: "10", comparePrice: "" })).toEqual({});
+    expect(validateProductEditor({ ...validValue, price: "0", comparePrice: "" })).toEqual({});
   });
 
   it("rejects a missing product name", () => {

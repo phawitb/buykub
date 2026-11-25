@@ -165,7 +165,7 @@ export function StripeCheckout({
         disabled={starting || soldOut}
         className="w-full rounded-2xl bg-accent px-6 py-3.5 text-base font-bold text-paper shadow-[0_10px_25px_color-mix(in_srgb,var(--accent)_22%,transparent)] transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {soldOut ? "สินค้าหมด" : starting ? "กำลังเปิด QR PromptPay..." : <>ซื้อเลย {formatTHB(priceCents)}{promo && <s className="ml-2 text-sm font-medium opacity-70">{formatTHB(promo.listCents)}</s>}</>}
+        {soldOut ? "สินค้าหมด" : product.priceCents === 0 ? (starting ? "กำลังเปิด..." : "รับฟรี") : starting ? "กำลังเปิด QR PromptPay..." : <>ซื้อเลย {formatTHB(priceCents)}{promo && <s className="ml-2 text-sm font-medium opacity-70">{formatTHB(promo.listCents)}</s>}</>}
       </button>
       {error && <p role="alert" className="mt-3 text-center text-sm text-red-600">{error}</p>}
       {loginReturnTo && <GoogleLoginDialog next={loginReturnTo} onClose={closeLogin} returnFocus={purchaseTrigger} />}

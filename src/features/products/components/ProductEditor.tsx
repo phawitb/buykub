@@ -43,7 +43,7 @@ import {
   uniqueProductSlug,
 } from "@/features/products/slug";
 import { productCategory } from "@/features/products/category";
-import { affiliateRateBasisPoints, isBlankProductValue, MIN_PRICE_BAHT, validateProductEditor } from "@/features/products/validation";
+import { affiliateRateBasisPoints, isBlankProductValue, validateProductEditor } from "@/features/products/validation";
 import { parseProductKeys } from "@/features/products/product-keys";
 import { createClient } from "@/lib/supabase/client";
 import { isMissingColumnError, writeWithoutMissingColumn } from "@/lib/supabase/missing-column";
@@ -679,7 +679,7 @@ function ProductEditorSession({
                 <input
                   value={value.price}
                   type="number"
-                  min={MIN_PRICE_BAHT}
+                  min="0"
                   step="0.01"
                   onChange={(event) => update({ price: event.target.value })}
                   placeholder="199"
