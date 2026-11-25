@@ -526,6 +526,14 @@
 .exam-prep .ctx .plan-start span { display: none; }
 .exam-prep .ctx .date-in { padding: 5px 8px; font-size: 14px; max-width: 150px; }
 }
+/* Drill practice: the subject picker above the running quiz; one scrolling row on phones. */
+.exam-prep .drill-subj { display: flex; gap: 8px; flex-wrap: wrap; max-width: 820px; width: 100%; margin: 0 auto; }
+.exam-prep .drill-subj ~ .upgrade { max-width: 820px; width: 100%; margin: 0 auto; }
+.exam-prep .drill-subj .chip { padding: 6px 14px; }
+@media (max-width: 640px) {
+.exam-prep .drill-subj { flex-wrap: nowrap; overflow-x: auto; width: auto; max-width: none; margin: 0 -16px; padding: 0 16px; scrollbar-width: none; }
+.exam-prep .drill-subj::-webkit-scrollbar { display: none; }
+}
 .exam-prep .pr-card { gap: 10px; }
 .exam-prep .pr-card h2 { font-size: 19px; }
 .exam-prep .pr-btns { display: flex; gap: 6px; }
