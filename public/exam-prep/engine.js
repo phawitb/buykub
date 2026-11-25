@@ -591,7 +591,7 @@ function mount(root, D, opts = {}) {
     if (!quiz || quiz.drill !== (key || "all")) drillQuiz(key);
     const chip = (k, label, cls = "") => `<a class="chip ${cls} ${key === k ? "on" : ""}" href="#practice${k ? "-" + k : ""}" ${key === k ? 'aria-current="true"' : ""}>${label}</a>`;
     return `<nav class="drill-subj" aria-label="เลือกวิชา">${chip("", "ทุกวิชา")}${SUBJ.map(s => chip(s.key, esc(s.short), `subj s-${s.key}`)).join("")}</nav>
-    ${viewQuiz()}${!MOCKS ? upgradeCard("ฝึกครบทุกข้อ และทำข้อสอบจำลองเสมือนจริง") : ""}`;
+    ${viewQuiz()}${!MOCKS && quiz && quiz.i < quiz.ids.length ? upgradeCard("ฝึกครบทุกข้อ และทำข้อสอบจำลองเสมือนจริง") : ""}`;
   }
   function practiceCard(s) {
     const ids = practiceIds(s), st = stats(ids);
@@ -632,6 +632,8 @@ function mount(root, D, opts = {}) {
       const by = {};
       ids.forEach(id => { const t = Q[id].topic; by[t] = by[t] || { ok: 0, done: 0, total: 0, s: Q[id].s }; by[t].total++; if (picked[id] === undefined) return; by[t].done++; if (picked[id] === Q[id].ans) by[t].ok++; });
       const n = Object.keys(picked).length;
+      // A free drill room (no mock sets) ends its one short round on the full version.
+      const trialEnd = quiz.drill && !MOCKS && UPGRADE;
       return `<div class="quiz">${qtop}
         <div class="card qcard taped" style="align-items:center;text-align:center">
           ${MASCOT ? `<img src="${MASCOT}" alt="" width="96" height="124">` : ""}
@@ -639,6 +641,7 @@ function mount(root, D, opts = {}) {
           <div class="score-big num">${right}<span class="muted" style="font-size:28px"> / ${n}</span></div>
           <p class="muted">${n ? (right / n >= .8 ? "แม่นแล้ว เว้นช่วงแล้วกลับมาทำข้อที่ลังเลอีกครั้ง" : "อ่านเฉลยแล้วเขียนเหตุผลสั้น ๆ ว่าทำไมคำตอบนั้นถูกและพลาดตรงไหน") : "ยังไม่ได้ตอบข้อใด"}</p>
         </div>
+        ${trialEnd ? upgradeCard("ทำครบชุดทดลองแล้ว ฝึกต่อให้ครบด้วยตัวเต็ม") : ""}
         <div class="row" style="justify-content:center">
           ${wrongIds.length ? `<button class="btn primary" data-act="redo-wrong">ทำข้อที่ผิดอีกครั้ง (${wrongIds.length})</button>` : ""}
           ${quiz.drill ? `<button class="btn" data-act="drill-new">ฝึกรอบใหม่</button>` : `${DRILL ? "" : `<a class="btn" href="#review">เปิดสมุดข้อผิด</a>`}<a class="btn ghost" href="#${back}">กลับ</a>`}
