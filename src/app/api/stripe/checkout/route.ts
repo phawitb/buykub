@@ -62,27 +62,27 @@ export async function POST(request: Request) {
     if (readError || !context) throw new Error("Checkout unavailable");
     if (context.status === "cancelled") return error("รายการชำระเงินหมดอายุ กรุณาเริ่มใหม่", 409, "checkout_expired");
     if (context.status === "completed") return NextResponse.json({ url: `/checkout/success?session_id=${context.stripe_session_id}` }, { headers });
-    // A free product needs no QR or card details. Preserve Stripe's authoritative
-    // no_payment_required event and the existing fulfillment path.
+    // A free product needs no QR, card details or Stripe page: the database
+    // completes it directly. Only a checkout begun on Stripe before this change
+    // still finishes there.
     if (context.amount_cents === 0) {
-      const stripe = getStripe();
-      const origin = new URL(request.url).origin;
-      const session = context.stripe_session_id
-        ? await stripe.checkout.sessions.retrieve(context.stripe_session_id)
-        : await stripe.checkout.sessions.create({
-            mode: "payment", payment_method_types: ["card"],
-            client_reference_id: reference, customer_email: normalizedEmail,
-            line_items: [{ price_data: { currency: "thb", product_data: { name: product.name || "สินค้า" }, unit_amount: 0 }, quantity: 1 }],
-            metadata: { checkout_reference: reference, purchase_kind: "product" },
-            success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${origin}/checkout/cancelled`,
-          }, { idempotencyKey: `free-checkout-${reference}` });
-      if (!context.stripe_session_id) {
-        const { error: attachError } = await admin.rpc("attach_stripe_checkout_session", { p_checkout_reference: reference, p_stripe_session_id: session.id });
-        if (attachError) throw attachError;
+      if (context.stripe_session_id?.startsWith("cs_")) {
+        const session = await getStripe().checkout.sessions.retrieve(context.stripe_session_id);
+        if (session.status === "expired") return error("รายการชำระเงินหมดอายุ กรุณาเริ่มใหม่", 409, "checkout_expired");
+        return NextResponse.json({ url: session.url || `/checkout/success?session_id=${session.id}` }, { headers });
       }
-      if (session.status === "expired") return error("รายการชำระเงินหมดอายุ กรุณาเริ่มใหม่", 409, "checkout_expired");
-      return NextResponse.json({ url: session.url || `/checkout/success?session_id=${session.id}` }, { headers });
+      const { data: claimed, error: claimError } = await admin.rpc("finalize_free_checkout", { p_checkout_reference: reference, p_email: normalizedEmail });
+      if (claimError) throw claimError;
+      const result = Array.isArray(claimed) ? claimed[0] : claimed;
+      // Same delivery email the Stripe webhook sends; the claim stands without it.
+      if (result?.order_id && result.email_token) {
+        await admin.functions.invoke("send-product-key", { body: { orderId: result.order_id, emailToken: result.email_token } })
+          .then(({ error: sendError }) => { if (sendError) console.error("free delivery email failed", sendError.message); }, () => undefined);
+      }
+      if (product.delivery_type === "course") return NextResponse.json({ url: `/learn/${body.productId}` }, { headers });
+      const { data: receipt, error: receiptError } = await admin.from("stripe_checkout_contexts").select("stripe_session_id").eq("checkout_reference", reference).maybeSingle();
+      if (receiptError || !receipt?.stripe_session_id) throw new Error("Checkout unavailable");
+      return NextResponse.json({ url: `/checkout/success?session_id=${receipt.stripe_session_id}` }, { headers });
     }
     const { error: prepareError } = await admin.rpc("prepare_promptpay_checkout", { p_checkout_reference: reference, p_email: normalizedEmail });
     if (prepareError) throw prepareError;
