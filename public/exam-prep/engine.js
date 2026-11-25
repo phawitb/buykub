@@ -326,6 +326,7 @@ function mount(root, D, opts = {}) {
       <span class="eyebrow">ตัวเต็ม</span>
       <h2 style="font-size:22px">${esc(title)}</h2>
       ${UPGRADE.text ? `<p class="muted">${esc(UPGRADE.text)}</p>` : ""}
+      ${Array.isArray(UPGRADE.details) && UPGRADE.details.length ? `<ul class="muted" style="margin:0;padding-left:20px;line-height:1.75">${UPGRADE.details.map(line => `<li>${esc(line)}</li>`).join("")}</ul>` : ""}
       <div class="row" style="align-items:baseline">
         <a class="btn primary" href="${esc(UPGRADE.href)}" target="_top">${esc(UPGRADE.label || "ดูตัวเต็ม")}</a>
         ${UPGRADE.price ? `<b class="num" style="font-family:var(--f-display);font-size:22px">${esc(UPGRADE.price)}</b>` : ""}
@@ -864,7 +865,14 @@ function mount(root, D, opts = {}) {
     if (quiz.picked[id] !== undefined) return;
     quiz.picked[id] = k; record(id, k); save(); render();
   }
-  function quizNext() { if (!quiz) return; quiz.i = Math.min(quiz.ids.length, quiz.i + 1); render(); }
+  function quizNext() {
+    if (!quiz) return;
+    const ending = quiz.i < quiz.ids.length && quiz.i + 1 >= quiz.ids.length;
+    quiz.i = Math.min(quiz.ids.length, quiz.i + 1);
+    render();
+    // The host page may follow the end of a free round with its own offer.
+    if (ending && quiz.drill && !MOCKS && UPGRADE) root.dispatchEvent(new CustomEvent("exam-prep:trial-end", { bubbles: true }));
+  }
 
   function onClick(e) {
     // A tap outside the phone's dropdown map or chapter list closes it.

@@ -8,6 +8,8 @@ import type { ClassroomUpsell } from "./upsell";
 export const UPSELL_FIRST_MS = 8000;
 export const UPSELL_AGAIN_MS = 10 * 60 * 1000;
 export const UPSELL_POLL_MS = 2000;
+/** Bubbled by the engine when a free drill round ends. */
+export const TRIAL_END = "exam-prep:trial-end";
 
 /** A running mock set is under way; the ad never interrupts one. */
 export const busyHash = (hash: string) => /^#mock-/.test(hash);
@@ -17,11 +19,23 @@ const busy = () => busyHash(window.location.hash) || !!document.querySelector(".
 /**
  * The free classroom's ad: the shop's other products, a few seconds after the
  * room opens and again at most every ten minutes, only between questions: it
- * waits while a question is unanswered or a mock set is running.
+ * waits while a question is unanswered or a mock set is running. The engine's
+ * end-of-round event opens it at once.
  */
 export function ClassroomUpsellPopup({ upsell }: { upsell: ClassroomUpsell }) {
   const [open, setOpen] = useState(false);
+  const [finished, setFinished] = useState(false);
   const lastShown = useRef(0);
+
+  useEffect(() => {
+    const onTrialEnd = () => {
+      lastShown.current = Date.now();
+      setFinished(true);
+      setOpen(true);
+    };
+    document.addEventListener(TRIAL_END, onTrialEnd);
+    return () => document.removeEventListener(TRIAL_END, onTrialEnd);
+  }, []);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -30,6 +44,7 @@ export function ClassroomUpsellPopup({ upsell }: { upsell: ClassroomUpsell }) {
       const since = Date.now() - (lastShown.current || opened);
       if (since < (lastShown.current ? UPSELL_AGAIN_MS : UPSELL_FIRST_MS) || busy()) return;
       lastShown.current = Date.now();
+      setFinished(false);
       setOpen(true);
     }, UPSELL_POLL_MS);
     return () => window.clearInterval(timer);
@@ -50,7 +65,7 @@ export function ClassroomUpsellPopup({ upsell }: { upsell: ClassroomUpsell }) {
         <CloseIcon className="size-4" />
       </button>
       <p className="text-[11px] font-semibold tracking-[0.18em] text-muted">แนะนำจาก {upsell.shopName}</p>
-      <h2 id="upsell-title" className="mt-1 pr-10 text-lg font-bold text-ink">{upsell.upgrade ? "ฝึกต่อให้ครบด้วยตัวเต็ม" : "คอร์สอื่นในร้าน"}</h2>
+      <h2 id="upsell-title" className="mt-1 pr-10 text-lg font-bold text-ink">{finished && upsell.upgrade ? "ทำครบชุดทดลองแล้ว ฝึกต่อให้ครบด้วยตัวเต็ม" : upsell.upgrade ? "ฝึกต่อให้ครบด้วยตัวเต็ม" : "คอร์สอื่นในร้าน"}</h2>
       <ul className="mt-4 space-y-3">
         {upsell.items.map(item => <li key={item.id}>
           <Link href={item.href} onClick={() => setOpen(false)} className={`flex items-center gap-3 rounded-xl border p-2.5 transition hover:border-ink ${item.id === upsell.upgrade?.id ? "border-accent bg-accent/5" : "border-line"}`}>
@@ -61,6 +76,9 @@ export function ClassroomUpsellPopup({ upsell }: { upsell: ClassroomUpsell }) {
             <span className="min-w-0 flex-1">
               {item.id === upsell.upgrade?.id && <span className="mb-1 inline-block rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold text-paper">ตัวเต็ม</span>}
               <span className="line-clamp-2 block text-sm font-semibold leading-5 text-ink">{item.name}</span>
+              {item.id === upsell.upgrade?.id && upsell.upgradeDetails?.length ? <span className="mt-1 block space-y-0.5 text-xs leading-5 text-muted">
+                {upsell.upgradeDetails.map(line => <span key={line} className="block">{line}</span>)}
+              </span> : null}
               <span className="mt-1 flex items-baseline gap-1.5">
                 <span className="font-bold text-[#d2262f]" data-numeric>{formatTHB(item.priceCents)}</span>
                 {item.compareCents && item.compareCents > item.priceCents && <s className="text-xs text-muted" data-numeric>{formatTHB(item.compareCents)}</s>}
