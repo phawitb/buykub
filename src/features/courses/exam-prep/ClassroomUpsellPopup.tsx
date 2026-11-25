@@ -7,13 +7,17 @@ import type { ClassroomUpsell } from "./upsell";
 
 export const UPSELL_FIRST_MS = 8000;
 export const UPSELL_AGAIN_MS = 10 * 60 * 1000;
+export const UPSELL_POLL_MS = 2000;
 
-/** A question or a running mock set is under way; the ad never interrupts one. */
-export const busyHash = (hash: string) => /^#(quiz|mock-)/.test(hash);
+/** A running mock set is under way; the ad never interrupts one. */
+export const busyHash = (hash: string) => /^#mock-/.test(hash);
+/** The engine marks its root while an unanswered question is on screen. */
+const busy = () => busyHash(window.location.hash) || !!document.querySelector(".exam-prep[data-busy]");
 
 /**
  * The free classroom's ad: the shop's other products, a few seconds after the
- * room opens and again at most every ten minutes, only between questions.
+ * room opens and again at most every ten minutes, only between questions: it
+ * waits while a question is unanswered or a mock set is running.
  */
 export function ClassroomUpsellPopup({ upsell }: { upsell: ClassroomUpsell }) {
   const [open, setOpen] = useState(false);
@@ -21,15 +25,14 @@ export function ClassroomUpsellPopup({ upsell }: { upsell: ClassroomUpsell }) {
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    const show = () => {
-      if (busyHash(window.location.hash)) return;
+    const opened = Date.now();
+    const timer = window.setInterval(() => {
+      const since = Date.now() - (lastShown.current || opened);
+      if (since < (lastShown.current ? UPSELL_AGAIN_MS : UPSELL_FIRST_MS) || busy()) return;
       lastShown.current = Date.now();
       setOpen(true);
-    };
-    const timer = window.setTimeout(show, UPSELL_FIRST_MS);
-    const onHash = () => { if (lastShown.current && Date.now() - lastShown.current >= UPSELL_AGAIN_MS) show(); };
-    window.addEventListener("hashchange", onHash);
-    return () => { window.clearTimeout(timer); window.removeEventListener("hashchange", onHash); };
+    }, UPSELL_POLL_MS);
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {

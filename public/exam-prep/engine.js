@@ -227,7 +227,7 @@ function mount(root, D, opts = {}) {
     const h = (location.hash || "#" + HOME).slice(1);
     const [view, a, b, c] = h.split("-");
     const V = {
-      home: viewHome, plan: viewPlan, day: () => viewDay(+a, b, c), notes: () => viewNotes(a, b), practice: viewPractice,
+      home: viewHome, plan: viewPlan, day: () => viewDay(+a, b, c), notes: () => viewNotes(a, b), practice: () => viewPractice(a),
       quiz: viewQuiz, mock: () => viewMock(+a, b), review: viewReview, guide: viewGuide,
     };
     if (DRILL) { delete V.home; delete V.plan; delete V.day; delete V.notes; delete V.guide; delete V.review; }
@@ -242,7 +242,11 @@ function mount(root, D, opts = {}) {
     if (view === "practice" && a && !keep) { const el = byId("pr-" + a); if (el) el.scrollIntoView({ block: "start" }); }
     const cur = document.querySelector(".exam-prep .dnav[open] .dnav-item.cur"), nav = cur && cur.closest(".dnav");
     if (nav && nav.scrollHeight > nav.clientHeight) nav.scrollTop = cur.offsetTop - nav.clientHeight / 3;
+    // Marks an open, unanswered question so the host keeps ads away from it.
+    root.toggleAttribute("data-busy", !!(quizHash() && quiz && quiz.i < quiz.ids.length && quiz.picked[quiz.ids[quiz.i]] === undefined));
   }
+  // The views that play the quiz: #quiz, and in a drill room the practice page itself.
+  function quizHash() { const h = location.hash || "#" + HOME; return h === "#quiz" || (DRILL && /^#practice(-|$)/.test(h)); }
 
   /* ---------- views: home ---------- */
   function countdown() {
@@ -571,9 +575,23 @@ function mount(root, D, opts = {}) {
   }
 
   /* ---------- views: practice ---------- */
-  function viewPractice() {
+  function viewPractice(key) {
+    if (DRILL) return viewDrillPractice(SK[key] ? SK[key].key : "");
     return `<div class="page-head"><span class="eyebrow">แบบฝึกแยกวิชา ${fmtN(PRACTICE_Q)} ข้อ</span><h1>ฝึกโจทย์</h1></div>
     ${SUBJ.map(practiceCard).join("")}${DRILL && !MOCKS ? upgradeCard("ฝึกครบทุกข้อ และทำข้อสอบจำลองเสมือนจริง") : ""}`;
+  }
+  // A drill room's practice is one running quiz over every subject, or the one picked:
+  // questions not yet tried first, then ones answered wrong, then the rest, shuffled within each.
+  function drillQuiz(key) {
+    const rank = id => !S.att[id] ? 0 : S.att[id].ok ? 2 : 1;
+    const ids = shuffle((key ? [SK[key]] : SUBJ).flatMap(practiceIds)).sort((x, y) => rank(x) - rank(y));
+    quiz = { ids, i: 0, title: key ? SK[key].name : "ทุกวิชา", back: "practice", nav: "practice", picked: {}, drill: key || "all" };
+  }
+  function viewDrillPractice(key) {
+    if (!quiz || quiz.drill !== (key || "all")) drillQuiz(key);
+    const chip = (k, label, cls = "") => `<a class="chip ${cls} ${key === k ? "on" : ""}" href="#practice${k ? "-" + k : ""}" ${key === k ? 'aria-current="true"' : ""}>${label}</a>`;
+    return `<nav class="drill-subj" aria-label="เลือกวิชา">${chip("", "ทุกวิชา")}${SUBJ.map(s => chip(s.key, esc(s.short), `subj s-${s.key}`)).join("")}</nav>
+    ${viewQuiz()}${!MOCKS ? upgradeCard("ฝึกครบทุกข้อ และทำข้อสอบจำลองเสมือนจริง") : ""}`;
   }
   function practiceCard(s) {
     const ids = practiceIds(s), st = stats(ids);
@@ -607,8 +625,8 @@ function mount(root, D, opts = {}) {
     const total = ids.length;
     const prog = Math.min(i, total) / total * 100;
     const right = Object.entries(picked).filter(([id, c]) => Q[id].ans === c).length;
-    head = { title, sub: `${i < total ? `ข้อ ${i + 1}/${total}` : "จบชุดฝึก"} · ถูก ${right}/${Object.keys(picked).length}`, back, prog };
-    const qtop = `<div class="quiz-top"><a class="btn ghost sm" href="#${back}">← ออก</a><b style="font-family:var(--f-display)">${esc(title)}</b><span class="muted num small">${i < total ? `<span class="qpos">ข้อ ${i + 1}/${total} · </span>` : ""}ถูก ${right}/${Object.keys(picked).length}</span></div>${bar(prog, "quiz-prog")}`;
+    head = { title, sub: `${i < total ? `ข้อ ${i + 1}/${total}` : "จบชุดฝึก"} · ถูก ${right}/${Object.keys(picked).length}`, back: quiz.drill ? null : back, prog };
+    const qtop = `<div class="quiz-top">${quiz.drill ? "" : `<a class="btn ghost sm" href="#${back}">← ออก</a>`}<b style="font-family:var(--f-display)">${esc(title)}</b><span class="muted num small">${i < total ? `<span class="qpos">ข้อ ${i + 1}/${total} · </span>` : ""}ถูก ${right}/${Object.keys(picked).length}</span></div>${bar(prog, "quiz-prog")}`;
     if (i >= total) {
       const wrongIds = ids.filter(id => picked[id] !== undefined && picked[id] !== Q[id].ans);
       const by = {};
@@ -623,7 +641,7 @@ function mount(root, D, opts = {}) {
         </div>
         <div class="row" style="justify-content:center">
           ${wrongIds.length ? `<button class="btn primary" data-act="redo-wrong">ทำข้อที่ผิดอีกครั้ง (${wrongIds.length})</button>` : ""}
-          ${DRILL ? "" : `<a class="btn" href="#review">เปิดสมุดข้อผิด</a>`}<a class="btn ghost" href="#${back}">กลับ</a>
+          ${quiz.drill ? `<button class="btn" data-act="drill-new">ฝึกรอบใหม่</button>` : `${DRILL ? "" : `<a class="btn" href="#review">เปิดสมุดข้อผิด</a>`}<a class="btn ghost" href="#${back}">กลับ</a>`}
         </div>
         <div class="card stack"><h2 style="font-size:18px">หัวข้อในชุดนี้</h2><ul class="plain weak">${Object.entries(by).map(([t, v]) => `<li class="s-${v.s.key}"><span>${esc(t)}</span><span class="num small">ถูก ${v.ok}/${v.total}${v.done < v.total ? ` · ไม่ได้ตอบ ${v.total - v.done}` : ""}</span>${bar2(v)}<span></span></li>`).join("")}</ul></div>
       </div>`;
@@ -854,6 +872,7 @@ function mount(root, D, opts = {}) {
     switch (act) {
       case "pick": quizPick(+t.dataset.k); break;
       case "next": quizNext(); break;
+      case "drill-new": quiz = null; render(); break;
       case "prev": if (quiz && quiz.i > 0) { quiz.i--; render(); } break;
       case "flag": { const id = quiz.ids[quiz.i]; setFlag(id, !(S.att[id] && S.att[id].flag)); render(); break; }
       case "redo-wrong": { const w = quiz.ids.filter(id => quiz.picked[id] !== undefined && quiz.picked[id] !== Q[id].ans); startQuiz(w, quiz.title + " · ข้อที่ผิด", quiz.back, quiz.nav); break; }
@@ -936,7 +955,7 @@ function mount(root, D, opts = {}) {
     if (t.id === "day-done") { const n = +t.dataset.day; if (t.checked) S.days[n] = 1; else delete S.days[n]; save(); render(); }
   }
   function onKey(e) {
-    if (location.hash !== "#quiz" || !quiz || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (!quizHash() || !quiz || e.metaKey || e.ctrlKey || e.altKey) return;
     if (/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
     if (["1", "2", "3", "4"].includes(e.key)) { quizPick(+e.key - 1); e.preventDefault(); }
     else if (e.key === "Enter" || e.key === "ArrowRight") { if (document.activeElement.tagName === "BUTTON" && e.key === "Enter") return; quizNext(); e.preventDefault(); }
