@@ -107,6 +107,8 @@ function mount(root, D, opts = {}) {
   const MOCK_LIST = Array.from({ length: MOCKS }, (_, i) => i + 1);
   // A drill pack is practice and mock sets only: no plan, notes or guide.
   const DRILL = D.mode === "drill";
+  // A drill room has no dashboard or wrong-answer book; it opens on practice.
+  const HOME = DRILL ? "practice" : "home";
   // The full version of a free drill pack, when the host knows where it is sold.
   const UPGRADE = opts.upgrade && opts.upgrade.href ? opts.upgrade : null;
 
@@ -188,10 +190,10 @@ function mount(root, D, opts = {}) {
 
   /* ---------- navigation ---------- */
   const NAV = [["home", "หน้าหลัก"], ["plan", "แผนการเรียน"], ["notes", "บทเรียน"], ["practice", "ฝึกโจทย์"], ["mock", "ข้อสอบ"], ["review", "สมุดข้อผิด"]]
-    .filter(([k]) => !DRILL || (k !== "plan" && k !== "notes" && (k !== "mock" || MOCKS || UPGRADE)));
+    .filter(([k]) => !DRILL || (k === "practice" || (k === "mock" && (MOCKS || UPGRADE))));
   root.classList.add("exam-prep");
   root.innerHTML = `<header class="topbar"><div class="topbar-in">
-      <a class="brand" href="#home" aria-label="หน้าหลัก"><span class="brand-30">${esc(M.brandBig)}</span><span class="brand-t">${esc(M.brandAfter)}<small>${esc(M.brandSub)}</small></span></a>
+      <a class="brand" href="#${HOME}" aria-label="หน้าหลัก"><span class="brand-30">${esc(M.brandBig)}</span><span class="brand-t">${esc(M.brandAfter)}<small>${esc(M.brandSub)}</small></span></a>
       <div class="ctx" data-ep="ctx"></div>
       <nav class="nav" data-ep="nav" aria-label="เมนูหลัก"></nav></div></header>
     <main class="ep-main" data-ep="app" tabindex="-1"></main>`;
@@ -207,7 +209,7 @@ function mount(root, D, opts = {}) {
   // What the phone header shows in place of the brand; views fill it in.
   let head = null;
   function renderCtx(view) {
-    const h = head || (view === "home" ? null : { title: (NAV.find(([k]) => k === view) || [, ""])[1], back: "home" });
+    const h = head || (view === HOME ? null : { title: (NAV.find(([k]) => k === view) || [, ""])[1], back: HOME });
     root.classList.toggle("has-ctx", !!(h && h.title));
     root.classList.remove("map-open", "toc-open", "sum-open");
     $("ctx").innerHTML = h && h.title ? `${h.back ? `<a class="ctx-back" href="#${h.back}" aria-label="ย้อนกลับ">‹</a>` : ""}
@@ -221,15 +223,15 @@ function mount(root, D, opts = {}) {
 
   function render(keep) {
     clearInterval(tick); tick = null;
-    const h = (location.hash || "#home").slice(1);
+    const h = (location.hash || "#" + HOME).slice(1);
     const [view, a, b, c] = h.split("-");
     const V = {
       home: viewHome, plan: viewPlan, day: () => viewDay(+a, b, c), notes: () => viewNotes(a, b), practice: viewPractice,
       quiz: viewQuiz, mock: () => viewMock(+a, b), review: viewReview, guide: viewGuide,
     };
-    if (DRILL) { V.home = viewDrillHome; delete V.plan; delete V.day; delete V.notes; delete V.guide; }
-    const fn = V[view] || V.home;
-    const navKey = view === "day" ? "plan" : view === "quiz" ? (quiz && quiz.nav) || "practice" : view === "guide" ? "home" : V[view] ? view : "home";
+    if (DRILL) { delete V.home; delete V.plan; delete V.day; delete V.notes; delete V.guide; delete V.review; }
+    const fn = V[view] || V[HOME];
+    const navKey = view === "day" ? "plan" : view === "quiz" ? (quiz && quiz.nav) || "practice" : view === "guide" ? "home" : V[view] ? view : HOME;
     renderNav(navKey);
     head = null;
     $("app").innerHTML = fn();
@@ -325,62 +327,6 @@ function mount(root, D, opts = {}) {
         ${UPGRADE.compare ? `<s class="muted num">${esc(UPGRADE.compare)}</s>` : ""}
       </div>
     </section>`;
-  }
-  function viewDrillHome() {
-    const st = stats(Object.keys(Q)), due = dueList().length;
-    const lastMock = Object.entries(S.mocks).flatMap(([k, arr]) => arr.map(r => ({ k, ...r }))).sort((x, y) => y.at - x.at)[0];
-    const weak = weakTopics(5);
-    return `
-    <section class="hero">
-      <span class="hero-pill">${esc(M.heroPill)}</span>
-      ${MASCOT ? `<img class="mascot" src="${MASCOT}" alt="ตัวการ์ตูนตำรวจถือแฟ้มเอกสาร" width="133" height="171">` : ""}
-      <div class="hero-title"><span class="big30">${esc(M.brandBig)}</span><span class="after">${esc(M.brandAfter)}</span></div>
-      <div class="band">${esc(M.band)}<small>${esc(M.bandSmall)}</small></div>
-      <div class="chips">${SUBJ.map(s => `<a class="chip subj s-${s.key}" href="#practice-${s.key}">${esc(s.short)}</a>`).join("")}</div>
-    </section>
-
-    <section class="stats">
-      <div class="card stat"><b class="num">${fmtN(st.done)}<small class="muted" style="font-size:16px"> / ${fmtN(TOTAL_Q)}</small></b><span>ข้อที่ทำแล้ว</span></div>
-      <div class="card stat"><b class="num">${st.acc === null ? "–" : st.acc + "%"}</b><span>ตอบถูกล่าสุด</span></div>
-      <div class="card stat"><b class="num">${due}</b><span>ข้อรอทบทวนวันนี้</span></div>
-      <div class="card stat"><b class="num">${lastMock ? lastMock.score + `<small class='muted' style='font-size:16px'> / ${MOCK_Q}</small>` : "–"}</b><span>${lastMock ? "จำลองชุด " + lastMock.k + " ล่าสุด" : MOCKS ? "ยังไม่ได้ทำชุดจำลอง" : "ข้อสอบจำลองมีในตัวเต็ม"}</span></div>
-    </section>
-
-    ${MOCKS ? "" : upgradeCard("ฝึกครบทุกข้อ และทำข้อสอบจำลองเสมือนจริง")}
-
-    <section class="row">
-      <a class="btn primary" href="#practice">ฝึกโจทย์</a>
-      ${MOCKS ? `<a class="btn" href="#mock">ข้อสอบจำลอง ${MOCKS} ชุด</a>` : ""}
-      ${due ? `<button class="btn" data-act="review-due">ทบทวนข้อครบรอบ ${due} ข้อ</button>` : ""}
-    </section>
-
-    <section class="stack">
-      <div class="sec-title"><h2>${SUBJ.length} วิชา ตามสัดส่วนข้อสอบ ${MOCK_Q} ข้อ</h2></div>
-      <div class="grid g3">${SUBJ.map(drillCard).join("")}</div>
-    </section>
-
-    <section class="grid g2">
-      <div class="card stack">
-        <h2 style="font-size:20px">หัวข้อที่ควรซ่อมก่อน</h2>
-        ${weak.length ? `<ul class="plain weak">${weak.map(t => `<li class="s-${t.s.key}"><span>${subjChip(t.s)} ${esc(t.topic)}</span><span class="num small">${t.ok}/${t.done} ถูก</span>${bar(t.acc * 100)}<button class="btn sm" data-act="topic" data-s="${t.s.key}" data-topic="${esc(t.topic)}">ฝึกซ้ำ</button></li>`).join("")}</ul>`
-          : `<p class="muted">เมื่อทำแต่ละหัวข้อครบ 3 ข้อขึ้นไป หัวข้อที่อัตราถูกต่ำสุดจะขึ้นที่นี่</p>`}
-      </div>
-      ${MOCKS ? `<div class="card stack">
-        <h2 style="font-size:20px">ข้อสอบจำลอง ${D.mock.minutes} นาที</h2>
-        <p class="muted small">${esc(M.mockTip)}</p>
-        <div class="timeline" style="grid-template-columns:repeat(${Math.min(MOCKS, 4)},minmax(0,1fr))">${MOCK_LIST.map(k => { const r = (S.mocks[k] || []).slice(-1)[0]; return `<div><b class="num">ชุด ${k}</b>${r ? `<span class="num">${r.score}/${MOCK_Q}</span>` : `<span class="muted">ยังไม่ทำ</span>`}</div>`; }).join("")}</div>
-        <div class="row"><a class="btn" href="#mock">ไปที่ข้อสอบจำลอง</a></div>
-      </div>` : upgradeCard("ข้อสอบจำลองเสมือนจริงจับเวลา มีในตัวเต็ม")}
-    </section>`;
-  }
-  function drillCard(s) {
-    const pr = stats(practiceIds(s));
-    return `<div class="card subj-card s-${s.key}">
-      <h3>${esc(s.name)}</h3>
-      <div class="meta"><span>${s.perSet} ข้อต่อชุดสอบ · ฝึก ${s.practice} ข้อ</span><span class="num">${pr.done}/${pr.total}</span></div>
-      ${bar2(pr)}
-      <div class="row"><a class="btn sm" href="#practice-${s.key}">ฝึกโจทย์</a>${pr.acc !== null ? `<span class="muted small num" style="margin-left:auto">ถูก ${pr.acc}%</span>` : ""}</div>
-    </div>`;
   }
   function subjCard(s) {
     const pr = stats(practiceIds(s));
@@ -676,7 +622,7 @@ function mount(root, D, opts = {}) {
         </div>
         <div class="row" style="justify-content:center">
           ${wrongIds.length ? `<button class="btn primary" data-act="redo-wrong">ทำข้อที่ผิดอีกครั้ง (${wrongIds.length})</button>` : ""}
-          <a class="btn" href="#review">เปิดสมุดข้อผิด</a><a class="btn ghost" href="#${back}">กลับ</a>
+          ${DRILL ? "" : `<a class="btn" href="#review">เปิดสมุดข้อผิด</a>`}<a class="btn ghost" href="#${back}">กลับ</a>
         </div>
         <div class="card stack"><h2 style="font-size:18px">หัวข้อในชุดนี้</h2><ul class="plain weak">${Object.entries(by).map(([t, v]) => `<li class="s-${v.s.key}"><span>${esc(t)}</span><span class="num small">ถูก ${v.ok}/${v.total}${v.done < v.total ? ` · ไม่ได้ตอบ ${v.total - v.done}` : ""}</span>${bar2(v)}<span></span></li>`).join("")}</ul></div>
       </div>`;
@@ -903,7 +849,7 @@ function mount(root, D, opts = {}) {
     if (!e.target.closest(".sheet, .notes-nav, .res-sum, .ctx")) root.classList.remove("map-open", "toc-open", "sum-open");
     const t = e.target.closest("[data-act]"); if (!t || !root.contains(t)) return;
     const act = t.dataset.act, s = SK[t.dataset.s];
-    const here = (location.hash || "#home").slice(1);
+    const here = (location.hash || "#" + HOME).slice(1);
     switch (act) {
       case "pick": quizPick(+t.dataset.k); break;
       case "next": quizNext(); break;
