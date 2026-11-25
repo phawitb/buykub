@@ -109,6 +109,7 @@ function mount(root, D, opts = {}) {
   const DRILL = D.mode === "drill";
   // A drill room has no dashboard or wrong-answer book; it opens on practice.
   const HOME = DRILL ? "practice" : "home";
+  const MOCK_LABEL = DRILL ? "ทดสอบเสมือนจริง" : "ข้อสอบ";
   // The full version of a free drill pack, when the host knows where it is sold.
   const UPGRADE = opts.upgrade && opts.upgrade.href ? opts.upgrade : null;
 
@@ -189,7 +190,7 @@ function mount(root, D, opts = {}) {
   }
 
   /* ---------- navigation ---------- */
-  const NAV = [["home", "หน้าหลัก"], ["plan", "แผนการเรียน"], ["notes", "บทเรียน"], ["practice", "ฝึกโจทย์"], ["mock", "ข้อสอบ"], ["review", "สมุดข้อผิด"]]
+  const NAV = [["home", "หน้าหลัก"], ["plan", "แผนการเรียน"], ["notes", "บทเรียน"], ["practice", "ฝึกโจทย์"], ["mock", MOCK_LABEL], ["review", "สมุดข้อผิด"]]
     .filter(([k]) => !DRILL || (k === "practice" || (k === "mock" && (MOCKS || UPGRADE))));
   root.classList.add("exam-prep");
   root.innerHTML = `<header class="topbar"><div class="topbar-in">
@@ -778,11 +779,11 @@ function mount(root, D, opts = {}) {
       <div class="pager">${prevS ? `<button class="btn" data-act="rpage" data-p="${pg - 1}">← ${esc(prevS.short)}</button>` : "<span></span>"}${nextS ? `<button class="btn primary" data-act="rpage" data-p="${pg + 1}">ถัดไป: ${esc(nextS.short)} →</button>` : "<span></span>"}</div>`;
   }
   function viewMockList() {
-    if (!MOCKS) return `<div class="page-head"><span class="eyebrow">ข้อสอบจำลองเสมือนจริง</span><h1>ข้อสอบจำลอง</h1></div>${upgradeCard("ข้อสอบจำลองเสมือนจริงจับเวลา มีในตัวเต็ม")}`;
+    if (!MOCKS) return `<div class="page-head"><span class="eyebrow">ข้อสอบจำลองเสมือนจริง</span><h1>${DRILL ? MOCK_LABEL : "ข้อสอบจำลอง"}</h1></div>${upgradeCard("ข้อสอบจำลองเสมือนจริงจับเวลา มีในตัวเต็ม")}`;
     // The set in progress, otherwise the one finished most recently.
     let latest = S.run ? S.run.set : null, at = 0;
     if (!S.run) MOCK_LIST.forEach(k => { const r = (S.mocks[k] || []).slice(-1)[0]; if (r && r.at > at) { latest = k; at = r.at; } });
-    return `<div class="page-head"><span class="eyebrow">ข้อสอบจำลอง ${MOCKS} ชุด รวม ${fmtN(MOCK_Q * MOCKS)} ข้อ</span><h1>ข้อสอบจำลอง</h1></div>
+    return `<div class="page-head"><span class="eyebrow">ข้อสอบจำลอง ${MOCKS} ชุด รวม ${fmtN(MOCK_Q * MOCKS)} ข้อ</span><h1>${DRILL ? MOCK_LABEL : "ข้อสอบจำลอง"}</h1></div>
     <div class="grid g2">${MOCK_LIST.map(k => {
       const hist = S.mocks[k] || [], r = hist[hist.length - 1];
       const running = S.run && S.run.set === k, done = running ? Object.keys(S.run.ans).length : r ? MOCK_Q : 0;
