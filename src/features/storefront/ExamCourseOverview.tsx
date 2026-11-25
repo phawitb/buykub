@@ -10,7 +10,7 @@ export function ExamCourseOverview({summary, accessDays}:{summary:ExamSummary;ac
     ["คลังข้อสอบ", `${number(summary.questions)} ข้อ`, "เฉลยและคำอธิบายทุกข้อ"],
     ["ฝึกโจทย์", `${number(summary.practice)} ข้อ`, "เลือกฝึกตามวิชาและหัวข้อ"],
     summary.mocks > 0 ? mockStat : ["วิชา", `${summary.subjects.length} วิชา`, summary.subjects.map(subject => subject.short).join(" · ")],
-    ["สมุดข้อผิด", "ทบทวนซ้ำ", "ข้อที่ตอบผิดวนกลับมาให้ทำใหม่"],
+    ["ข้อที่ตอบผิด", "ฝึกซ้ำได้", "เลือกฝึกเฉพาะข้อที่ตอบผิดในแต่ละวิชา"],
   ] : [
     ["แผนอ่าน", `${summary.days} วัน`, "บอกว่าวันนี้อ่านอะไร ฝึกข้อไหน"],
     ["คลังข้อสอบ", `${number(summary.questions)} ข้อ`, "เฉลยและคำอธิบายทุกข้อ"],
