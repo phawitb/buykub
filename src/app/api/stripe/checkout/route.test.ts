@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   rpc: vi.fn(), userRpc: vi.fn(), product: vi.fn(), context: vi.fn(), getUser: vi.fn(),
   create: vi.fn(), confirm: vi.fn(), retrieve: vi.fn(), cleanup: vi.fn(),
-  hostedCreate: vi.fn(), hostedRetrieve: vi.fn(),
+  hostedCreate: vi.fn(), hostedRetrieve: vi.fn(), invoke: vi.fn(),
 }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({
   auth: { getUser: mocks.getUser }, rpc: mocks.userRpc,
@@ -11,6 +11,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({
 }) }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({
   rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ maybeSingle: mocks.context }) }) }),
+  functions: { invoke: mocks.invoke },
 }) }));
 vi.mock("@/lib/stripe", () => ({ getStripe: () => ({
   checkout: { sessions: { create: mocks.hostedCreate, retrieve: mocks.hostedRetrieve } },
@@ -44,7 +45,7 @@ beforeEach(() => {
   mocks.create.mockResolvedValue({ id: "pi_test", status: "requires_confirmation" });
   mocks.confirm.mockResolvedValue({ id: "pi_test", status: "requires_action" });
   mocks.cleanup.mockResolvedValue(undefined);
-  mocks.hostedCreate.mockResolvedValue({ id: "cs_free", url: "https://checkout.stripe.com/free" });
+  mocks.invoke.mockResolvedValue({ error: null });
 });
 
 const productKinds = [
@@ -76,16 +77,13 @@ describe.each(productKinds)("Google-only $deliveryType checkout (amount $amount)
     mocks.getUser.mockResolvedValue({ data: { user: { ...googleUser, email: "  Verified@Example.COM  " } }, error: null });
     mocks.product.mockResolvedValue({ data: { delivery_type: deliveryType } });
     mocks.context.mockReset().mockResolvedValueOnce({ data: null }).mockResolvedValue({ data: {
-      ...context, amount_cents: amount, stripe_session_id: amount === 0 ? null : "pp_receipt", promptpay_buyer_email: "verified@example.com",
+      ...context, amount_cents: amount, stripe_session_id: "pp_receipt", promptpay_buyer_email: "verified@example.com",
     } });
     const response = await POST(request({ buyerEmail: "forged@example.com" }));
     expect(response.status).toBe(200);
     if (amount === 0) {
-      expect(mocks.hostedCreate).toHaveBeenCalledWith(expect.objectContaining({
-        customer_email: "verified@example.com", mode: "payment",
-        line_items: [expect.objectContaining({ price_data: expect.objectContaining({ unit_amount: 0, currency: "thb" }) })],
-      }), { idempotencyKey: `free-checkout-${reference}` });
-      expect(mocks.hostedCreate.mock.calls[0][0]).not.toHaveProperty("payment_method_collection");
+      expect(mocks.rpc).toHaveBeenCalledWith("finalize_free_checkout", { p_checkout_reference: reference, p_email: "verified@example.com" });
+      expect(mocks.hostedCreate).not.toHaveBeenCalled();
       expect(mocks.create).not.toHaveBeenCalled();
     } else {
       expect(mocks.rpc).toHaveBeenCalledWith("prepare_promptpay_checkout", { p_checkout_reference: reference, p_email: "verified@example.com" });
@@ -154,12 +152,48 @@ describe("PromptPay checkout start", () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
     expect(mocks.create).not.toHaveBeenCalled();
   });
-  it("reuses a free checkout session on retry", async () => {
+  it("finishes a free checkout begun on Stripe before the direct claim", async () => {
     mocks.context.mockReset().mockResolvedValue({ data: { ...context, amount_cents: 0, stripe_session_id: "cs_existing" } });
     mocks.hostedRetrieve.mockResolvedValue({ id: "cs_existing", url: "https://checkout.stripe.com/existing" });
     expect(await (await POST(request())).json()).toEqual({ url: "https://checkout.stripe.com/existing" });
     expect(mocks.hostedCreate).not.toHaveBeenCalled();
-    expect(mocks.userRpc).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalledWith("finalize_free_checkout", expect.anything());
+  });
+});
+
+describe("free checkout", () => {
+  const free = { ...context, amount_cents: 0, stripe_session_id: null, promptpay_buyer_email: null };
+  beforeEach(() => {
+    mocks.context.mockReset().mockResolvedValueOnce({ data: null }).mockResolvedValueOnce({ data: free }).mockResolvedValue({ data: { stripe_session_id: "pp_free_receipt" } });
+    mocks.rpc.mockImplementation(async (name: string) => name === "finalize_free_checkout"
+      ? { data: [{ kind: "product", order_id: "order-1", email_token: "33333333-3333-4333-8333-333333333333", booking_id: null }], error: null }
+      : { error: null });
+  });
+  it("opens the classroom of a free course without any Stripe page", async () => {
+    mocks.product.mockResolvedValue({ data: { delivery_type: "course", name: "Free", price_cents: 0 } });
+    expect(await (await POST(request())).json()).toEqual({ url: `/learn/${context.product_id}` });
+    expect(mocks.hostedCreate).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalledWith("prepare_promptpay_checkout", expect.anything());
+    expect(mocks.invoke).toHaveBeenCalledWith("send-product-key", { body: { orderId: "order-1", emailToken: "33333333-3333-4333-8333-333333333333" } });
+  });
+  it("sends other free products to their receipt", async () => {
+    mocks.product.mockResolvedValue({ data: { delivery_type: "file", name: "Free", price_cents: 0 } });
+    expect(await (await POST(request())).json()).toEqual({ url: "/checkout/success?session_id=pp_free_receipt" });
+  });
+  it("keeps the claim when the delivery email fails", async () => {
+    mocks.product.mockResolvedValue({ data: { delivery_type: "course", name: "Free", price_cents: 0 } });
+    mocks.invoke.mockResolvedValue({ error: new Error("smtp down") });
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const response = await POST(request());
+    expect(response.status).toBe(200);
+  });
+  it("does not open anything when the database refuses the claim", async () => {
+    mocks.product.mockResolvedValue({ data: { delivery_type: "course", name: "Free", price_cents: 0 } });
+    mocks.rpc.mockImplementation(async (name: string) => name === "finalize_free_checkout" ? { data: null, error: new Error("checkout_not_free") } : { error: null });
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect((await POST(request())).status).toBe(502);
+    expect(mocks.invoke).not.toHaveBeenCalled();
   });
 });
 
