@@ -16,7 +16,10 @@ export async function loadShopPromo(slug: string): Promise<ShopPromoData | null>
     if (!shop) return null;
     const products = (await getPublicProducts(shop.id)) ?? [];
     if (!products.length) return null;
-    const cheapest = products.reduce((a, b) => (b.price_cents < a.price_cents ? b : a));
+    // A free product would make the ad read "from ฿0"; price from what is sold.
+    const paid = products.filter((product) => product.price_cents > 0);
+    if (!paid.length) return null;
+    const cheapest = paid.reduce((a, b) => (b.price_cents < a.price_cents ? b : a));
     const covers = products
       .map((product) => {
         const imagesV2 = Array.isArray(product.images_v2)

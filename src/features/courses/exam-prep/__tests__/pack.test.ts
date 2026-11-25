@@ -37,6 +37,13 @@ describe("exam packs", () => {
     expect(errors.some(e => e.includes("วิชา M"))).toBe(true);
     expect(errors.some(e => e.includes("แผนรายวัน"))).toBe(true);
   });
+  it("lets a drill pack go without a plan, and only a drill pack", () => {
+    const drill = { ...pack(), mode: "drill" as const, plan: [] };
+    expect(validateExamPack(drill)).toEqual([]);
+    expect(summarizeExamPack(drill)).toMatchObject({ mode: "drill", days: 0, mocks: 2 });
+    expect(validateExamPack({ ...pack(), plan: [] }).some(e => e.includes("แผนรายวัน"))).toBe(true);
+    expect(validateExamPack({ ...pack(), mode: "quiz" }).some(e => e.includes("โหมด"))).toBe(true);
+  });
   it("rejects a practice/mock split that does not add up", () => {
     const broken = pack();
     broken.subjects[0].practice = 3;

@@ -8,6 +8,8 @@ type PackSubject = { key: string; code: string; name: string; short: string; tot
 type PackPart = { name: string; subjects: string[]; pass: number };
 export type ExamPack = {
   format: "exam-prep"; version: number; id: string;
+  /** "drill" packs hold practice and mock sets only: no plan, notes or guide. */
+  mode?: "drill";
   meta: { title: string } & Record<string, unknown>;
   subjects: PackSubject[];
   questions: Record<string, unknown[][]>;
@@ -17,7 +19,7 @@ export type ExamPack = {
 };
 
 export type ExamSummary = {
-  format: "exam-prep"; version: number; id: string; title: string;
+  format: "exam-prep"; version: number; id: string; title: string; mode?: "drill";
   days: number; questions: number; practice: number; mocks: number; mockQuestions: number; mockMinutes: number; chapters: number;
   subjects: { key: string; code: string; name: string; short: string; questions: number; perSet: number; chapters: number }[];
   parts: { name: string; max: number; pass: number }[];
@@ -53,8 +55,9 @@ export function validateExamPack(value: unknown): string[] {
     if (!Array.isArray(list) || list.length !== subject.total) errors.push(`${subject.name}: จำนวนข้อไม่ตรงกับที่ระบุ`);
     else if (isObject(mock) && (subject.practice as number) + (mock.count as number) * (subject.perSet as number) !== subject.total) errors.push(`${subject.name}: แบ่งข้อฝึกและข้อสอบจำลองไม่ลงตัว`);
   }
+  if (value.mode !== undefined && value.mode !== "drill") errors.push("โหมดแพ็กไม่ถูกต้อง");
   const plan = Array.isArray(value.plan) ? value.plan : [];
-  if (!plan.length || plan.some((row, index) => !isObject(row) || row.day !== index + 1 || typeof row.kind !== "string")) errors.push("แผนรายวันไม่ถูกต้อง");
+  if ((!plan.length && value.mode !== "drill") || plan.some((row, index) => !isObject(row) || row.day !== index + 1 || typeof row.kind !== "string")) errors.push("แผนรายวันไม่ถูกต้อง");
   return errors;
 }
 
@@ -63,6 +66,7 @@ export function summarizeExamPack(pack: ExamPack): ExamSummary {
   const byCode = new Map(pack.subjects.map(subject => [subject.code, subject]));
   return {
     format: "exam-prep", version: pack.version, id: pack.id, title: pack.meta.title,
+    ...(pack.mode === "drill" ? { mode: "drill" as const } : {}),
     days: pack.plan.length,
     questions: pack.subjects.reduce((sum, s) => sum + s.total, 0),
     practice: pack.subjects.reduce((sum, s) => sum + s.practice, 0),

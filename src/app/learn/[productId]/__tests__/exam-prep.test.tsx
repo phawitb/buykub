@@ -2,6 +2,7 @@ import { beforeEach,expect,it,vi } from 'vitest';
 const m=vi.hoisted(()=>({getUser:vi.fn(),rpc:vi.fn(),from:vi.fn(),tables:[] as string[],product:vi.fn()}));
 vi.mock('@/lib/supabase/server',()=>({createClient:async()=>({auth:{getUser:m.getUser},rpc:m.rpc,from:m.from})}));
 vi.mock('@/features/courses/exam-prep/ExamPrepClassroom',()=>({ExamPrepClassroom:()=>null}));
+vi.mock('@/features/courses/exam-prep/upsell',()=>({loadClassroomUpsell:async()=>null}));
 vi.mock('next/navigation',()=>({redirect:(path:string)=>{throw new Error(`redirect:${path}`)}}));
 import Page from '../page';
 import { ExamPrepClassroom } from '@/features/courses/exam-prep/ExamPrepClassroom';
@@ -15,7 +16,7 @@ beforeEach(()=>{
 it('renders the classroom with ids only: no pack, path or lessons in props',async()=>{
  const result=await Page({params:Promise.resolve({productId:'course'})});
  expect(result.type).toBe(ExamPrepClassroom);
- expect(result.props).toEqual({productId:'course',name:'NST 30',expiresAt:'2026-12-21T00:00:00Z',owner:false});
+ expect(result.props).toEqual({productId:'course',name:'NST 30',expiresAt:'2026-12-21T00:00:00Z',owner:false,upsell:null});
  expect(m.tables).toEqual(['products']);
 });
 it('treats every course as lessons on a database without the format column',async()=>{

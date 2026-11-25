@@ -72,7 +72,7 @@ export function ProductCard({
         <div className="mt-auto flex items-end justify-between gap-2 pt-3">
           <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-sm">
             <span className="font-semibold text-ink" data-numeric>
-              {formatTHB(product.priceCents)}
+              {product.priceCents === 0 ? "ฟรี" : formatTHB(product.priceCents)}
             </span>
             {product.comparePriceCents && (
               <span className="text-xs text-muted line-through" data-numeric>

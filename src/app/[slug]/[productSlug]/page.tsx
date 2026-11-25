@@ -162,7 +162,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
           </h1>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <span className="text-2xl font-bold text-ink">
-              {formatTHB(product.price_cents)}
+              {product.price_cents === 0 ? "ฟรี" : formatTHB(product.price_cents)}
             </span>
             {product.compare_price_cents && (
               <span className="text-sm text-muted line-through">

@@ -12,7 +12,7 @@ export const MAX_PRODUCT_IMAGES = 5;
 
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
-/** Every product costs at least ฿10, Stripe's minimum charge in THB. */
+/** Stripe will not charge less than ฿10 in THB, so a paid product starts there; ฿0 is a free product. */
 export const MIN_PRICE_BAHT = 10;
 
 export function validateProductEditor(
@@ -26,8 +26,8 @@ export function validateProductEditor(
   if (!value.price || !Number.isFinite(price) || price < 0) {
     errors.price = "กรุณากรอกราคาที่ถูกต้อง";
   }
-  else if (price < MIN_PRICE_BAHT) {
-    errors.price = `ราคาขั้นต่ำ ฿${MIN_PRICE_BAHT}`;
+  else if (price > 0 && price < MIN_PRICE_BAHT) {
+    errors.price = `ราคาขั้นต่ำ ฿${MIN_PRICE_BAHT} (หรือ 0 สำหรับสินค้าฟรี)`;
   }
   if (
     comparePrice !== null &&

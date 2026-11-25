@@ -1,10 +1,14 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { formatTHB } from "@/features/products/format";
+import { ClassroomUpsellPopup } from "./ClassroomUpsellPopup";
 import { createRemoteStore, type ProgressState, type RemoteStore } from "./remote-store";
+import type { ClassroomUpsell } from "./upsell";
 
 type EngineApp = { setState(state: ProgressState): void; getState(): ProgressState; destroy(): void };
-type Engine = { mount(root: HTMLElement, pack: unknown, options: { store: RemoteStore; mascot: string }): EngineApp };
+type Upgrade = { href: string; label: string; price: string; compare?: string; text?: string };
+type Engine = { mount(root: HTMLElement, pack: unknown, options: { store: RemoteStore; mascot: string; upgrade?: Upgrade }): EngineApp };
 declare global { interface Window { ExamPrep?: Engine } }
 
 // Static, content-free engine; the paid pack arrives separately from /api/courses/[id]/pack.
@@ -28,11 +32,14 @@ function loadEngine(): Promise<Engine> {
 
 const syncLabels = { saved: "บันทึกความคืบหน้าแล้ว", pending: "กำลังบันทึก…", offline: "ออฟไลน์ · เก็บไว้ในเครื่องนี้ก่อน" };
 
-export function ExamPrepClassroom({productId, name, expiresAt, owner}:{productId:string;name:string;expiresAt:string|null;owner:boolean}) {
+export function ExamPrepClassroom({productId, name, expiresAt, owner, upsell}:{productId:string;name:string;expiresAt:string|null;owner:boolean;upsell?:ClassroomUpsell|null}) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [phase, setPhase] = useState<"loading"|"ready"|"error">("loading");
   const [sync, setSync] = useState<keyof typeof syncLabels>("saved");
   const [attempt, setAttempt] = useState(0);
+  const full = upsell?.upgrade ?? null;
+  // Plain strings only: the engine renders them into its own markup.
+  const upgradeHref = full?.href, upgradePrice = full ? formatTHB(full.priceCents) : "", upgradeCompare = full?.compareCents && full.compareCents > full.priceCents ? formatTHB(full.compareCents) : undefined;
 
   useEffect(() => {
     let cancelled = false;
@@ -52,7 +59,8 @@ export function ExamPrepClassroom({productId, name, expiresAt, owner}:{productId
         store.pull(), // the newest copy from any device is in place before the engine reads it
       ]);
       if (cancelled || !rootRef.current) return;
-      app = engine.mount(rootRef.current, pack, {store, mascot:"/exam-prep/mascot.png"});
+      const upgrade = upgradeHref ? {href:upgradeHref, label:"ดูตัวเต็ม", price:upgradePrice, compare:upgradeCompare, text:"คลังข้อสอบเต็มชุด ข้อสอบจำลองจับเวลา และเฉลยทุกข้อ"} : undefined;
+      app = engine.mount(rootRef.current, pack, {store, mascot:"/exam-prep/mascot.png", upgrade});
       setPhase("ready");
     })().catch(() => { if (!cancelled) setPhase("error"); });
 
@@ -72,7 +80,7 @@ export function ExamPrepClassroom({productId, name, expiresAt, owner}:{productId
       app?.destroy();
       if (previousTheme === undefined) delete html.dataset.theme; else html.dataset.theme = previousTheme;
     };
-  }, [productId, attempt]);
+  }, [productId, attempt, upgradeHref, upgradePrice, upgradeCompare]);
 
   const access = owner ? "ตัวอย่างสำหรับผู้สอน" : expiresAt ? `เข้าเรียนได้ถึง ${new Date(expiresAt).toLocaleDateString("th-TH",{timeZone:"Asia/Bangkok",day:"numeric",month:"short",year:"numeric"})}` : "สิทธิ์ตลอดชีพ";
   return <div className="min-h-screen bg-[#fbfaf6] text-ink">
@@ -83,6 +91,7 @@ export function ExamPrepClassroom({productId, name, expiresAt, owner}:{productId
       <span className="min-w-0 flex-1 truncate text-muted">{name} · {access}</span>
       {phase === "ready" && <span role="status" className={sync === "offline" ? "text-amber-700" : "text-muted"}>{syncLabels[sync]}</span>}
       {owner && <Link href={`/dashboard/products/${productId}/lessons`} className="shrink-0 underline">แก้ไขคอร์ส</Link>}
+      {full && <Link href={full.href} className="shrink-0 rounded-full bg-accent px-3 py-1 font-semibold text-paper">อัปเกรดตัวเต็ม {formatTHB(full.priceCents)}</Link>}
     </header>
     {phase === "loading" && <p role="status" className="px-6 py-24 text-center text-sm text-muted">กำลังเปิดห้องเรียน…</p>}
     {phase === "error" && <div role="alert" className="mx-auto max-w-md px-6 py-24 text-center">
@@ -91,5 +100,6 @@ export function ExamPrepClassroom({productId, name, expiresAt, owner}:{productId
       <button type="button" className="primary-button mt-6" onClick={() => { setPhase("loading"); setAttempt(n => n + 1); }}>ลองอีกครั้ง</button>
     </div>}
     <div ref={rootRef} hidden={phase !== "ready"}/>
+    {upsell && phase === "ready" && <ClassroomUpsellPopup upsell={upsell}/>}
   </div>;
 }

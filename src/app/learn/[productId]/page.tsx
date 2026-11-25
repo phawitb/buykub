@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CourseReader } from "@/features/courses/CourseReader";
 import { ExamPrepClassroom } from "@/features/courses/exam-prep/ExamPrepClassroom";
+import { loadClassroomUpsell } from "@/features/courses/exam-prep/upsell";
 import type { CourseAccess, CourseLesson } from "@/features/courses/model";
 import { sanitizeLessonHtml } from "@/features/courses/sanitize";
 import { normalizeYoutubeUrl } from "@/features/products/components/rich-text-urls";
@@ -31,7 +32,11 @@ export default async function LearnCoursePage({params}:{params:Promise<{productI
   if (productError) throw new Error("โหลดคอร์สไม่สำเร็จ กรุณาลองใหม่");
   const name = product?.name ?? "คอร์สเรียน";
   // The exam-prep pack is fetched by the classroom from an entitlement-checked route; no storage path reaches the client.
-  if (product?.course_format === "exam_prep") return <ExamPrepClassroom productId={productId} name={name} expiresAt={access.expires_at} owner={access.reason === "owner"}/>;
+  if (product?.course_format === "exam_prep") {
+    // A free course advertises the shop's paid ones; never to the seller previewing it.
+    const upsell = access.reason === "owner" ? null : await loadClassroomUpsell(productId);
+    return <ExamPrepClassroom productId={productId} name={name} expiresAt={access.expires_at} owner={access.reason === "owner"} upsell={upsell}/>;
+  }
   const {data:lessonRows,error:lessonError} = await supabase.from("course_lessons").select("id,title,position,content_html,youtube_url,documents,published").eq("product_id",productId).eq("published",true).order("position");
   if (lessonError) throw new Error("โหลดบทเรียนไม่สำเร็จ กรุณาลองใหม่");
   const lessons = ((lessonRows ?? []) as CourseLesson[]).map(lesson => ({
