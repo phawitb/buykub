@@ -12,7 +12,7 @@ describe("ReferralButton", () => {
     render(<ReferralButton productId="p" rateBp={1000} priceCents={18900} name="Guide" />);
     expect(screen.queryByText(/ซื้อภายใน 30 วัน/)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "ชวนเพื่อน รับ 10%" }));
+    await user.click(screen.getByRole("button", { name: "ชวนเพื่อน รับ 10% (฿18.90)" }));
 
     expect(await screen.findByText("฿18.90")).toBeInTheDocument();
     expect(screen.getByText("https://buykub.com/r/abc").tagName).toBe("CODE");
