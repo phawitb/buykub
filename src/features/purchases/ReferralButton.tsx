@@ -12,6 +12,7 @@ export function ReferralButton({ productId, rateBp, priceCents, name }: { produc
   // The link and the how-to open once the buyer has the link in hand, and stay open.
   const [url, setUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const earns = commission(priceCents, rateBp);
 
   async function copy(link: string) {
     try { await navigator.clipboard.writeText(link); setCopied(true); }
@@ -40,7 +41,7 @@ export function ReferralButton({ productId, rateBp, priceCents, name }: { produc
   return (
     <>
       <button type="button" onClick={share} disabled={state === "busy"} className="inline-flex h-11 items-center justify-center rounded-full border border-red-600 bg-paper px-5 text-sm font-medium text-red-600 transition duration-[120ms] ease-out hover:bg-red-50 active:scale-[0.98] disabled:opacity-60">
-        {state === "busy" ? "กำลังสร้างลิงก์..." : `ชวนเพื่อน รับ ${ratePercent(rateBp)}`}
+        {state === "busy" ? "กำลังสร้างลิงก์..." : `ชวนเพื่อน รับ ${ratePercent(rateBp)}${earns > 0 ? ` (${baht(earns)})` : ""}`}
       </button>
       {url && (
         <div className="flex min-w-0 basis-full items-center gap-2 rounded-xl border border-line bg-paper-dim py-1.5 pl-4 pr-1.5">
@@ -57,13 +58,18 @@ export function ReferralButton({ productId, rateBp, priceCents, name }: { produc
   );
 }
 
+/** What one referred sale at the listed price pays; the database floors it the same way. */
+function commission(priceCents: number, rateBp: number) {
+  return Math.floor(priceCents * rateBp / 10000);
+}
+
 function baht(cents: number) {
   return `฿${(cents / 100).toLocaleString("th-TH", { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 })}`;
 }
 
 /** What to do with the link and what one referred sale pays, in the words of the affiliate page. */
 function ReferralHowTo({ rateBp, priceCents }: { rateBp: number; priceCents: number }) {
-  const earns = Math.floor(priceCents * rateBp / 10000);
+  const earns = commission(priceCents, rateBp);
   return (
     <div className="basis-full rounded-xl bg-paper-dim px-4 py-3 text-xs leading-6 text-ink-soft">
       {earns > 0 && (
